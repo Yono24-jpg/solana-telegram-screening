@@ -229,10 +229,10 @@ def holder_display(mint):
         share=100*sum(amounts)/total
         if share>100.000001: raise ValueError('Invalid supply ratio')
         # Largest token accounts are not necessarily distinct wallet holders.
-        return f'📊 10 akun token terbesar: <b>{share:.2f}%</b> (bukan Top 10 wallet)\\n👥 Jumlah holder: belum tersedia\\n'
+        return f'📊 10 akun token terbesar: <b>{share:.2f}%</b> (bukan Top 10 wallet)\n👥 Jumlah holder: belum tersedia\n'
     except Exception:
         print('HOLDER_INFO_UNAVAILABLE')
-        return '📊 10 akun token terbesar: belum tersedia\\n👥 Jumlah holder: belum tersedia\\n'
+        return '📊 10 akun token terbesar: belum tersedia\n👥 Jumlah holder: belum tersedia\n'
 
 def scan(state, chat):
     selected={}
