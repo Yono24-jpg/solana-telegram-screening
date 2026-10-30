@@ -39,7 +39,7 @@ class Filters(unittest.TestCase):
         self.assertIsNone(market_cap(self.p))
     def test_market_rejection_reasons(self):
         self.assertIsNone(market_rejection(self.p,1000))
-        cases=[('liquidity',lambda p:p['liquidity'].update(usd=4999)),('volume_5m',lambda p:p['volume'].update(m5=499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=4)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-4000000))]
+        cases=[('liquidity',lambda p:p['liquidity'].update(usd=4999)),('volume_5m',lambda p:p['volume'].update(m5=499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=4)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-11000000))]
         for expected,modify in cases:
             p=copy.deepcopy(self.p);modify(p)
             self.assertEqual(market_rejection(p,1000),expected)
