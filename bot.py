@@ -63,7 +63,7 @@ def discover():
     # Keep API recency ordering; alphabetical truncation misses newer tokens.
     addresses=list()
     seen=set()
-    for endpoint in ['/token-profiles/latest/v1','/token-boosts/latest/v1','/token-boosts/top/v1']:
+    for endpoint in ['/token-profiles/latest/v1','/token-boosts/latest/v1','/token-boosts/top/v1','/community-takeovers/latest/v1','/ads/latest/v1']:
         try:
             rows=request(DEX+endpoint)
             if isinstance(rows,list):
