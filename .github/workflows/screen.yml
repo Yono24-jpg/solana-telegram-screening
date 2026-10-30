@@ -2,10 +2,10 @@ name: Solana Telegram Screening
 # Run to process the latest Telegram ON/OFF callback.
 on:
   push:
-    paths: ['bot.py', '.github/workflows/screen.yml']
+    paths: ['bot.py', 'test_bot.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
-    - cron: '2-59/5 * * * *'
+    - cron: '7,12,17,22,27,32,37,42,47,52,57,2 * * * *'
 permissions:
   contents: write
 concurrency:
@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
+      - name: Show trigger and UTC time
+        run: echo "TRIGGER=${{ github.event_name }} UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       - name: Verify fail-closed filters
         run: python3 -m unittest -v
       - name: Scan and process Telegram controls
