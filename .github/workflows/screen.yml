@@ -40,7 +40,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             python3 - <<'PY'
-          import json, subprocess
+          import json, subprocess, time
           from pathlib import Path
           local=json.loads(Path('/tmp/scan-state.json').read_text())
           try:
@@ -48,7 +48,8 @@ jobs:
           except (subprocess.CalledProcessError,ValueError):
               remote={}
           merged=dict(remote)
-          merged['sent']={**local.get('sent',{}),**remote.get('sent',{})}
+          # Merge concurrent deliveries, but never restore entries older than five hours.
+          merged['sent']={mint:ts for mint,ts in {**local.get('sent',{}),**remote.get('sent',{})}.items() if isinstance(ts,(int,float)) and not isinstance(ts,bool) and 0 <= time.time()-ts < 18000}
           merged['offset']=max(local.get('offset',0),remote.get('offset',0))
           merged['initialized']=bool(local.get('initialized') or remote.get('initialized'))
           # The most recent callback processed by the scan takes precedence.
