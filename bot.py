@@ -74,32 +74,43 @@ def discover():
 
 def scan(state, chat):
     selected={}
+    stats={'pools_seen':0,'market_rejected':0,'already_sent':0,'security_rejected':0,'market_expired':0,'refresh_rejected':0,'refresh_error':0}
     for p in discover():
+        stats['pools_seen']+=1
         c=candidate(p,time.time())
         if c:
             mint=c['baseToken']['address']
             if mint not in selected or selected[mint]['score']<c['score']: selected[mint]=c
+        else: stats['market_rejected']+=1
     ranked=sorted(selected.values(),key=lambda p:p['score'],reverse=True)
     sent=0
     # Check only bounded candidates, but never fill slots using unverified data.
     ranked=ranked[:30]
-    if not ranked: print('SCAN candidates=0 sent=0'); return
+    if not ranked:
+        print(f'SCAN candidates=0 sent=0 diagnostics={json.dumps(stats,sort_keys=True)}'); return
     try:
         result=request((os.environ.get('SOLANA_RPC_URL') or 'https://api.mainnet-beta.solana.com'),{'jsonrpc':'2.0','id':1,'method':'getMultipleAccounts','params':[[p['baseToken']['address'] for p in ranked],{'encoding':'base64','commitment':'confirmed'}]})
         accounts=result['result']['value']
         if len(accounts)!=len(ranked): raise ValueError('Incomplete RPC data')
     except Exception:
-        print('Security unavailable: all candidates discarded');return
+        print(f'Security unavailable: all candidates discarded diagnostics={json.dumps(stats,sort_keys=True)}');return
     for p,a in zip(ranked,accounts):
         mint=p['baseToken']['address']
-        if mint in state['sent'] or not secure(a) or not candidate(p,time.time()): continue
+        if mint in state['sent']:
+            stats['already_sent']+=1;continue
+        if not secure(a):
+            stats['security_rejected']+=1;continue
+        if not candidate(p,time.time()):
+            stats['market_expired']+=1;continue
         # Refresh market metrics immediately before sending.
         try:
             latest=request(DEX+'/latest/dex/pairs/solana/'+p['pairAddress'])['pairs']
             fresh=next(x for x in latest if x['pairAddress']==p['pairAddress'] and x['baseToken']['address']==mint)
             p=candidate(fresh,time.time())
-            if not p: continue
-        except Exception: continue
+            if not p:
+                stats['refresh_rejected']+=1;continue
+        except Exception:
+            stats['refresh_error']+=1;continue
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
@@ -126,7 +137,7 @@ def scan(state, chat):
         print('TELEGRAM_SENT message_id='+str(msg['message_id']))
         sent+=1
         if sent==5: break
-    print(f'SCAN checked={len(ranked)} sent={sent}')
+    print(f'SCAN checked={len(ranked)} sent={sent} diagnostics={json.dumps(stats,sort_keys=True)}')
 
 def save(state):
     tmp=STATE.with_suffix('.tmp');tmp.write_text(json.dumps(state));tmp.replace(STATE)
