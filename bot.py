@@ -58,7 +58,7 @@ def market_rejection(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if not all(numeric(v) for v in (created,lp,volume,buys,sells)):
             return 'missing_metrics'
-        if not 0<=now-created<=3600: return 'age'
+        if not 0<=now-created<=10800: return 'age'
         if lp<5000: return 'liquidity'
         if volume<500: return 'volume_5m'
         if buys<5 or sells<0 or int(buys)!=buys or int(sells)!=sells: return 'transactions_5m'
@@ -74,7 +74,7 @@ def candidate(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress']: return None
         if not p['baseToken']['symbol'] or not all(numeric(v) for v in (created,lp,volume,buys,sells)): return None
-        if not 0<=now-created<=3600 or lp<5000 or volume<500 or buys<5 or sells<0: return None
+        if not 0<=now-created<=10800 or lp<5000 or volume<500 or buys<5 or sells<0: return None
         if int(buys)!=buys or int(sells)!=sells or buys/max(sells,1)<1.0: return None
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
@@ -312,7 +312,7 @@ def main():
     print('TELEGRAM_DESTINATION_OK type='+group['type'])
     chat=group['id']
     if not state['initialized']:
-        msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 1 jam; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
+        msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 3 jam; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
         print('TELEGRAM_TEST_OK message_id='+str(msg['message_id']))
         state['initialized']=True;save(state)
     updates=tg('getUpdates',offset=state['offset'],timeout=0,allowed_updates=['callback_query'])
@@ -328,7 +328,7 @@ def main():
             try: tg('answerCallbackQuery',callback_query_id=q['id'])
             except Exception: pass
         state['offset']=u['update_id']+1;save(state)
-    state['sent']={k:v for k,v in state['sent'].items() if time.time()-v<86400}
+    state['sent']={k:v for k,v in state['sent'].items() if time.time()-v<18000}
     save(state)
     if state['enabled']: scan(state,chat)
     else: print('SCREENING_OFF')
