@@ -216,9 +216,15 @@ def holder_concentration(mint):
     """Conservative concentration gate: top token accounts, not distinct wallets."""
     rpc=os.environ.get('SOLANA_RPC_URL') or 'https://api.mainnet-beta.solana.com'
     def call(method,params):
-        result=request(rpc,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
-        if not isinstance(result,dict) or 'error' in result: raise ValueError('holder RPC error')
-        return result['result']['value']
+        for attempt in range(3):
+            try:
+                result=request(rpc,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
+                if not isinstance(result,dict) or 'error' in result: raise ValueError('holder RPC error')
+                return result['result']['value']
+            except urllib.error.HTTPError as error:
+                if error.code!=429 or attempt==2: raise
+                print('HOLDER_RPC_RATE_LIMIT retry='+str(attempt+1))
+                time.sleep(2*(attempt+1))
     supply=call('getTokenSupply',[mint,{'commitment':'confirmed'}])
     largest=call('getTokenLargestAccounts',[mint,{'commitment':'confirmed'}])
     total=int(supply['amount'])
