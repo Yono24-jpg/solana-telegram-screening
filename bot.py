@@ -3,6 +3,7 @@ import base64, html, json, math, os, struct, time, urllib.request, urllib.error
 from pathlib import Path
 DEX='https://api.dexscreener.com'
 PROGRAM='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
+TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
 KEYBOARD={'inline_keyboard':[[{'text':'🟢 ON','callback_data':'on'},{'text':'🔴 OFF','callback_data':'off'}]]}
 STATE=Path('state.json')
 
@@ -73,10 +74,14 @@ def security_reason(account):
     """Fail closed, but distinguish missing RPC accounts from unsafe mint authority."""
     if account is None: return 'account_missing'
     try:
-        if account['owner']!=PROGRAM: return 'unsupported_token_program'
+        owner=account['owner']
+        if owner not in (PROGRAM,TOKEN_2022): return 'unsupported_token_program'
         if account['executable']: return 'executable_account'
         if account['data'][1]!='base64': return 'unsupported_encoding'
         b=base64.b64decode(account['data'][0],validate=True)
+        # Token-2022 extensions may alter transfer rules, fees, or delegate powers.
+        # Only accept an extension-free, canonical 82-byte mint account.
+        if owner==TOKEN_2022 and len(b)!=82: return 'token2022_extensions_unverified'
         if len(b)!=82: return 'invalid_mint_layout'
         if b[45]!=1: return 'uninitialized_mint'
         if struct.unpack_from('<I',b,0)[0]!=0: return 'mint_authority_active'
