@@ -42,7 +42,7 @@ def candidate(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress']: return None
         if not p['baseToken']['symbol'] or not all(numeric(v) for v in (created,lp,volume,buys,sells)): return None
-        if not 0<=now-created<=600 or lp<10000 or volume<1500 or buys<12 or sells<0: return None
+        if not 0<=now-created<=3600 or lp<10000 or volume<1500 or buys<12 or sells<0: return None
         if int(buys)!=buys or int(sells)!=sells or buys/max(sells,1)<1.2: return None
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
@@ -129,7 +129,7 @@ def main():
     print('TELEGRAM_DESTINATION_OK type='+group['type'])
     chat=group['id']
     if not state['initialized']:
-        msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 10 menit; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
+        msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 1 jam; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
         print('TELEGRAM_TEST_OK message_id='+str(msg['message_id']))
         state['initialized']=True;save(state)
     updates=tg('getUpdates',offset=state['offset'],timeout=0,allowed_updates=['callback_query'])
