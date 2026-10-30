@@ -271,6 +271,7 @@ def scan(state, chat):
         owner=a.get('owner','missing_owner') if isinstance(a,dict) else 'missing_account'
         owner_counts[owner]=owner_counts.get(owner,0)+1
     print('SECURITY_OWNER_PROGRAMS '+json.dumps(owner_counts,sort_keys=True))
+    holder_rpc_rate_limited=False
     for p,a in zip(ranked,accounts):
         mint=p['baseToken']['address']
         if mint in state['sent']:
@@ -280,12 +281,20 @@ def scan(state, chat):
             stats['security_rejected']+=1
             stats['security_'+reason]=stats.get('security_'+reason,0)+1
             continue
-        # Reject on unavailable holder evidence; never silently pass unverified mints.
+        # A provider-wide HTTP 429 is not a token-specific failure. Stop
+        # requesting holder data this scan; reject every unverified candidate.
+        if holder_rpc_rate_limited:
+            stats['holder_rate_limited_skipped']=stats.get('holder_rate_limited_skipped',0)+1
+            print('HOLDER_GATE_UNAVAILABLE mint='+mint+' reason=rpc_rate_limit_circuit_open')
+            continue
         try:
             top_accounts_pct=holder_concentration(mint)
         except urllib.error.HTTPError as error:
             print('HOLDER_GATE_DIAGNOSTIC type=HTTPError http='+str(error.code))
             stats['holder_unavailable']=stats.get('holder_unavailable',0)+1
+            if error.code==429:
+                holder_rpc_rate_limited=True
+                print('HOLDER_RPC_CIRCUIT_OPEN: remaining candidates fail closed this scan')
             print('HOLDER_GATE_UNAVAILABLE mint='+mint)
             continue
         except Exception as error:
