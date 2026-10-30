@@ -277,8 +277,13 @@ def scan(state, chat):
         # Reject on unavailable holder evidence; never silently pass unverified mints.
         try:
             top_accounts_pct=holder_concentration(mint)
+        except urllib.error.HTTPError as error:
+            print('HOLDER_GATE_DIAGNOSTIC type=HTTPError http='+str(error.code))
+            stats['holder_unavailable']=stats.get('holder_unavailable',0)+1
+            print('HOLDER_GATE_UNAVAILABLE mint='+mint)
+            continue
         except Exception as error:
-            print('HOLDER_GATE_DIAGNOSTIC type='+type(error).__name__+' detail='+str(error)[:100] if isinstance(error,ValueError) else 'HOLDER_GATE_DIAGNOSTIC type='+type(error).__name__)
+            print('HOLDER_GATE_DIAGNOSTIC type='+type(error).__name__)
             stats['holder_unavailable']=stats.get('holder_unavailable',0)+1
             print('HOLDER_GATE_UNAVAILABLE mint='+mint)
             continue
