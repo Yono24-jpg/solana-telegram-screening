@@ -15,7 +15,15 @@ def request(url, data=None):
 
 def tg(method, **args):
     try:
-        result=request('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/'+method,args)
+        for attempt in range(3):
+            try:
+                result=request('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/'+method,args)
+                break
+            except urllib.error.HTTPError as temporary:
+                if temporary.code not in (500,502,503,504) or attempt==2 or method=='sendMessage':
+                    raise
+                print(f'TELEGRAM_TEMPORARY_ERROR method={method} http={temporary.code} retry={attempt+1}')
+                time.sleep(2*(attempt+1))
     except urllib.error.HTTPError as error:
         reason='unclassified'
         try:
