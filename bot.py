@@ -47,6 +47,10 @@ def candidate(p, now):
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
 
+def market_cap(p):
+    value=p.get('marketCap')
+    return value if numeric(value) and value>0 else None
+
 def secure(account):
     try:
         if account['owner']!=PROGRAM or account['executable']: return False
@@ -114,7 +118,7 @@ def scan(state, chat):
             latest=request(DEX+'/latest/dex/pairs/solana/'+p['pairAddress'])['pairs']
             fresh=next(x for x in latest if x['pairAddress']==p['pairAddress'] and x['baseToken']['address']==mint)
             p=candidate(fresh,time.time())
-            if p is not None and (not numeric(p.get('marketCap')) or p['marketCap']<=0):
+            if p is not None and (market_cap(p) is None):
                 stats['refresh_rejected']+=1;continue
             if not p:
                 stats['refresh_rejected']+=1;continue
@@ -124,7 +128,7 @@ def scan(state, chat):
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
               f'⏱ Umur pool: <b>{age//60} menit</b>\n'
-              f"💰 Market cap: <b>${p['marketCap']:,.0f}</b>\n"
+              f"💰 Market cap: <b>${market_cap(p):,.0f}</b>\n"
               f"💧 Likuiditas: <b>${p['liquidity']['usd']:,.0f}</b>\n"
               f"📊 Volume 5m: <b>${p['volume']['m5']:,.0f}</b>\n"
               f"🟢 BUY / 🔴 SELL (5m): <b>{p['txns']['m5']['buys']} / {p['txns']['m5']['sells']}</b>\n"
