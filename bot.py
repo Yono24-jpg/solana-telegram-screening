@@ -123,9 +123,10 @@ def main():
     state=json.loads(STATE.read_text()) if STATE.exists() else {'enabled':False,'offset':0,'sent':{},'initialized':False}
     tg('getMe')
     group=tg('getChat',chat_id=chat)
-    if group['type'] not in ('group','supergroup'):
-        print('TELEGRAM_ERROR reason=destination_is_not_group')
-        raise RuntimeError('Destination must be a Telegram group')
+    if group['type'] not in ('group','supergroup','channel'):
+        print('TELEGRAM_ERROR reason=unsupported_destination_type')
+        raise RuntimeError('Destination must be a Telegram group or channel')
+    print('TELEGRAM_DESTINATION_OK type='+group['type'])
     chat=group['id']
     if not state['initialized']:
         msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 10 menit; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
