@@ -9,7 +9,7 @@ permissions:
   contents: write
 concurrency:
   group: solana-screening
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   screen:
     runs-on: ubuntu-latest
