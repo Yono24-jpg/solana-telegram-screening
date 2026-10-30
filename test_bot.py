@@ -71,6 +71,21 @@ class Filters(unittest.TestCase):
         self.assertEqual(security_reason(a),'mint_authority_active')
         a['owner']='unknown_program'
         self.assertEqual(security_reason(a),'unsupported_token_program')
+    def test_token2022_metadata_only(self):
+        b=bytearray(166);b[45]=1;b[165]=1
+        b.extend(bytes([18,0,64,0])+bytes(64))
+        a={'owner':TOKEN_2022,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
+        self.assertIsNone(security_reason(a))
+        b.extend(bytes([19,0,64,0])+bytes(64))
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertIsNone(security_reason(a))
+        b.extend(bytes([14,0,1,0,1]))
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'token2022_extensions_unverified')
+        b=bytearray(166);b[45]=1;b[165]=1
+        b.extend(bytes([18,0,1,0,0]))
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'token2022_invalid_extension_layout')
     def test_security(self):
         b=bytearray(82);b[45]=1
         a={'owner':PROGRAM,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
