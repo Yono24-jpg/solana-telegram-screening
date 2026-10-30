@@ -1,0 +1,38 @@
+name: Solana Telegram Screening
+on:
+  push:
+    paths: ['bot.py', '.github/workflows/screen.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: '2-59/5 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: solana-screening
+  cancel-in-progress: false
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fail-closed filters
+        run: python3 -m unittest -v
+      - name: Scan and process Telegram controls
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: python3 bot.py
+      - name: Persist control and delivery state
+        if: always()
+        run: |
+          if [ -f state.json ]; then
+            git config user.name 'solana-screening-bot'
+            git config user.email 'solana-screening-bot@users.noreply.github.com'
+            git add state.json
+            if ! git diff --cached --quiet; then
+              git commit -m 'Persist screening control and delivery state'
+              git push
+            fi
+          fi
