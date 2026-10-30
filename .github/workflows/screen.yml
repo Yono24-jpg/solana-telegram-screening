@@ -35,13 +35,33 @@ jobs:
       - name: Persist control and delivery state
         if: always()
         run: |
-          if [ -f state.json ]; then
-            git config user.name 'solana-screening-bot'
-            git config user.email 'solana-screening-bot@users.noreply.github.com'
+          if [ ! -f state.json ]; then exit 0; fi
+          cp state.json /tmp/scan-state.json
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          local=json.loads(Path('/tmp/scan-state.json').read_text())
+          try:
+              remote=json.loads(subprocess.check_output(['git','show','origin/main:state.json'],text=True))
+          except (subprocess.CalledProcessError,ValueError):
+              remote={}
+          merged=dict(remote)
+          merged['sent']={**local.get('sent',{}),**remote.get('sent',{})}
+          merged['offset']=max(local.get('offset',0),remote.get('offset',0))
+          merged['initialized']=bool(local.get('initialized') or remote.get('initialized'))
+          # The most recent callback processed by the scan takes precedence.
+          merged['enabled']=local.get('enabled',remote.get('enabled',False)) if local.get('offset',0)>remote.get('offset',0) else remote.get('enabled',local.get('enabled',False))
+          Path('/tmp/merged-state.json').write_text(json.dumps(merged,sort_keys=True))
+          PY
+            git reset --hard origin/main
+            cp /tmp/merged-state.json state.json
             git add state.json
-            if ! git diff --cached --quiet; then
-              git commit -m 'Persist screening control and delivery state'
-              git pull --rebase origin main
-              git push
-            fi
-          fi
+            if git diff --cached --quiet; then exit 0; fi
+            git -c user.name=solana-screening-bot -c user.email=solana-screening-bot@users.noreply.github.com commit -m 'Persist screening control and delivery state'
+            if git push origin HEAD:main; then exit 0; fi
+            echo "State push race; retry $attempt"
+          done
+          echo "STATE_PERSIST_FAILED after retries"
+          exit 1
