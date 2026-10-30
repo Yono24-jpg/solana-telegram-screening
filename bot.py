@@ -187,6 +187,13 @@ def scan(state, chat):
         if len(accounts)!=len(ranked): raise ValueError('Incomplete RPC data')
     except Exception:
         print(f'Security unavailable: all candidates discarded diagnostics={json.dumps(stats,sort_keys=True)}');return
+    # Diagnose market-qualified token identity without exposing wallet secrets.
+    # A non-SPL owner remains a hard rejection, never an allowlist bypass.
+    owner_counts={}
+    for p,a in zip(ranked,accounts):
+        owner=a.get('owner','missing_owner') if isinstance(a,dict) else 'missing_account'
+        owner_counts[owner]=owner_counts.get(owner,0)+1
+    print('SECURITY_OWNER_PROGRAMS '+json.dumps(owner_counts,sort_keys=True))
     for p,a in zip(ranked,accounts):
         mint=p['baseToken']['address']
         if mint in state['sent']:
