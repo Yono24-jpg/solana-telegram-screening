@@ -33,6 +33,7 @@ jobs:
             git add state.json
             if ! git diff --cached --quiet; then
               git commit -m 'Persist screening control and delivery state'
+              git pull --rebase origin main
               git push
             fi
           fi
