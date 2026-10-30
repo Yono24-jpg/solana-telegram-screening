@@ -101,26 +101,38 @@ def discover():
     # Free new-pool feed: GeckoTerminal, then normalize through DexScreener.
     # Failure of this optional feed never bypasses market/security checks.
     gecko_pairs=[]
-    try:
-        feed=request('https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1')
-        for item in feed.get('data',[]):
-            attrs=item.get('attributes') or {}
-            address=attrs.get('address')
-            if isinstance(address,str) and address and address not in gecko_pairs:
-                gecko_pairs.append(address)
-    except Exception:
-        print('GECKO_DISCOVERY_UNAVAILABLE')
-    added=0
-    for address in gecko_pairs[:20]:
+    seen_gecko=set()
+    pages_ok=0
+    for page in (1,2,3):
         try:
-            data=request(DEX+'/latest/dex/pairs/solana/'+address)
+            feed=request(f'https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page={page}')
+            if not isinstance(feed,dict) or not isinstance(feed.get('data'),list):
+                raise ValueError('Invalid Gecko pool feed')
+            pages_ok+=1
+            for item in feed['data']:
+                if not isinstance(item,dict): continue
+                attrs=item.get('attributes') or {}
+                address=attrs.get('address') if isinstance(attrs,dict) else None
+                if isinstance(address,str) and address and address not in seen_gecko:
+                    seen_gecko.add(address)
+                    gecko_pairs.append(address)
+        except Exception:
+            print(f'GECKO_DISCOVERY_UNAVAILABLE page={page}')
+    added=0
+    batch_failures=0
+    for i in range(0,len(gecko_pairs),20):
+        batch=gecko_pairs[i:i+20]
+        try:
+            data=request(DEX+'/latest/dex/pairs/solana/'+','.join(batch))
+            if not isinstance(data,dict): raise ValueError('Invalid DexScreener pair response')
             for pool in data.get('pairs') or []:
-                if pool.get('chainId')=='solana':
+                if (isinstance(pool,dict) and pool.get('chainId')=='solana'
+                        and pool.get('pairAddress') in batch):
                     pools.append(pool)
                     added+=1
         except Exception:
-            continue
-    print(f'GECKO_DISCOVERY pools={len(gecko_pairs)} normalized={added}')
+            batch_failures+=1
+    print(f'GECKO_DISCOVERY pools={len(gecko_pairs)} normalized={added} pages_ok={pages_ok} batch_failures={batch_failures}')
     print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
 
