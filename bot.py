@@ -138,8 +138,10 @@ def main():
         if str(message.get('chat',{}).get('id'))==str(chat) and q.get('data') in ('on','off'):
             member=tg('getChatMember',chat_id=chat,user_id=q['from']['id'])
             if member.get('status') in ('creator','administrator'):
-                state['enabled']=q['data']=='on';save(state)
-                tg('sendMessage',chat_id=chat,text='🟢 Screening ON' if state['enabled'] else '🔴 Screening OFF',reply_markup=KEYBOARD)
+                requested=q['data']=='on'
+                if state['enabled']!=requested:
+                    state['enabled']=requested;save(state)
+                    tg('sendMessage',chat_id=chat,text='🟢 Screening ON' if requested else '🔴 Screening OFF',reply_markup=KEYBOARD)
             try: tg('answerCallbackQuery',callback_query_id=q['id'])
             except Exception: pass
         state['offset']=u['update_id']+1;save(state)
