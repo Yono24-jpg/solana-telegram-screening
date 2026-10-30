@@ -1,4 +1,5 @@
 name: Solana Telegram Screening
+# Run to process the latest Telegram ON/OFF callback.
 on:
   push:
     paths: ['bot.py', '.github/workflows/screen.yml']
