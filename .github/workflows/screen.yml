@@ -14,7 +14,7 @@ concurrency:
 jobs:
   screen:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Show trigger and UTC time
@@ -26,7 +26,12 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
-        run: python3 bot.py
+        run: |
+          for scan in 1 2 3 4; do
+            echo "SCAN_CYCLE=$scan UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            python3 bot.py || exit 1
+            if [ "$scan" -lt 4 ]; then sleep 60; fi
+          done
       - name: Persist control and delivery state
         if: always()
         run: |
