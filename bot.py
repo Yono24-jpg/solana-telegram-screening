@@ -83,6 +83,26 @@ def market_cap(p):
     value=p.get('marketCap')
     return value if numeric(value) and value>0 else None
 
+def token2022_extension_ids(data):
+    """Inspect canonical Token-2022 mint TLV; malformed layouts fail closed."""
+    if len(data)==82: return []
+    if len(data)<166 or any(data[82:165]) or data[165]!=1:
+        raise ValueError('invalid_token2022_mint_layout')
+    ids=[]
+    pos=166
+    while pos<len(data):
+        if len(data)-pos<4:
+            raise ValueError('truncated_extension_header')
+        kind,size=struct.unpack_from('<HH',data,pos)
+        pos+=4
+        if kind==0 or size>len(data)-pos:
+            raise ValueError('invalid_extension')
+        ids.append(kind)
+        pos+=size
+    if len(ids)!=len(set(ids)):
+        raise ValueError('duplicate_extension')
+    return ids
+
 def security_reason(account):
     """Fail closed, but distinguish missing RPC accounts from unsafe mint authority."""
     if account is None: return 'account_missing'
@@ -94,7 +114,12 @@ def security_reason(account):
         b=base64.b64decode(account['data'][0],validate=True)
         # Token-2022 extensions may alter transfer rules, fees, or delegate powers.
         # Only accept an extension-free, canonical 82-byte mint account.
-        if owner==TOKEN_2022 and len(b)!=82: return 'token2022_extensions_unverified'
+        if owner==TOKEN_2022 and len(b)!=82:
+            try:
+                extension_ids=token2022_extension_ids(b)
+            except ValueError:
+                return 'token2022_invalid_extension_layout'
+            return 'token2022_extensions_unverified' if extension_ids else 'token2022_invalid_extension_layout'
         if len(b)!=82: return 'invalid_mint_layout'
         if b[45]!=1: return 'uninitialized_mint'
         if struct.unpack_from('<I',b,0)[0]!=0: return 'mint_authority_active'
