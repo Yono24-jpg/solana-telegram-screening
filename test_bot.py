@@ -59,10 +59,13 @@ class Filters(unittest.TestCase):
         a={'owner':TOKEN_2022,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
         self.assertIsNone(security_reason(a))
         self.assertTrue(secure(a))
-        b.extend(bytes(84))
+        b.extend(bytes(83)+bytes([1])+bytes([10,0,1,0,0]))
         a['data'][0]=base64.b64encode(b).decode()
         self.assertEqual(security_reason(a),'token2022_extensions_unverified')
         self.assertFalse(secure(a))
+        b[165]=2
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'token2022_invalid_extension_layout')
         b=bytearray(82);b[45]=1;b[0]=1
         a['data'][0]=base64.b64encode(b).decode()
         self.assertEqual(security_reason(a),'mint_authority_active')
