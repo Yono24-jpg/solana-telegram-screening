@@ -132,6 +132,18 @@ def discover():
                     added+=1
         except Exception:
             batch_failures+=1
+    # A missing 5m field must never be treated as zero or as a passing metric.
+    # Report missing keys separately to distinguish feed coverage from weak markets.
+    missing_counts={}
+    for pool in pools:
+        if not isinstance(pool,dict): continue
+        for name,keys in (('created',('pairCreatedAt',)),('liquidity',('liquidity','usd')),('volume_5m',('volume','m5')),('buys_5m',('txns','m5','buys')),('sells_5m',('txns','m5','sells'))):
+            value=pool
+            for key in keys:
+                value=value.get(key) if isinstance(value,dict) else None
+            if not numeric(value):
+                missing_counts[name]=missing_counts.get(name,0)+1
+    print('DISCOVERY_MISSING_FIELDS '+json.dumps(missing_counts,sort_keys=True))
     print(f'GECKO_DISCOVERY pools={len(gecko_pairs)} normalized={added} pages_ok={pages_ok} batch_failures={batch_failures}')
     print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
