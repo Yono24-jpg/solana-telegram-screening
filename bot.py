@@ -212,27 +212,23 @@ def discover():
     print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
 
-def holder_display(mint):
-    """Optional holder concentration display; never changes acceptance decisions."""
+def holder_concentration(mint):
+    """Conservative concentration gate: top token accounts, not distinct wallets."""
     rpc=os.environ.get('SOLANA_RPC_URL') or 'https://api.mainnet-beta.solana.com'
-    try:
-        def call(method, params):
-            response=request(rpc,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
-            if 'error' in response: raise ValueError('RPC error')
-            return response['result']['value']
-        supply=call('getTokenSupply',[mint,{'commitment':'confirmed'}])
-        largest=call('getTokenLargestAccounts',[mint,{'commitment':'confirmed'}])
-        total=int(supply['amount'])
-        if total<=0 or not isinstance(largest,list): raise ValueError('Invalid holder data')
-        amounts=[int(a['amount']) for a in largest[:10]]
-        if any(v<0 for v in amounts): raise ValueError('Invalid balances')
-        share=100*sum(amounts)/total
-        if share>100.000001: raise ValueError('Invalid supply ratio')
-        # Largest token accounts are not necessarily distinct wallet holders.
-        return f'📊 10 akun token terbesar: <b>{share:.2f}%</b> (bukan Top 10 wallet)\n👥 Jumlah holder: belum tersedia\n'
-    except Exception:
-        print('HOLDER_INFO_UNAVAILABLE')
-        return '📊 10 akun token terbesar: belum tersedia\n👥 Jumlah holder: belum tersedia\n'
+    def call(method,params):
+        result=request(rpc,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
+        if not isinstance(result,dict) or 'error' in result: raise ValueError('holder RPC error')
+        return result['result']['value']
+    supply=call('getTokenSupply',[mint,{'commitment':'confirmed'}])
+    largest=call('getTokenLargestAccounts',[mint,{'commitment':'confirmed'}])
+    total=int(supply['amount'])
+    if total<=0 or not isinstance(largest,list) or len(largest)<10:
+        raise ValueError('insufficient holder data')
+    amounts=[int(a['amount']) for a in largest[:10]]
+    if any(x<0 for x in amounts): raise ValueError('invalid holder balances')
+    pct=100*sum(amounts)/total
+    if not 0<=pct<=100.000001: raise ValueError('invalid holder concentration')
+    return pct
 
 def scan(state, chat):
     selected={}
@@ -278,6 +274,17 @@ def scan(state, chat):
             stats['security_rejected']+=1
             stats['security_'+reason]=stats.get('security_'+reason,0)+1
             continue
+        # Reject on unavailable holder evidence; never silently pass unverified mints.
+        try:
+            top_accounts_pct=holder_concentration(mint)
+        except Exception:
+            stats['holder_unavailable']=stats.get('holder_unavailable',0)+1
+            print('HOLDER_GATE_UNAVAILABLE mint='+mint)
+            continue
+        if top_accounts_pct>30:
+            stats['holder_over_30']=stats.get('holder_over_30',0)+1
+            print('HOLDER_GATE_REJECT mint='+mint+' top10_accounts_pct='+str(round(top_accounts_pct,2)))
+            continue
         if not candidate(p,time.time()):
             stats['market_expired']+=1;continue
         # Refresh market metrics immediately before sending.
@@ -291,7 +298,7 @@ def scan(state, chat):
                 stats['refresh_rejected']+=1;continue
         except Exception:
             stats['refresh_error']+=1;continue
-        holder_info=holder_display(mint)
+        holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\\n'
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
