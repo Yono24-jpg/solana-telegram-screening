@@ -173,6 +173,9 @@ def scan(state, chat):
             reason=market_rejection(p,time.time()) or 'unknown_market'
             stats['market_'+reason]=stats.get('market_'+reason,0)+1
     ranked=sorted(selected.values(),key=lambda p:p['score'],reverse=True)
+    # Explicitly show how many market-qualified mints use a supported token
+    # program. Never downgrade the token-program requirement to boost alerts.
+    print(f'MARKET_QUALIFIED unique_mints={len(ranked)}')
     sent=0
     # Check only bounded candidates, but never fill slots using unverified data.
     ranked=ranked[:30]
