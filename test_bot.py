@@ -1,5 +1,5 @@
 import base64, copy, unittest
-from bot import candidate, secure, market_cap, market_rejection, security_reason, PROGRAM
+from bot import candidate, secure, market_cap, market_rejection, security_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
@@ -53,6 +53,20 @@ class Filters(unittest.TestCase):
         b[0]=0;b[46]=1;a['data'][0]=base64.b64encode(b).decode()
         self.assertEqual(security_reason(a),'freeze_authority_active')
         a['owner']='Token2022'
+        self.assertEqual(security_reason(a),'unsupported_token_program')
+    def test_token2022_extension_free_only(self):
+        b=bytearray(82);b[45]=1
+        a={'owner':TOKEN_2022,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
+        self.assertIsNone(security_reason(a))
+        self.assertTrue(secure(a))
+        b.extend(bytes(84))
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'token2022_extensions_unverified')
+        self.assertFalse(secure(a))
+        b=bytearray(82);b[45]=1;b[0]=1
+        a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'mint_authority_active')
+        a['owner']='unknown_program'
         self.assertEqual(security_reason(a),'unsupported_token_program')
     def test_security(self):
         b=bytearray(82);b[45]=1
