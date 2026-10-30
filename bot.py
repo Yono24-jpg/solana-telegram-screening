@@ -107,6 +107,8 @@ def scan(state, chat):
             latest=request(DEX+'/latest/dex/pairs/solana/'+p['pairAddress'])['pairs']
             fresh=next(x for x in latest if x['pairAddress']==p['pairAddress'] and x['baseToken']['address']==mint)
             p=candidate(fresh,time.time())
+            if p is not None and (not numeric(p.get('marketCap')) or p['marketCap']<=0):
+                stats['refresh_rejected']+=1;continue
             if not p:
                 stats['refresh_rejected']+=1;continue
         except Exception:
@@ -115,6 +117,7 @@ def scan(state, chat):
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
               f'⏱ Umur pool: <b>{age//60} menit</b>\n'
+              f"💰 Market cap: <b>${p['marketCap']:,.0f}</b>\n"
               f"💧 Likuiditas: <b>${p['liquidity']['usd']:,.0f}</b>\n"
               f"📊 Volume 5m: <b>${p['volume']['m5']:,.0f}</b>\n"
               f"🟢 BUY / 🔴 SELL (5m): <b>{p['txns']['m5']['buys']} / {p['txns']['m5']['sells']}</b>\n"
