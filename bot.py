@@ -105,7 +105,7 @@ def scan(state, chat):
               f"Likuiditas: ${p['liquidity']['usd']:,.0f}\nVolume 5m: ${p['volume']['m5']:,.0f}\n"
               f"BUY/SELL 5m: {p['txns']['m5']['buys']}/{p['txns']['m5']['sells']}\n"
               'Mint/freeze authority: nonaktif\nTop 10 holder: periksa manual\n'
-              f'<code>{html.escape(mint)}</code>\nhttps://dexscreener.com/solana/{p["pairAddress"]}\n'
+              f'<code>{html.escape(mint)}</code>\nDEX: https://dexscreener.com/solana/{p["pairAddress"]}\nAXIOM: https://axiom.trade/t/{mint}\n'
               'Data lolos filter; bukan jaminan aman atau profit.')
         # Do not retry ambiguous send failures: avoid duplicate delivery.
         msg=tg('sendMessage',chat_id=chat,text=text,parse_mode='HTML',reply_markup=KEYBOARD,disable_web_page_preview=True)
