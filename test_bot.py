@@ -1,5 +1,5 @@
 import base64, copy, unittest
-from bot import candidate, secure, market_cap, market_rejection, PROGRAM
+from bot import candidate, secure, market_cap, market_rejection, security_reason, PROGRAM
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
@@ -43,6 +43,17 @@ class Filters(unittest.TestCase):
         for expected,modify in cases:
             p=copy.deepcopy(self.p);modify(p)
             self.assertEqual(market_rejection(p,1000),expected)
+    def test_security_diagnostics(self):
+        self.assertEqual(security_reason(None),'account_missing')
+        b=bytearray(82);b[45]=1
+        a={'owner':PROGRAM,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
+        self.assertIsNone(security_reason(a))
+        b[0]=1;a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'mint_authority_active')
+        b[0]=0;b[46]=1;a['data'][0]=base64.b64encode(b).decode()
+        self.assertEqual(security_reason(a),'freeze_authority_active')
+        a['owner']='Token2022'
+        self.assertEqual(security_reason(a),'unsupported_token_program')
     def test_security(self):
         b=bytearray(82);b[45]=1
         a={'owner':PROGRAM,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
