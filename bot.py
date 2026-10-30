@@ -298,7 +298,7 @@ def scan(state, chat):
                 stats['refresh_rejected']+=1;continue
         except Exception:
             stats['refresh_error']+=1;continue
-        holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\\n'
+        holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\n'
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
