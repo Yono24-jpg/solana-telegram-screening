@@ -80,6 +80,29 @@ def discover():
             data=request(DEX+'/tokens/v1/solana/'+','.join(addresses[i:i+30]))
             if isinstance(data,list): pools.extend(data)
         except Exception: print('Pool batch unavailable; skipped')
+    # Free new-pool feed: GeckoTerminal, then normalize through DexScreener.
+    # Failure of this optional feed never bypasses market/security checks.
+    gecko_pairs=[]
+    try:
+        feed=request('https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1')
+        for item in feed.get('data',[]):
+            attrs=item.get('attributes') or {}
+            address=attrs.get('address')
+            if isinstance(address,str) and address and address not in gecko_pairs:
+                gecko_pairs.append(address)
+    except Exception:
+        print('GECKO_DISCOVERY_UNAVAILABLE')
+    added=0
+    for address in gecko_pairs[:20]:
+        try:
+            data=request(DEX+'/latest/dex/pairs/solana/'+address)
+            for pool in data.get('pairs') or []:
+                if pool.get('chainId')=='solana':
+                    pools.append(pool)
+                    added+=1
+        except Exception:
+            continue
+    print(f'GECKO_DISCOVERY pools={len(gecko_pairs)} normalized={added}')
     print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
 
