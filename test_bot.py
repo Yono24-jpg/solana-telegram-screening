@@ -1,5 +1,5 @@
 import base64, copy, unittest
-from bot import candidate, secure, PROGRAM
+from bot import candidate, secure, market_cap, PROGRAM
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
@@ -15,6 +15,14 @@ class Filters(unittest.TestCase):
             p=copy.deepcopy(self.p);p['liquidity']['usd']=val;self.assertIsNone(candidate(p,1000))
     def test_pressure(self):
         self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1000))
+    def test_market_cap(self):
+        self.p['marketCap']=125000
+        self.assertEqual(market_cap(self.p),125000)
+        for value in (None,0,-1,True,float('nan'),float('inf'),'125000'):
+            self.p['marketCap']=value
+            self.assertIsNone(market_cap(self.p))
+        del self.p['marketCap']
+        self.assertIsNone(market_cap(self.p))
     def test_security(self):
         b=bytearray(82);b[45]=1
         a={'owner':PROGRAM,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
