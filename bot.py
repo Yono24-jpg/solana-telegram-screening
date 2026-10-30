@@ -35,6 +35,24 @@ def tg(method, **args):
 def numeric(x):
     return isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x)
 
+def market_rejection(p, now):
+    try:
+        if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress'] or not p['baseToken']['symbol']:
+            return 'invalid_identity'
+        created=p['pairCreatedAt']/1000
+        lp=p['liquidity']['usd']; volume=p['volume']['m5']
+        buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
+        if not all(numeric(v) for v in (created,lp,volume,buys,sells)):
+            return 'missing_metrics'
+        if not 0<=now-created<=3600: return 'age'
+        if lp<5000: return 'liquidity'
+        if volume<500: return 'volume_5m'
+        if buys<5 or sells<0 or int(buys)!=buys or int(sells)!=sells: return 'transactions_5m'
+        if buys/max(sells,1)<1.0: return 'buy_sell_ratio'
+        return None
+    except (KeyError,TypeError,ValueError,OverflowError,ZeroDivisionError):
+        return 'missing_metrics'
+
 def candidate(p, now):
     try:
         created=p['pairCreatedAt']/1000
@@ -115,7 +133,10 @@ def scan(state, chat):
         if c:
             mint=c['baseToken']['address']
             if mint not in selected or selected[mint]['score']<c['score']: selected[mint]=c
-        else: stats['market_rejected']+=1
+        else:
+            stats['market_rejected']+=1
+            reason=market_rejection(p,time.time()) or 'unknown_market'
+            stats['market_'+reason]=stats.get('market_'+reason,0)+1
     ranked=sorted(selected.values(),key=lambda p:p['score'],reverse=True)
     sent=0
     # Check only bounded candidates, but never fill slots using unverified data.
