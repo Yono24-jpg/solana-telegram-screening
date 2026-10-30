@@ -69,13 +69,24 @@ def market_cap(p):
     value=p.get('marketCap')
     return value if numeric(value) and value>0 else None
 
-def secure(account):
+def security_reason(account):
+    """Fail closed, but distinguish missing RPC accounts from unsafe mint authority."""
+    if account is None: return 'account_missing'
     try:
-        if account['owner']!=PROGRAM or account['executable']: return False
-        if account['data'][1]!='base64': return False
+        if account['owner']!=PROGRAM: return 'unsupported_token_program'
+        if account['executable']: return 'executable_account'
+        if account['data'][1]!='base64': return 'unsupported_encoding'
         b=base64.b64decode(account['data'][0],validate=True)
-        return len(b)==82 and b[45]==1 and struct.unpack_from('<I',b,0)[0]==0 and struct.unpack_from('<I',b,46)[0]==0
-    except (KeyError,TypeError,ValueError,IndexError): return False
+        if len(b)!=82: return 'invalid_mint_layout'
+        if b[45]!=1: return 'uninitialized_mint'
+        if struct.unpack_from('<I',b,0)[0]!=0: return 'mint_authority_active'
+        if struct.unpack_from('<I',b,46)[0]!=0: return 'freeze_authority_active'
+        return None
+    except (KeyError,TypeError,ValueError,IndexError,struct.error):
+        return 'invalid_rpc_account'
+
+def secure(account):
+    return security_reason(account) is None
 
 def discover():
     # Keep API recency ordering; alphabetical truncation misses newer tokens.
@@ -177,8 +188,11 @@ def scan(state, chat):
         mint=p['baseToken']['address']
         if mint in state['sent']:
             stats['already_sent']+=1;continue
-        if not secure(a):
-            stats['security_rejected']+=1;continue
+        reason=security_reason(a)
+        if reason is not None:
+            stats['security_rejected']+=1
+            stats['security_'+reason]=stats.get('security_'+reason,0)+1
+            continue
         if not candidate(p,time.time()):
             stats['market_expired']+=1;continue
         # Refresh market metrics immediately before sending.
