@@ -101,12 +101,25 @@ def scan(state, chat):
             if not p: continue
         except Exception: continue
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
-        text=(f'🔎 <b>{symbol}</b> — kandidat screening\nUmur pool: {age//60}m {age%60}d\n'
-              f"Likuiditas: ${p['liquidity']['usd']:,.0f}\nVolume 5m: ${p['volume']['m5']:,.0f}\n"
-              f"BUY/SELL 5m: {p['txns']['m5']['buys']}/{p['txns']['m5']['sells']}\n"
-              'Mint/freeze authority: nonaktif\nTop 10 holder: periksa manual\n'
-              f'<code>{html.escape(mint)}</code>\nDEX: https://dexscreener.com/solana/{p["pairAddress"]}\nAXIOM: https://axiom.trade/t/{mint}\n'
-              'Data lolos filter; bukan jaminan aman atau profit.')
+        text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
+              '━━━━━━━━━━━━━━━━━━\n'
+              f'⏱ Umur pool: <b>{age//60} menit</b>\n'
+              f"💧 Likuiditas: <b>${p['liquidity']['usd']:,.0f}</b>\n"
+              f"📊 Volume 5m: <b>${p['volume']['m5']:,.0f}</b>\n"
+              f"🟢 BUY / 🔴 SELL (5m): <b>{p['txns']['m5']['buys']} / {p['txns']['m5']['sells']}</b>\n"
+              '━━━━━━━━━━━━━━━━━━\n'
+              '🛡 <b>KEAMANAN</b>\n'
+              '✅ Mint authority: nonaktif\n'
+              '✅ Freeze authority: nonaktif\n'
+              '⚠️ Top 10 holder: cek manual\n'
+              '━━━━━━━━━━━━━━━━━━\n'
+              '📋 <b>MINT (ketuk untuk salin)</b>\n'
+              f'<code>{html.escape(mint)}</code>\n'
+              '━━━━━━━━━━━━━━━━━━\n'
+              '🔗 <b>BUKA CHART</b>\n'
+              f'<a href="https://dexscreener.com/solana/{p["pairAddress"]}">📈 DexScreener</a>  |  '
+              f'<a href="https://axiom.trade/t/{mint}">⚡ Axiom</a>\n\n'
+              '⚠️ Kandidat lolos filter, bukan jaminan aman atau profit.')
         # Do not retry ambiguous send failures: avoid duplicate delivery.
         msg=tg('sendMessage',chat_id=chat,text=text,parse_mode='HTML',reply_markup=KEYBOARD,disable_web_page_preview=True)
         state['sent'][mint]=int(time.time()); save(state)
