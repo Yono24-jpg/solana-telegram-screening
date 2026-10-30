@@ -13,6 +13,20 @@ class Filters(unittest.TestCase):
             p=copy.deepcopy(self.p);del p[field];self.assertIsNone(candidate(p,1000))
         for val in (None,float('nan'),float('inf'),True,-1):
             p=copy.deepcopy(self.p);p['liquidity']['usd']=val;self.assertIsNone(candidate(p,1000))
+    def test_looser_market_thresholds(self):
+        p=copy.deepcopy(self.p)
+        p['liquidity']['usd']=5000
+        p['volume']['m5']=500
+        p['txns']['m5']={'buys':5,'sells':5}
+        self.assertIsNotNone(candidate(p,1000))
+        p['liquidity']['usd']=4999
+        self.assertIsNone(candidate(p,1000))
+        p['liquidity']['usd']=5000
+        p['volume']['m5']=499
+        self.assertIsNone(candidate(p,1000))
+        p['volume']['m5']=500
+        p['txns']['m5']['buys']=4
+        self.assertIsNone(candidate(p,1000))
     def test_pressure(self):
         self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1000))
     def test_market_cap(self):
