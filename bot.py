@@ -1,5 +1,5 @@
 """Alert-only screening. Never loads wallet keys or sends transactions."""
-import base64, html, json, math, os, struct, time, urllib.request
+import base64, html, json, math, os, struct, time, urllib.request, urllib.error
 from pathlib import Path
 DEX='https://api.dexscreener.com'
 PROGRAM='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -13,7 +13,22 @@ def request(url, data=None):
         return json.load(r)
 
 def tg(method, **args):
-    result=request('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/'+method,args)
+    try:
+        result=request('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/'+method,args)
+    except urllib.error.HTTPError as error:
+        reason='unclassified'
+        try:
+            description=json.loads(error.read()).get('description','').lower()
+            for phrase in ('chat not found','unauthorized','not found','bot was kicked','bot is not a member','not enough rights','need administrator rights','chat_write_forbidden','group chat was upgraded','webhook is active','terminated by other getupdates','too many requests'):
+                if phrase in description:
+                    reason=phrase.replace(' ','_');break
+        except Exception: pass
+        print(f'TELEGRAM_ERROR method={method} http={error.code} reason={reason}')
+        raise RuntimeError('Telegram request failed') from None
+    except Exception:
+        print(f'TELEGRAM_ERROR method={method} reason=transport_or_invalid_configuration')
+        raise RuntimeError('Telegram request failed') from None
+    print(f'TELEGRAM_API_OK method={method}')
     if not result.get('ok'): raise RuntimeError('Telegram rejected '+method)
     return result['result']
 
@@ -108,7 +123,9 @@ def main():
     state=json.loads(STATE.read_text()) if STATE.exists() else {'enabled':False,'offset':0,'sent':{},'initialized':False}
     tg('getMe')
     group=tg('getChat',chat_id=chat)
-    if group['type'] not in ('group','supergroup'): raise RuntimeError('Destination must be a Telegram group')
+    if group['type'] not in ('group','supergroup'):
+        print('TELEGRAM_ERROR reason=destination_is_not_group')
+        raise RuntimeError('Destination must be a Telegram group')
     chat=group['id']
     if not state['initialized']:
         msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 10 menit; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
