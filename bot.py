@@ -24,6 +24,11 @@ def tg(method, **args):
                     raise
                 print(f'TELEGRAM_TEMPORARY_ERROR method={method} http={temporary.code} retry={attempt+1}')
                 time.sleep(2*(attempt+1))
+            except (urllib.error.URLError, TimeoutError, ConnectionError, json.JSONDecodeError) as temporary:
+                if attempt==2 or method=='sendMessage':
+                    raise
+                print(f'TELEGRAM_TEMPORARY_TRANSPORT_ERROR method={method} retry={attempt+1}')
+                time.sleep(2*(attempt+1))
     except urllib.error.HTTPError as error:
         reason='unclassified'
         try:
