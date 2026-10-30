@@ -5,7 +5,8 @@ class Filters(unittest.TestCase):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
     def test_age(self):
         self.assertIsNotNone(candidate(self.p,1000))
-        self.assertIsNone(candidate(self.p,1540.01))
+        self.assertIsNotNone(candidate(self.p,4540))
+        self.assertIsNone(candidate(self.p,4540.01))
         self.assertIsNone(candidate(self.p,939))
     def test_missing_or_invalid(self):
         for field in ('liquidity','volume','txns','pairCreatedAt'):
