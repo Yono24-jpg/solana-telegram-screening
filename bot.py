@@ -56,20 +56,27 @@ def secure(account):
     except (KeyError,TypeError,ValueError,IndexError): return False
 
 def discover():
-    addresses=set()
-    for endpoint in ['/token-profiles/latest/v1','/token-boosts/latest/v1']:
+    # Keep API recency ordering; alphabetical truncation misses newer tokens.
+    addresses=list()
+    seen=set()
+    for endpoint in ['/token-profiles/latest/v1','/token-boosts/latest/v1','/token-boosts/top/v1']:
         try:
             rows=request(DEX+endpoint)
             if isinstance(rows,list):
-                addresses.update(r['tokenAddress'] for r in rows if r.get('chainId')=='solana' and isinstance(r.get('tokenAddress'),str))
-        except Exception: print('Discovery source unavailable; skipped')
+                for row in rows:
+                    if not isinstance(row,dict): continue
+                    mint=row.get('tokenAddress')
+                    if row.get('chainId')=='solana' and isinstance(mint,str) and mint and mint not in seen:
+                        seen.add(mint)
+                        addresses.append(mint)
+        except Exception: print('Discovery source unavailable; skipped endpoint='+endpoint)
     pools=[]
-    addresses=sorted(addresses)[:150]
-    for i in range(0,len(addresses),30):
+    for i in range(0,min(len(addresses),240),30):
         try:
             data=request(DEX+'/tokens/v1/solana/'+','.join(addresses[i:i+30]))
             if isinstance(data,list): pools.extend(data)
         except Exception: print('Pool batch unavailable; skipped')
+    print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
 
 def scan(state, chat):
