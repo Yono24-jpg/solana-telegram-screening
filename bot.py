@@ -212,6 +212,28 @@ def discover():
     print(f'DISCOVERY addresses={len(addresses)} pools={len(pools)}')
     return pools
 
+def holder_display(mint):
+    """Optional holder concentration display; never changes acceptance decisions."""
+    rpc=os.environ.get('SOLANA_RPC_URL') or 'https://api.mainnet-beta.solana.com'
+    try:
+        def call(method, params):
+            response=request(rpc,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
+            if 'error' in response: raise ValueError('RPC error')
+            return response['result']['value']
+        supply=call('getTokenSupply',[mint,{'commitment':'confirmed'}])
+        largest=call('getTokenLargestAccounts',[mint,{'commitment':'confirmed'}])
+        total=int(supply['amount'])
+        if total<=0 or not isinstance(largest,list): raise ValueError('Invalid holder data')
+        amounts=[int(a['amount']) for a in largest[:10]]
+        if any(v<0 for v in amounts): raise ValueError('Invalid balances')
+        share=100*sum(amounts)/total
+        if share>100.000001: raise ValueError('Invalid supply ratio')
+        # Largest token accounts are not necessarily distinct wallet holders.
+        return f'📊 10 akun token terbesar: <b>{share:.2f}%</b> (bukan Top 10 wallet)\\n👥 Jumlah holder: belum tersedia\\n'
+    except Exception:
+        print('HOLDER_INFO_UNAVAILABLE')
+        return '📊 10 akun token terbesar: belum tersedia\\n👥 Jumlah holder: belum tersedia\\n'
+
 def scan(state, chat):
     selected={}
     stats={'pools_seen':0,'market_rejected':0,'already_sent':0,'security_rejected':0,'market_expired':0,'refresh_rejected':0,'refresh_error':0}
@@ -269,6 +291,7 @@ def scan(state, chat):
                 stats['refresh_rejected']+=1;continue
         except Exception:
             stats['refresh_error']+=1;continue
+        holder_info=holder_display(mint)
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
@@ -281,7 +304,8 @@ def scan(state, chat):
               '🛡 <b>KEAMANAN</b>\n'
               '✅ Mint authority: nonaktif\n'
               '✅ Freeze authority: nonaktif\n'
-              '⚠️ Top 10 holder: cek manual\n'
+              f'{holder_info}'
+              '⚠️ Top 10 wallet: cek manual\n'
               '━━━━━━━━━━━━━━━━━━\n'
               '📋 <b>MINT (ketuk untuk salin)</b>\n'
               f'<code>{html.escape(mint)}</code>\n'
