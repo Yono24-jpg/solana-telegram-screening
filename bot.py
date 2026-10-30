@@ -95,8 +95,16 @@ def token2022_extension_ids(data):
             raise ValueError('truncated_extension_header')
         kind,size=struct.unpack_from('<HH',data,pos)
         pos+=4
-        if kind==0 or size>len(data)-pos:
+        if kind==0:
+            if size!=0 or any(data[pos:]):
+                raise ValueError('invalid_extension_padding')
+            break
+        if size>len(data)-pos:
             raise ValueError('invalid_extension')
+        if kind==18 and size!=64:
+            raise ValueError('invalid_metadata_pointer')
+        if kind==19 and size<64:
+            raise ValueError('invalid_token_metadata')
         ids.append(kind)
         pos+=size
     if len(ids)!=len(set(ids)):
@@ -114,13 +122,15 @@ def security_reason(account):
         b=base64.b64decode(account['data'][0],validate=True)
         # Token-2022 extensions may alter transfer rules, fees, or delegate powers.
         # Only accept an extension-free, canonical 82-byte mint account.
-        if owner==TOKEN_2022 and len(b)!=82:
+        if owner==TOKEN_2022:
             try:
                 extension_ids=token2022_extension_ids(b)
             except ValueError:
                 return 'token2022_invalid_extension_layout'
-            return 'token2022_extensions_unverified' if extension_ids else 'token2022_invalid_extension_layout'
-        if len(b)!=82: return 'invalid_mint_layout'
+            # Only metadata-only extensions: no transfer hooks, fees or delegates.
+            if any(kind not in (18,19) for kind in extension_ids):
+                return 'token2022_extensions_unverified'
+        elif len(b)!=82: return 'invalid_mint_layout'
         if b[45]!=1: return 'uninitialized_mint'
         if struct.unpack_from('<I',b,0)[0]!=0: return 'mint_authority_active'
         if struct.unpack_from('<I',b,46)[0]!=0: return 'freeze_authority_active'
