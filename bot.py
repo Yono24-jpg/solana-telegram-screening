@@ -100,6 +100,21 @@ def market_cap(p):
     value=p.get('marketCap')
     return value if numeric(value) and value>0 else None
 
+def liquidity_risk_reason(p):
+    """Conservative liquidity depth check, not verification of LP lock."""
+    try:
+        lp=p['liquidity']['usd']
+        cap=market_cap(p)
+        if not numeric(lp) or cap is None:
+            return 'unverified_liquidity_or_cap'
+        if lp < 10000:
+            return 'low_liquidity'
+        if lp / cap < 0.08:
+            return 'thin_liquidity_relative_to_cap'
+        return None
+    except (KeyError, TypeError, ValueError, ZeroDivisionError):
+        return 'unverified_liquidity_or_cap'
+
 def token2022_extension_ids(data):
     """Inspect canonical Token-2022 mint TLV; malformed layouts fail closed."""
     if len(data)==82: return []
@@ -336,6 +351,11 @@ def scan(state, chat):
                 stats['refresh_rejected']+=1;continue
         except Exception:
             stats['refresh_error']+=1;continue
+        lp_reason=liquidity_risk_reason(p)
+        if lp_reason:
+            stats['liquidity_'+lp_reason]=stats.get('liquidity_'+lp_reason,0)+1
+            print('LIQUIDITY_GATE_REJECT mint='+mint+' reason='+lp_reason)
+            continue
         crash_reason=crash_risk_reason(p)
         if crash_reason:
             stats['momentum_'+crash_reason]=stats.get('momentum_'+crash_reason,0)+1
