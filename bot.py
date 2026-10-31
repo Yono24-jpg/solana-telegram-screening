@@ -89,6 +89,9 @@ def crash_risk_reason(p):
             return 'unverified_price_change'
         if m5 < -15 or h1 < -30:
             return 'rapid_price_drop'
+        # Avoid chasing tokens already pumping sharply before alert.
+        if m5 > 25 or h1 > 80:
+            return 'already_pumped'
         return None
     except (KeyError, TypeError, ValueError):
         return 'unverified_price_change'
