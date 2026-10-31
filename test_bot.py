@@ -1,5 +1,5 @@
 import base64, copy, unittest
-from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, PROGRAM, TOKEN_2022
+from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, liquidity_risk_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
@@ -21,6 +21,19 @@ class Filters(unittest.TestCase):
         self.assertEqual(crash_risk_reason(p),'already_pumped')
         p['priceChange']={'m5':25,'h1':80}
         self.assertIsNone(crash_risk_reason(p))
+    def test_liquidity_risk_gate(self):
+        p=copy.deepcopy(self.p)
+        p['marketCap']=100000
+        self.assertIsNone(liquidity_risk_reason(p))
+        p['liquidity']['usd']=9999
+        self.assertEqual(liquidity_risk_reason(p),'low_liquidity')
+        p['liquidity']['usd']=10000
+        p['marketCap']=200000
+        self.assertEqual(liquidity_risk_reason(p),'thin_liquidity_relative_to_cap')
+        p['marketCap']=125000
+        self.assertIsNone(liquidity_risk_reason(p))
+        del p['marketCap']
+        self.assertEqual(liquidity_risk_reason(p),'unverified_liquidity_or_cap')
     def test_age(self):
         self.assertIsNone(candidate(self.p,1000))
         self.assertIsNone(candidate(self.p,1239.99))
