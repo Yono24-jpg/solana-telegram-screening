@@ -79,6 +79,20 @@ def candidate(p, now):
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
 
+def crash_risk_reason(p):
+    """Reject sharply falling or unverified momentum immediately before alert."""
+    try:
+        changes=p['priceChange']
+        m5=changes['m5']
+        h1=changes['h1']
+        if not numeric(m5) or not numeric(h1):
+            return 'unverified_price_change'
+        if m5 < -15 or h1 < -30:
+            return 'rapid_price_drop'
+        return None
+    except (KeyError, TypeError, ValueError):
+        return 'unverified_price_change'
+
 def market_cap(p):
     value=p.get('marketCap')
     return value if numeric(value) and value>0 else None
@@ -319,6 +333,11 @@ def scan(state, chat):
                 stats['refresh_rejected']+=1;continue
         except Exception:
             stats['refresh_error']+=1;continue
+        crash_reason=crash_risk_reason(p)
+        if crash_reason:
+            stats['momentum_'+crash_reason]=stats.get('momentum_'+crash_reason,0)+1
+            print('MOMENTUM_GATE_REJECT mint='+mint+' reason='+crash_reason)
+            continue
         holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\n'
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
         text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
