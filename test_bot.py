@@ -1,8 +1,20 @@
 import base64, copy, unittest
-from bot import candidate, secure, market_cap, market_rejection, security_reason, PROGRAM, TOKEN_2022
+from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
+    def test_crash_risk_gate(self):
+        p={'priceChange':{'m5':3,'h1':12}}
+        self.assertIsNone(crash_risk_reason(p))
+        p['priceChange']['m5']=-16
+        self.assertEqual(crash_risk_reason(p),'rapid_price_drop')
+        p['priceChange']['m5']=0
+        p['priceChange']['h1']=-31
+        self.assertEqual(crash_risk_reason(p),'rapid_price_drop')
+        del p['priceChange']['h1']
+        self.assertEqual(crash_risk_reason(p),'unverified_price_change')
+        p['priceChange']['h1']=float('nan')
+        self.assertEqual(crash_risk_reason(p),'unverified_price_change')
     def test_age(self):
         self.assertIsNotNone(candidate(self.p,1000))
         self.assertIsNotNone(candidate(self.p,11740))
