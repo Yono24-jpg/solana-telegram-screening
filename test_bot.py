@@ -15,6 +15,12 @@ class Filters(unittest.TestCase):
         self.assertEqual(crash_risk_reason(p),'unverified_price_change')
         p['priceChange']['h1']=float('nan')
         self.assertEqual(crash_risk_reason(p),'unverified_price_change')
+        p['priceChange']={'m5':26,'h1':10}
+        self.assertEqual(crash_risk_reason(p),'already_pumped')
+        p['priceChange']={'m5':10,'h1':81}
+        self.assertEqual(crash_risk_reason(p),'already_pumped')
+        p['priceChange']={'m5':25,'h1':80}
+        self.assertIsNone(crash_risk_reason(p))
     def test_age(self):
         self.assertIsNone(candidate(self.p,1000))
         self.assertIsNone(candidate(self.p,1239.99))
