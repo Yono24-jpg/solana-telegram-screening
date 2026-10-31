@@ -16,31 +16,33 @@ class Filters(unittest.TestCase):
         p['priceChange']['h1']=float('nan')
         self.assertEqual(crash_risk_reason(p),'unverified_price_change')
     def test_age(self):
-        self.assertIsNotNone(candidate(self.p,1000))
+        self.assertIsNone(candidate(self.p,1000))
+        self.assertIsNone(candidate(self.p,1239.99))
+        self.assertIsNotNone(candidate(self.p,1240))
         self.assertIsNotNone(candidate(self.p,11740))
         self.assertIsNone(candidate(self.p,11740.01))
         self.assertIsNone(candidate(self.p,939))
     def test_missing_or_invalid(self):
         for field in ('liquidity','volume','txns','pairCreatedAt'):
-            p=copy.deepcopy(self.p);del p[field];self.assertIsNone(candidate(p,1000))
+            p=copy.deepcopy(self.p);del p[field];self.assertIsNone(candidate(p,1240))
         for val in (None,float('nan'),float('inf'),True,-1):
-            p=copy.deepcopy(self.p);p['liquidity']['usd']=val;self.assertIsNone(candidate(p,1000))
+            p=copy.deepcopy(self.p);p['liquidity']['usd']=val;self.assertIsNone(candidate(p,1240))
     def test_looser_market_thresholds(self):
         p=copy.deepcopy(self.p)
         p['liquidity']['usd']=5000
         p['volume']['m5']=500
         p['txns']['m5']={'buys':5,'sells':5}
-        self.assertIsNotNone(candidate(p,1000))
+        self.assertIsNotNone(candidate(p,1240))
         p['liquidity']['usd']=4999
-        self.assertIsNone(candidate(p,1000))
+        self.assertIsNone(candidate(p,1240))
         p['liquidity']['usd']=5000
         p['volume']['m5']=499
-        self.assertIsNone(candidate(p,1000))
+        self.assertIsNone(candidate(p,1240))
         p['volume']['m5']=500
         p['txns']['m5']['buys']=4
-        self.assertIsNone(candidate(p,1000))
+        self.assertIsNone(candidate(p,1240))
     def test_pressure(self):
-        self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1000))
+        self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1240))
     def test_market_cap(self):
         self.p['marketCap']=125000
         self.assertEqual(market_cap(self.p),125000)
@@ -50,11 +52,11 @@ class Filters(unittest.TestCase):
         del self.p['marketCap']
         self.assertIsNone(market_cap(self.p))
     def test_market_rejection_reasons(self):
-        self.assertIsNone(market_rejection(self.p,1000))
+        self.assertIsNone(market_rejection(self.p,1240))
         cases=[('liquidity',lambda p:p['liquidity'].update(usd=4999)),('volume_5m',lambda p:p['volume'].update(m5=499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=4)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-11000000))]
         for expected,modify in cases:
             p=copy.deepcopy(self.p);modify(p)
-            self.assertEqual(market_rejection(p,1000),expected)
+            self.assertEqual(market_rejection(p,1240),expected)
     def test_security_diagnostics(self):
         self.assertEqual(security_reason(None),'account_missing')
         b=bytearray(82);b[45]=1
