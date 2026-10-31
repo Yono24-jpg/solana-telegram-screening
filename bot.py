@@ -115,6 +115,22 @@ def liquidity_risk_reason(p):
     except (KeyError, TypeError, ValueError, ZeroDivisionError):
         return 'unverified_liquidity_or_cap'
 
+def rugcheck_risk_reason(report):
+    """Reject provider danger flags; missing evidence fails closed."""
+    if not isinstance(report,dict) or not isinstance(report.get('risks'),list):
+        return 'unverified_risk_report'
+    for risk in report['risks']:
+        if not isinstance(risk,dict) or not isinstance(risk.get('level'),str):
+            return 'unverified_risk_report'
+        if risk['level'].lower() in ('danger','critical'):
+            return 'danger_risk_flag'
+    score=report.get('score_normalised')
+    if not numeric(score) or not 0<=score<=100:
+        return 'unverified_risk_score'
+    if score>=60:
+        return 'high_risk_score'
+    return None
+
 def token2022_extension_ids(data):
     """Inspect canonical Token-2022 mint TLV; malformed layouts fail closed."""
     if len(data)==82: return []
@@ -355,6 +371,15 @@ def scan(state, chat):
         if lp_reason:
             stats['liquidity_'+lp_reason]=stats.get('liquidity_'+lp_reason,0)+1
             print('LIQUIDITY_GATE_REJECT mint='+mint+' reason='+lp_reason)
+            continue
+        try:
+            risk_report=request('https://api.rugcheck.xyz/v1/tokens/'+mint+'/report/summary')
+            risk_reason=rugcheck_risk_reason(risk_report)
+        except Exception:
+            risk_reason='risk_provider_unavailable'
+        if risk_reason:
+            stats['rugcheck_'+risk_reason]=stats.get('rugcheck_'+risk_reason,0)+1
+            print('RUGCHECK_GATE_REJECT mint='+mint+' reason='+risk_reason)
             continue
         crash_reason=crash_risk_reason(p)
         if crash_reason:
