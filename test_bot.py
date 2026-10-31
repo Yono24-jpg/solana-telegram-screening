@@ -1,5 +1,5 @@
 import base64, copy, unittest
-from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, liquidity_risk_reason, PROGRAM, TOKEN_2022
+from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, liquidity_risk_reason, rugcheck_risk_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
@@ -21,6 +21,12 @@ class Filters(unittest.TestCase):
         self.assertEqual(crash_risk_reason(p),'already_pumped')
         p['priceChange']={'m5':25,'h1':80}
         self.assertIsNone(crash_risk_reason(p))
+    def test_rugcheck_risk_gate(self):
+        self.assertIsNone(rugcheck_risk_reason({'risks':[], 'score_normalised':20}))
+        self.assertEqual(rugcheck_risk_reason({'risks':[{'level':'danger'}], 'score_normalised':20}),'danger_risk_flag')
+        self.assertEqual(rugcheck_risk_reason({'risks':[], 'score_normalised':60}),'high_risk_score')
+        self.assertEqual(rugcheck_risk_reason({'risks':[], 'score_normalised':None}),'unverified_risk_score')
+        self.assertEqual(rugcheck_risk_reason({'score_normalised':10}),'unverified_risk_report')
     def test_liquidity_risk_gate(self):
         p=copy.deepcopy(self.p)
         p['marketCap']=100000
