@@ -58,7 +58,7 @@ def market_rejection(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if not all(numeric(v) for v in (created,lp,volume,buys,sells)):
             return 'missing_metrics'
-        if not 0<=now-created<=10800: return 'age'
+        if not 300<=now-created<=10800: return 'age'
         if lp<5000: return 'liquidity'
         if volume<500: return 'volume_5m'
         if buys<5 or sells<0 or int(buys)!=buys or int(sells)!=sells: return 'transactions_5m'
@@ -74,7 +74,7 @@ def candidate(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress']: return None
         if not p['baseToken']['symbol'] or not all(numeric(v) for v in (created,lp,volume,buys,sells)): return None
-        if not 0<=now-created<=10800 or lp<5000 or volume<500 or buys<5 or sells<0: return None
+        if not 300<=now-created<=10800 or lp<5000 or volume<500 or buys<5 or sells<0: return None
         if int(buys)!=buys or int(sells)!=sells or buys/max(sells,1)<1.0: return None
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
