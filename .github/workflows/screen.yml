@@ -21,6 +21,15 @@ jobs:
         run: echo "TRIGGER=${{ github.event_name }} UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       - name: Verify fail-closed filters
         run: python3 -m unittest -v
+      - name: Refresh latest control and delivery state
+        run: |
+          # Checkout may be pinned to an older push commit. Always read the
+          # latest persisted state before scanning to avoid duplicate alerts.
+          git fetch origin main
+          git show origin/main:state.json > /tmp/latest-screening-state.json
+          python3 -m json.tool /tmp/latest-screening-state.json > /dev/null
+          cp /tmp/latest-screening-state.json state.json
+          echo "STATE_REFRESH_OK"
       - name: Scan and process Telegram controls
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
