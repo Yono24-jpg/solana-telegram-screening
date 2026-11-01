@@ -8,7 +8,7 @@ const esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[
 export function market(p,now){
  if(p?.chainId!=='solana'||!key(p.pairAddress)||!key(p.baseToken?.address)||typeof p.baseToken.symbol!=='string')return false;
  const age=now-p.pairCreatedAt/1000,l=p.liquidity?.usd,v=p.volume?.m5,b=p.txns?.m5?.buys,s=p.txns?.m5?.sells;
- return finite(p.pairCreatedAt)&&age>=300&&age<=10800&&finite(l)&&l>=10000&&finite(v)&&v>=1500&&Number.isInteger(b)&&b>=12&&Number.isInteger(s)&&s>=3&&b/Math.max(s,1)>=1.5&&finite(p.marketCap)&&p.marketCap>0&&l/p.marketCap>=.08;
+ return finite(p.pairCreatedAt)&&age>=300&&age<=600&&finite(l)&&l>=10000&&finite(v)&&v>=1500&&Number.isInteger(b)&&b>=12&&Number.isInteger(s)&&s>=3&&b/Math.max(s,1)>=1.5&&finite(p.marketCap)&&p.marketCap>0&&l/p.marketCap>=.08;
 }
 function snap(p,t){const price=typeof p.priceUsd==='string'?Number(p.priceUsd):p.priceUsd;return finite(price)&&price>0?{t,mint:p.baseToken.address,price,lp:p.liquidity.usd,volume:p.volume.m5,buys:p.txns.m5.buys}:null;}
 export function quality(p,rows,now){
@@ -60,7 +60,7 @@ async function run(env,scheduled=true){
   if(status.enabled){
    const pools=await discover(c),rows=state.observations||{},ranked=[];
    status.discovered=pools.size;if(!pools.size){status.error='no_market_data';status.errors++;}
-   for(const p of pools.values())if(market(p,now)){
+   for(const p of pools.values())if(p?.chainId==='solana'&&key(p.pairAddress)&&key(p.baseToken?.address)&&finite(p.pairCreatedAt)&&now-p.pairCreatedAt/1000>=0&&now-p.pairCreatedAt/1000<=600&&finite(p.liquidity?.usd)&&p.liquidity.usd>0&&finite(p.volume?.m5)&&p.volume.m5>=0&&Number.isInteger(p.txns?.m5?.buys)&&p.txns.m5.buys>=0&&Number.isInteger(p.txns?.m5?.sells)&&p.txns.m5.sells>=0){
     const q=quality(p,rows[p.pairAddress],now);if(q)ranked.push({p,q});
     const s=snap(p,now);if(s){const r=(rows[p.pairAddress]||[]).filter(x=>now-x.t<=1800);if(!r.length||now-r.at(-1).t>=60)r.push(s);rows[p.pairAddress]=r.slice(-12);}
    }
