@@ -18,6 +18,8 @@ Mint and freeze authority disabled, standard mint or explicitly supported harmle
 
 DexPaprika keyless pool search supplements existing sources. It is queried once every six minutes (<=7,200 calls in 30 days, before occasional deployment probes), aligned with KV checkpoints. Up to 50 pool addresses created in the last ten minutes and with reported liquidity >=$5,000 are cached, then refreshed through DEX Screener every scan. No DexPaprika price/volume/transaction figures are used to approve a candidate. HTTP 402 pauses this optional source for 30 days and HTTP 403 for one day; no payment or account is created. GeckoTerminal HTTP 429 stops further GeckoTerminal requests for that invocation. Source coverage remains sampled, not exhaustive.
 
+The optional Dex.fun closed-beta key expands launch discovery by polling `new`, `bonding` and `graduated` launch stages once per minute (three REST calls/minute, about 4,320/day). Only up to 20 recent mints per stage are passed to the existing market feeds. Dex.fun launch timestamps identify recent launches or graduations; they are never used as pool age. A final candidate still needs an independently reported 5–10 minute pool age, the existing momentum baseline and every security check above. The route is polled, not streamed; provider outages, the API's 200-row page limit and the other feeds' coverage mean discovery is not exhaustive.
+
 ## Delivery and measured results
 
 Only after Telegram confirms an initial candidate message ID is its price, observation time, alert time and receipt added to performance records. Tracking uses the same pool and mint. Both increases and decreases are recorded, with the highest and lowest *sampled* price; these are not exact ATH/ATL or realised profit. Missing subsequent data is labelled unavailable, never extrapolated. There are no fabricated winner records.
@@ -35,6 +37,8 @@ Deployment runs the original Python regression tests and Worker tests, sends an 
 Provider HTTP 429 stops further calls to that host in the invocation. Retry-After is cached at the Cloudflare edge between KV checkpoints and saved with periodic state; unavailable data is never replaced with a fabricated value. This reduces repeated requests, but does not remove provider rate limits or promise complete coverage.
 
 Optional repository secret `DEXPAPRIKA_API_KEY` is copied to a Worker secret binding. A registered free key enables one discovery call per minute (<=43,200/30d). The key is sent as the bare Authorization value only to api.dexpaprika.com; a response must identify x-api-plan=free, otherwise the source is rejected. Moving from keyless to an authorized free key clears the old IP-quota cooldown. Keyless discovery remains once/6m. No paid host or plan is used.
+
+Optional repository secret `DEXFUN_API_KEY` is copied to a Worker secret binding and sent only as `Authorization: Bearer …` to `data.dex.fun`. The request-key page says the API is closed beta and keys are issued manually; without that secret the extra discovery source is inactive and the other feeds continue.
 
 Free-plan labels are normalized for capitalization. A client-side unknown/keyless plan result retries after three minutes instead of locking the source for a day; existing client validation locks are migrated once. Actual HTTP 402 quota denials and 403 permissions retain their separate cooldowns. Sanitized provider plan/redirect/type/length metadata is available for diagnosis without exposing credentials.
 
