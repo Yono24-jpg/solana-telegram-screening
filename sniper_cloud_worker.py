@@ -68,7 +68,11 @@ class Control:
                     source.close()
             Path(str(self.database) + '.seed').replace(self.database)
         bot = PersistentPaperBot(self.database)
-        bot.close()
+        try:
+            if bot.db.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
+                raise ValueError('Database integrity failed; refusing worker startup')
+        finally:
+            bot.close()
         with self.connect() as db:
             db.executescript('''
               CREATE TABLE IF NOT EXISTS cloud_control (
