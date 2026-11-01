@@ -63,7 +63,8 @@ export function mintSafe(a){
  }catch{return false;}
 }
 async function context(env){
- let count=0,rates={},discoveryProof=null;const upstreamErrors=[];
+ let count=0,rates={},discoveryProof=null,knownFreeKey=false;const upstreamErrors=[];
+ const keyFingerprint=typeof env.DEXPAPRIKA_API_KEY==='string'?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(env.DEXPAPRIKA_API_KEY))),b=>b.toString(16).padStart(2,'0')).join(''):null;
  const seenHosts=new Set();
  async function json(url,init={}){
   const host=new URL(url).hostname,now=Date.now()/1000,cache=globalThis.caches?.default,cacheKey=new Request('https://solana-screening-minute.maille47604.workers.dev/_provider_cooldown/'+host);
@@ -84,19 +85,22 @@ async function context(env){
   if(host==='api.dexpaprika.com'){
    const rawPlan=r.headers.get('x-api-plan'),plan=rawPlan?.trim().toLowerCase()||'missing';
    discoveryProof={plan:['free','keyless','dev','pro','enterprise','missing'].includes(plan)?plan:'other',headerPresent:rawPlan!==null,finalHost:r.url?new URL(r.url).hostname:host,redirected:!!r.redirected,keyType:typeof env.DEXPAPRIKA_API_KEY,keyLength:typeof env.DEXPAPRIKA_API_KEY==='string'?env.DEXPAPRIKA_API_KEY.length:0};
-   if(auth.Authorization&&plan!=='free')throw Error('discovery_key_not_verified_free');
+   if(auth.Authorization&&plan!=='free'&&!(plan==='missing'&&knownFreeKey))throw Error('discovery_key_not_verified_free');
+   if(auth.Authorization&&plan==='free')knownFreeKey=true;
   }
   delete rates[host];return r.json();
  }
  async function rpc(method,params){const j=await json(env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(j.error||j.result===undefined)throw Error('rpc_rejected');return j.result;}
  async function tg(method,data){const j=await json('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!j.ok)throw Error('telegram_rejected');return j.result;}
- return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY,discoveryProof:()=>discoveryProof};
+ return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY,discoveryProof:()=>discoveryProof,keyFingerprint:()=>keyFingerprint,trustPreviouslyVerifiedFreeKey:()=>{knownFreeKey=true;},verifiedFreeKeyFingerprint:()=>knownFreeKey?keyFingerprint:null};
 }
 async function discover(c,state={},now=Math.floor(Date.now()/1000)){
  const pools=new Map(),mints=new Set();
  // Keyless: <=7,200/30d; registered free key: <=43,200/30d. Never use a paid host.
  // Keep only pool addresses; never substitute this source's metrics for DEX validation.
  const cache=state.discovery||{at:0,pools:[]},authenticated=c.discoveryAuthenticated;
+ if(cache.verifiedFreeKeyFingerprint&&cache.verifiedFreeKeyFingerprint===c.keyFingerprint())c.trustPreviouslyVerifiedFreeKey();
+ else if(cache.verifiedFreeKeyFingerprint&&cache.verifiedFreeKeyFingerprint!==c.keyFingerprint())delete cache.verifiedFreeKeyFingerprint;
  if(cache.validationRevision!=='free_plan_retry_v2'){
   if(cache.error==='discovery_key_not_verified_free'){cache.blockedUntil=0;cache.at=0;delete cache.error;}
   cache.validationRevision='free_plan_retry_v2';
@@ -106,7 +110,7 @@ async function discover(c,state={},now=Math.floor(Date.now()/1000)){
   cache.at=now;
   try{const j=await c.json('https://api.dexpaprika.com/networks/solana/pools/search?order_by=created_at&sort=desc&limit=50&created_after=-10m&liquidity_usd_min=5000');delete cache.error;cache.pools=(j.results||[]).filter(p=>p.chain==='solana'&&key(p.id)&&finite(Date.parse(p.created_at))&&now-Date.parse(p.created_at)/1000>=0&&now-Date.parse(p.created_at)/1000<=600).map(p=>({id:p.id,created:Date.parse(p.created_at)/1000,lp:finite(p.liquidity_usd)?p.liquidity_usd:null,volume:finite(p.volume_usd_24h)?p.volume_usd_24h:null,change5m:finite(p.price_change_percentage_5m)?p.price_change_percentage_5m:null}));}
   catch(e){cache.error=e.message;if(e.message==='http_402')cache.blockedUntil=now+2592000;else if(e.message==='http_403')cache.blockedUntil=now+86400;else if(e.message==='discovery_key_not_verified_free')cache.blockedUntil=now+180;}
-  cache.proof=c.discoveryProof();
+  cache.proof=c.discoveryProof();cache.verifiedFreeKeyFingerprint=c.verifiedFreeKeyFingerprint();
  }
  cache.pools=(cache.pools||[]).filter(p=>now-p.created>=0&&now-p.created<=600);state.discovery=cache;
  const pap=cache.pools.map(p=>p.id);

@@ -6,8 +6,8 @@ const raw=()=>({id:pair,chain:'solana',base_token_id:mint,quote_token_id:quote,c
 const baseline=()=>[{t:now-180,mint,price:.98,lp:20000,volume:2000,buys:30,sells:10,created:now-500,symbol:'FIXTURE',source:'dexpaprika',providerAt:now-180}];
 test('pool detail normalization binds price to explicit base mint and labels valuation as FDV',()=>{const p=normalizePaprika(raw(),pair,now);assert.equal(p.baseToken.address,mint);assert.equal(p.marketCap,undefined);assert.equal(p.fdv,100000);assert.equal(p.priceUsd,'1');assert.equal(market(p,now),true);assert.ok(quality(p,baseline(),now));const r=baseline();r[0].source='dexscreener';assert.equal(quality(p,r,now),null);});
 test('reject stale, zero-price, missing-statistics and mismatched pool data',()=>{for(const mutate of [p=>{p.last_price_usd=0;},p=>{p.price_time=new Date((now-121)*1000).toISOString();},p=>{delete p['5m'].sells;},p=>{p.id='C'.repeat(44);},p=>{delete p.tokens[1].fdv;}]){const p=raw();mutate(p);assert.equal(normalizePaprika(p,pair,now),null);}});
-async function exercise({rugDanger=false,holdersMissing=false}={}){
- const oldFetch=globalThis.fetch,oldNow=Date.now,store=new Map([['history',{observations:{[pair]:baseline()},alerts:[]}]]),sent=[];let details=0;
+async function exercise({rugDanger=false,holdersMissing=false,searchHeaderMissing=false,knownKeyFingerprint=false,detailHeaderMissing=false}={}){
+ const oldFetch=globalThis.fetch,oldNow=Date.now,history={observations:{[pair]:baseline()},alerts:[]},store=new Map(),sent=[];if(knownKeyFingerprint){const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('api_fixture'));history.discovery={at:now-60,pools:[],authenticated:true,verifiedFreeKeyFingerprint:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('')};}store.set('history',history);let details=0;
  Date.now=()=>now*1000;
  const b=new Uint8Array(82);b[45]=1;const account={owner:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',executable:false,data:[Buffer.from(b).toString('base64'),'base64']};
  globalThis.fetch=async(url,init={})=>{
@@ -16,8 +16,8 @@ async function exercise({rugDanger=false,holdersMissing=false}={}){
   if(url.includes('geckoterminal'))return Response.json({data:[]});
   if(url.includes('dexpaprika')){
    assert.equal(init.headers.Authorization,'api_fixture');
-   if(url.includes('/pools/search'))return Response.json({results:[{id:pair,chain:'solana',created_at:raw().created_at,liquidity_usd:20000,volume_usd_24h:10000,price_change_percentage_5m:35}]},{headers:{'x-api-plan':'free'}});
-   details++;return Response.json(raw(),{headers:{'x-api-plan':'free'}});
+   if(url.includes('/pools/search'))return Response.json({results:[{id:pair,chain:'solana',created_at:raw().created_at,liquidity_usd:20000,volume_usd_24h:10000,price_change_percentage_5m:35}]},{headers:searchHeaderMissing?{}:{'x-api-plan':'free'}});
+   details++;return Response.json(raw(),{headers:detailHeaderMissing?{}:{'x-api-plan':'free'}});
   }
   if(url.includes('mainnet-beta')){const {method}=JSON.parse(init.body);const result=method==='getMultipleAccounts'?{value:[account]}:method==='getTokenSupply'?{value:{amount:'1000'}}:{value:holdersMissing?[]:Array.from({length:10},()=>({amount:'10'}))};return Response.json({result});}
   if(url.includes('rugcheck'))return Response.json({risks:rugDanger?[{level:'danger'}]:[],score_normalised:rugDanger?80:5});
@@ -29,3 +29,5 @@ async function exercise({rugDanger=false,holdersMissing=false}={}){
 }
 test('complete authenticated fallback can deliver only after all security and a fresh second market read',async()=>{const r=await exercise();assert.equal(r.sent.length,1);assert.equal(r.details,2);assert.equal(r.state.status.sent,1);assert.equal(r.state.alerts[0].messageId,456);assert.equal(r.state.alerts[0].priceSource,'dexpaprika');assert.match(r.sent[0].text,/FDV \$100000/);assert.doesNotMatch(r.sent[0].text,/MCap/);});
 test('fallback never sends when RugCheck or holder completeness fails',async()=>{for(const options of [{rugDanger:true},{holdersMissing:true}]){const r=await exercise(options);assert.equal(r.sent.length,0);assert.equal(r.state.alerts.length,0);assert.equal(r.details,1);}});
+
+test('same previously verified free key tolerates a missing plan header and remains fail-closed for explicit keyless plans',async()=>{const r=await exercise({searchHeaderMissing:true,knownKeyFingerprint:true});assert.equal(r.state.status.extraSourcePools,1);assert.equal(r.state.discovery.verifiedFreeKeyFingerprint.length,64);assert.equal(r.sent.length,1);const detail=await exercise({detailHeaderMissing:true});assert.equal(detail.sent.length,1);assert.equal(detail.details,2);});
