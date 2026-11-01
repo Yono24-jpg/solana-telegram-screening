@@ -14,6 +14,10 @@ Score >= 70 combines buy pressure, rolling 5m volume growth, liquidity depth, bu
 
 Mint and freeze authority disabled, standard mint or explicitly supported harmless Token-2022 extensions, top ten token accounts <=30% of supply, complete RugCheck summary with no danger/critical risks and normalized risk <60, and fresh complete market/momentum checks. Top ten token accounts are not unique wallets and can include liquidity vaults. A failed or unavailable security check never produces an initial alert. At most five ranked distinct mints are checked per run, subject to completing all checks within the request budget.
 
+## Extra pool discovery
+
+DexPaprika keyless pool search supplements existing sources. It is queried once every six minutes (<=7,200 calls in 30 days, before occasional deployment probes), aligned with KV checkpoints. Up to 50 pool addresses created in the last ten minutes and with reported liquidity >=$5,000 are cached, then refreshed through DEX Screener every scan. No DexPaprika price/volume/transaction figures are used to approve a candidate. HTTP 402 pauses this optional source for 30 days and HTTP 403 for one day; no payment or account is created. GeckoTerminal HTTP 429 stops further GeckoTerminal requests for that invocation. Source coverage remains sampled, not exhaustive.
+
 ## Delivery and measured results
 
 Only after Telegram confirms an initial candidate message ID is its price, observation time, alert time and receipt added to performance records. Tracking uses the same pool and mint. Both increases and decreases are recorded, with the highest and lowest *sampled* price; these are not exact ATH/ATL or realised profit. Missing subsequent data is labelled unavailable, never extrapolated. There are no fabricated winner records.
@@ -26,4 +30,4 @@ Public read-only `/data` displays recent observations with rejection reasons and
 
 History checkpoints every three minutes (480 writes/day), plus at most 200 delivery reservation writes and at most 200 extra receipt checkpoints/day, keep expected KV writes <=880/day. Initial alert attempts remain capped at 200/day. No uncertain initial delivery is automatically retried. KV is eventually consistent; strict cross-region exactly-once delivery is not guaranteed. Requests are capped at 38 externally so KV operations remain within the free invocation budget; incomplete checks are discarded. Provider rate limits can temporarily reduce discovery. Cron retries next minute rather than turning the bot off.
 
-Deployment runs the original Python regression tests and Worker tests, sends an explicitly labelled real connection test (not a candidate alert), and waits for a real scheduled state tagged `momentum_v2`. Tests with synthetic fixtures do not establish market performance. An initial real candidate and subsequent price history are required before claiming successful token selection.
+Deployment runs the original Python regression tests and Worker tests, sends an explicitly labelled real connection test (not a candidate alert), and waits for a real scheduled state tagged `momentum_v2.1`. Tests with synthetic fixtures do not establish market performance. An initial real candidate and subsequent price history are required before claiming successful token selection.

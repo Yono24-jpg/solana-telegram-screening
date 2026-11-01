@@ -85,7 +85,7 @@ def main():
         try:
             state=json.loads(cf(prefix+'storage/kv/namespaces/'+namespace+'/values/history',raw=True))
             status=state.get('status',{})
-            if status.get('scheduled') is True and status.get('mode')=='always_on' and status.get('engine')=='momentum_v2' and status.get('enabled') is True and status.get('at',0)>=start-60:
+            if status.get('scheduled') is True and status.get('mode')=='always_on' and status.get('engine')=='momentum_v2.1' and status.get('enabled') is True and status.get('at',0)>=start-60:
                 print('SCHEDULED_RUN_CONFIRMED '+json.dumps(status),flush=True)
                 if status.get('enabled') and not status.get('discovered'):raise RuntimeError('scheduled_scan_has_no_market_data')
                 with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('Real scheduled run: '+json.dumps(status)+'\n')
