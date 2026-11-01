@@ -35,11 +35,11 @@ export function mintSafe(a){
  }catch{return false;}
 }
 async function context(env){
- let count=0;
- async function json(url,init={}){if(++count>45)throw Error('request_budget');const r=await fetch(url,{...init,signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('http_'+r.status);return r.json();}
+ let count=0;const upstreamErrors=[];
+ async function json(url,init={}){if(++count>45)throw Error('request_budget');const r=await fetch(url,{...init,headers:{'User-Agent':'Mozilla/5.0 (compatible; SolanaScreening/1.0)',...(init.headers||{})},signal:AbortSignal.timeout(15000)});if(!r.ok){upstreamErrors.push({host:new URL(url).hostname,status:r.status});throw Error('http_'+r.status);}return r.json();}
  async function rpc(method,params){const j=await json(env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(j.error||j.result===undefined)throw Error('rpc_rejected');return j.result;}
  async function tg(method,data){const j=await json('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!j.ok)throw Error('telegram_rejected');return j.result;}
- return {json,rpc,tg,count:()=>count};
+ return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors};
 }
 async function discover(c){
  const pools=new Map(),mints=new Set();
@@ -59,7 +59,7 @@ async function run(env,scheduled=true){
   const state=await env.SCANNER_STATE.get('history','json')||{observations:{}};
   if(status.enabled){
    const pools=await discover(c),rows=state.observations||{},ranked=[];
-   status.discovered=pools.size;
+   status.discovered=pools.size;if(!pools.size){status.error='no_market_data';status.errors++;}
    for(const p of pools.values())if(market(p,now)){
     const q=quality(p,rows[p.pairAddress],now);if(q)ranked.push({p,q});
     const s=snap(p,now);if(s){const r=(rows[p.pairAddress]||[]).filter(x=>now-x.t<=1800);if(!r.length||now-r.at(-1).t>=60)r.push(s);rows[p.pairAddress]=r.slice(-12);}
@@ -93,7 +93,7 @@ async function run(env,scheduled=true){
    }
    state.observations=Object.fromEntries(Object.entries(rows).filter(([,r])=>r.some(x=>now-x.t<=1800)).sort((a,b)=>b[1].at(-1).t-a[1].at(-1).t).slice(0,160));
   }
-  if(Math.floor(now/60)%2===0){state.status=status;await env.SCANNER_STATE.put('history',JSON.stringify(state));}
+  status.upstreamErrors=c.errors();if(Math.floor(now/60)%2===0){state.status=status;await env.SCANNER_STATE.put('history',JSON.stringify(state));}
  }catch(e){status.errors++;status.error=/^[a-z_0-9]+$/.test(e.message)?e.message:'check_failed';}
  console.log(JSON.stringify({event:'scanner_run',...status,requests:c.count()}));return status;
 }
