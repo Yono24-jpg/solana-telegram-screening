@@ -63,7 +63,10 @@ def main():
     for i in range(12):
         try:
             health=request(url+'/health')
-            if health.get('configured'):break
+            if health.get('configured'):
+                # Wait for the new secret binding to propagate before sending anything.
+                request(url+'/admin/status',headers={'Authorization':'Bearer '+checkkey})
+                break
         except RuntimeError as e:
             print('WORKER_HEALTH_RETRY reason='+str(e),flush=True)
         time.sleep(5)
