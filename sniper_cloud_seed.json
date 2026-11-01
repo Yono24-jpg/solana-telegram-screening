@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "mode": "PAPER_ONLY_REAL_OFF",
+  "config": {
+    "fee": 0.013,
+    "fixed": 0.05,
+    "slippage_bps": 50
+  },
+  "positions": {},
+  "seen": [],
+  "pnl": 0.0,
+  "clock": null,
+  "pins": {}
+}

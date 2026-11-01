@@ -1,0 +1,37 @@
+services:
+  # One process combines the paper worker and its small ON/OFF control endpoint.
+  # Not applied: workspace confirmation is required before creating resources.
+  - type: web
+    name: solana-ai-sniper-paper
+    runtime: python
+    branch: solana-ai-sniper-paper
+    plan: 0.5c-512mb
+    numInstances: 1
+    buildCommand: python -m compileall -q sniper_cloud_worker.py
+    startCommand: python -u sniper_cloud_worker.py
+    healthCheckPath: /healthz
+    maxShutdownDelaySeconds: 300
+    autoDeployTrigger: 'off'
+    disk:
+      name: sniper-paper-state
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: PYTHONUNBUFFERED
+        value: '1'
+      - key: PAPER_ONLY
+        value: '1'
+      - key: REAL_TRADING
+        value: 'OFF'
+      - key: SNIPER_INITIAL_ON
+        value: '1'
+      - key: SNIPER_DATA_DIR
+        value: /var/data/sniper
+      - key: SNIPER_SEED_DB
+        value: sniper_cloud_seed.json
+      - key: SNIPER_CONTROL_TOKEN
+        generateValue: true
+      - key: SOLANA_READONLY_RPC
+        value: https://solana-rpc.publicnode.com
