@@ -151,8 +151,8 @@ async function track(c,env,state,status,now,pools){
   if(e.lastAt!==now||edits>=2||c.count()>=30)continue;
   const up=Math.floor(Math.max(e.peakGain,0)/50)*50,down=e.gain<=-20?Math.floor(-e.gain/20)*20:0;
   if(up<=(e.announcedUp||0)&&down<=(e.announcedDown||0))continue;
-  edits++;e.announcedUp=up;e.announcedDown=down;e.updateStatus='unconfirmed';
-  try{await c.tg('editMessageText',{chat_id:env.TELEGRAM_CHAT_ID,message_id:e.messageId,text:e.body+performanceText(e),parse_mode:'HTML',disable_web_page_preview:true});e.updateStatus='confirmed';status.performanceUpdates++;}catch{status.errors++;}
+  edits++;e.updateStatus='unconfirmed';
+  try{await c.tg('editMessageText',{chat_id:env.TELEGRAM_CHAT_ID,message_id:e.messageId,text:e.body+performanceText(e),parse_mode:'HTML',disable_web_page_preview:true});e.announcedUp=up;e.announcedDown=down;e.updateStatus='confirmed';status.performanceUpdates++;}catch{status.errors++;}
  }
  status.tracked=active.length;
 }
@@ -240,7 +240,7 @@ export default{
  async fetch(request,env){
   const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',engine:'momentum_v2.5',configured:!!env.SCANNER_STATE});
   if(path==='/data'){const s=await env.SCANNER_STATE.get('history','json')||{};return Response.json({status:s.status||{pending:true},samples:s.samples||[],results:(s.alerts||[]).map(({body,...entry})=>entry),note:'Samples are observations, not approved signals. Results exist only after a confirmed Telegram alert; price samples are not realised trading profit.'},{headers:{'Cache-Control':'no-store'}});}
-  if(request.headers.get('Authorization')!=='Bearer '+env.DEPLOY_CHECK_KEY)return new Response('Forbidden',{status:403});
+  if(typeof env.DEPLOY_CHECK_KEY!=='string'||!env.DEPLOY_CHECK_KEY.trim()||request.headers.get('Authorization')!=='Bearer '+env.DEPLOY_CHECK_KEY)return new Response('Forbidden',{status:403});
   if(path==='/admin/probe'&&request.method==='POST'){
    const c=await context(env),s=await env.SCANNER_STATE.get('history','json')||{},now=Math.floor(Date.now()/1000),rejected={},qualified=[],diagnostic={errors:0};c.useRates(s.cooldowns||{});
    const pools=await discover(c,s,now);await fallbackMarket(c,s,pools,diagnostic,now,s.observations||{});

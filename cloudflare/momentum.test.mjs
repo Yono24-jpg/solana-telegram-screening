@@ -7,7 +7,7 @@ const baseline=()=>[{t:now-120,mint,price:.98,lp:20000,volume:2000,buys:30}];
 test('accept developing momentum above old 15 percent cap with measured two-minute baseline',()=>{assert.ok(quality(pool(),baseline(),now)?.score>=70);const r=baseline();r[0].t=now-119;assert.equal(assess(pool(),r,now).reason,'awaiting_2m_comparison');});
 test('support sustained high activity and retain withdrawal/overextension guards',()=>{const p=pool(),r=baseline();p.volume.m5=20000;p.txns.m5={buys:80,sells:25};r[0].volume=22000;r[0].buys=80;assert.ok(quality(p,r,now));r[0].lp=30000;assert.equal(assess(p,r,now).reason,'liquidity_withdrawal');r[0].lp=20000;r[0].price=.5;assert.equal(assess(p,r,now).reason,'price_ran_ahead_of_baseline');});
 test('performance records losses and strict mint/pair identity; never manufactures success',()=>{const e={pair,mint,alertPrice:1,high:1,low:1},p=pool();p.priceUsd='.4';const r=observePerformance(e,p,now);assert.ok(Math.abs(r.gain+60)<1e-8);assert.equal(r.peakGain,0);assert.ok(Math.abs(r.worstGain+60)<1e-8);assert.match(performanceText(r),/-60.0%/);p.baseToken.address='C'.repeat(44);assert.equal(observePerformance(e,p,now),null);});
-async function scanFixture({holdersMissing=false,rugUnavailable=false,trackedPrice=null,profilesEmpty=false,discoveryKey=null,discoveryPlan='free',oldPlanLock=false}={}){
+async function scanFixture({holderAmount=10,editFails=false,holdersMissing=false,rugUnavailable=false,trackedPrice=null,profilesEmpty=false,discoveryKey=null,discoveryPlan='free',oldPlanLock=false}={}){
  const oldFetch=globalThis.fetch,oldNow=Date.now,storage=new Map([['history',{observations:{[pair]:baseline()},alerts:[]}]]),messages=[];
  const b=new Uint8Array(82);b[45]=1;
  const account={owner:'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',executable:false,data:[Buffer.from(b).toString('base64'),'base64']};
@@ -17,11 +17,11 @@ async function scanFixture({holdersMissing=false,rugUnavailable=false,trackedPri
  globalThis.fetch=async(url,init={})=>{
   url=String(url);
   if(discoveryKey){if(url.includes('api.dexpaprika.com'))assert.equal(init.headers.Authorization,discoveryKey);else assert.equal(init.headers.Authorization,undefined);}
-  if(url.includes('telegram.org')){messages.push(JSON.parse(init.body));return Response.json({ok:true,result:{message_id:321}});}
+  if(url.includes('telegram.org')){messages.push(JSON.parse(init.body));if(editFails&&url.includes('editMessageText'))return Response.json({ok:false});return Response.json({ok:true,result:{message_id:321}});}
   if(url.includes('mainnet-beta')){const {method}=JSON.parse(init.body);let result;
    if(method==='getMultipleAccounts')result={value:[account]};
    if(method==='getTokenSupply')result={value:{amount:'1000'}};
-   if(method==='getTokenLargestAccounts')result={value:holdersMissing?[]:Array.from({length:10},()=>({amount:'10'}))};
+   if(method==='getTokenLargestAccounts')result={value:holdersMissing?[]:Array.from({length:10},()=>({amount:String(holderAmount)}))};
    return Response.json({jsonrpc:'2.0',id:1,result});
   }
   if(url.includes('rugcheck'))return rugUnavailable?new Response('unavailable',{status:429}):Response.json({risks:[],score_normalised:5});
@@ -40,3 +40,7 @@ test('tracking a confirmed alert reports a loss in the original message and does
 test('extra discovery normalizes pool identity and still requires complete independent security',async()=>{const r=await scanFixture({profilesEmpty:true});assert.equal(r.state.discovery.pools.length,1);assert.equal(r.state.status.extraSourcePools,1);assert.equal(r.state.status.sent,1);assert.equal(r.state.alerts[0].alertPrice,1);const denied=await scanFixture({profilesEmpty:true,rugUnavailable:true});assert.equal(denied.state.status.sent,0);assert.equal(denied.state.alerts.length,0);});
 test('discovery credential is scoped to its host and must be recognized as the free plan',async()=>{const r=await scanFixture({profilesEmpty:true,discoveryKey:'api_fixture'});assert.equal(r.state.status.sent,1);assert.equal(r.state.discovery.authenticated,true);const denied=await scanFixture({profilesEmpty:true,discoveryKey:'api_fixture',discoveryPlan:'keyless'});assert.equal(denied.state.discovery.pools.length,0);assert.equal(denied.state.status.extraSourcePools,0);assert.equal(denied.state.discovery.error,'discovery_key_not_verified_free');});
 test('valid free key recovers from an old client validation lock and accepts normalized plan labels',async()=>{const r=await scanFixture({profilesEmpty:true,discoveryKey:'api_fixture',discoveryPlan:'Free',oldPlanLock:true});assert.equal(r.state.status.sent,1);assert.equal(r.state.discovery.error,undefined);assert.equal(r.state.discovery.blockedUntil,0);assert.equal(r.state.status.extraSource.proof.plan,'free');const denied=await scanFixture({profilesEmpty:true,discoveryKey:'api_fixture',discoveryPlan:'keyless'});assert.equal(denied.state.discovery.blockedUntil,now+180);});
+
+test('top ten concentration accepts exactly 50 percent and rejects above it',async()=>{const pass=await scanFixture({holderAmount:50});assert.equal(pass.state.status.sent,1);const fail=await scanFixture({holderAmount:51});assert.equal(fail.state.status.sent,0);assert.equal(fail.state.status.rejected.top10_accounts_over_50pct,1);});
+test('failed Telegram performance edit preserves the unannounced threshold for retry',async()=>{const r=await scanFixture({trackedPrice:.4,editFails:true});assert.equal(r.state.status.performanceUpdates,0);assert.equal(r.state.alerts[0].announcedDown,undefined);assert.equal(r.state.alerts[0].updateStatus,'unconfirmed');});
+test('missing or blank admin secret never authorizes a request',async()=>{for(const key of [undefined,'',' ']){const r=await worker.fetch(new Request('https://example.test/admin/status',{headers:{Authorization:'Bearer '+key}}),{DEPLOY_CHECK_KEY:key});assert.equal(r.status,403);}});
