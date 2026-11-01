@@ -45,3 +45,30 @@ jobs:
               except urllib.error.HTTPError as e:print('AUTH_HTTP_ERROR '+json.dumps({'endpoint':name,'http':e.code}))
               except Exception as e:print('AUTH_CHECK_ERROR '+json.dumps({'endpoint':name,'type':type(e).__name__}))
           PY
+
+      - name: Inspect public pool market schema
+        env:
+          DEXPAPRIKA_API_KEY: ${{ secrets.DEXPAPRIKA_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.error,re
+          key=os.environ.get('DEXPAPRIKA_API_KEY','').strip()
+          def api(path):
+              req=urllib.request.Request('https://api.dexpaprika.com'+path,headers={'Authorization':key,'User-Agent':'Mozilla/5.0'})
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as r:return json.load(r)
+              except urllib.error.HTTPError as e:raise RuntimeError('http_'+str(e.code)) from None
+          try:
+              items=api('/networks/solana/pools/search?order_by=created_at&sort=desc&limit=1&created_after=-10m&liquidity_usd_min=10000').get('results',[])
+              if not items:raise RuntimeError('no_pool_available')
+              pair=items[0]['id']
+              if not re.fullmatch('[1-9A-HJ-NP-Za-km-z]{32,44}',pair):raise RuntimeError('invalid_pool_id')
+              p=api('/networks/solana/pools/'+pair)
+              fields=['id','chain','dex_id','price_usd','price_usd_0','price_usd_1','market_cap','market_cap_usd','fdv','fdv_usd','liquidity_usd','created_at','base_token_id','quote_token_id','token_id','reserve0','reserve1']
+              out={k:p.get(k) for k in fields if k in p}
+              out['root_keys']=list(p)
+              out['windows']={k:p[k] for k in ['1m','5m','15m','1h','24h'] if k in p}
+              out['tokens']=[{k:t.get(k) for k in ['id','symbol','decimals','total_supply','price_usd','fdv','fdv_usd','market_cap','market_cap_usd'] if k in t} for t in p.get('tokens',[]) if isinstance(t,dict)]
+              print('POOL_SCHEMA '+json.dumps(out),flush=True)
+          except RuntimeError as e:print('POOL_SCHEMA_UNAVAILABLE '+str(e),flush=True)
+          PY
