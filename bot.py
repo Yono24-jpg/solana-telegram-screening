@@ -6,6 +6,12 @@ PROGRAM='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
 KEYBOARD={'inline_keyboard':[[{'text':'🟢 ON','callback_data':'on'},{'text':'🔴 OFF','callback_data':'off'}]]}
 STATE=Path('state.json')
+MIN_POOL_AGE=300
+MAX_POOL_AGE=18000
+MIN_LIQUIDITY=10000
+MIN_VOLUME_5M=1500
+MIN_BUYS_5M=12
+MIN_BUY_SELL_RATIO=1.5
 
 def request(url, data=None):
     raw=None if data is None else json.dumps(data).encode()
@@ -59,25 +65,20 @@ def market_rejection(p, now):
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
         if not all(numeric(v) for v in (created,lp,volume,buys,sells)):
             return 'missing_metrics'
-        if not 300<=now-created<=10800: return 'age'
-        if lp<5000: return 'liquidity'
-        if volume<500: return 'volume_5m'
-        if buys<5 or sells<0 or int(buys)!=buys or int(sells)!=sells: return 'transactions_5m'
-        if buys/max(sells,1)<1.0: return 'buy_sell_ratio'
+        if not MIN_POOL_AGE<=now-created<=MAX_POOL_AGE: return 'age'
+        if lp<MIN_LIQUIDITY: return 'liquidity'
+        if volume<MIN_VOLUME_5M: return 'volume_5m'
+        if buys<MIN_BUYS_5M or sells<0 or int(buys)!=buys or int(sells)!=sells: return 'transactions_5m'
+        if buys/max(sells,1)<MIN_BUY_SELL_RATIO: return 'buy_sell_ratio'
         return None
     except (KeyError,TypeError,ValueError,OverflowError,ZeroDivisionError):
         return 'missing_metrics'
 
 def candidate(p, now):
-    if not isinstance(p,dict): return None
+    if market_rejection(p,now) is not None: return None
     try:
-        created=p['pairCreatedAt']/1000
         lp=p['liquidity']['usd']; volume=p['volume']['m5']
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
-        if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress']: return None
-        if not p['baseToken']['symbol'] or not all(numeric(v) for v in (created,lp,volume,buys,sells)): return None
-        if not 300<=now-created<=10800 or lp<5000 or volume<500 or buys<5 or sells<0: return None
-        if int(buys)!=buys or int(sells)!=sells or buys/max(sells,1)<1.0: return None
         return dict(p,score=0.4*math.log1p(lp)+0.35*math.log1p(volume)+0.25*math.log1p(buys/max(sells,1)))
     except (KeyError,TypeError,ValueError,OverflowError): return None
 
@@ -109,7 +110,7 @@ def liquidity_risk_reason(p):
         cap=market_cap(p)
         if not numeric(lp) or cap is None:
             return 'unverified_liquidity_or_cap'
-        if lp < 10000:
+        if lp < MIN_LIQUIDITY:
             return 'low_liquidity'
         if lp / cap < 0.08:
             return 'thin_liquidity_relative_to_cap'
@@ -394,11 +395,16 @@ def scan(state, chat):
             stats['momentum_'+crash_reason]=stats.get('momentum_'+crash_reason,0)+1
             print('MOMENTUM_GATE_REJECT mint='+mint+' reason='+crash_reason)
             continue
+        # Slow holder/risk requests must not let an expired pool reach Telegram.
+        if candidate(p,time.time()) is None:
+            stats['market_expired']+=1
+            continue
         holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\n'
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
-        text=(f'🔎 <b>KANDIDAT SOLANA | {symbol}</b>\n'
+        text=(f'🔎 <b>POOL BARU SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
               f'⏱ Umur pool: <b>{age//60} menit</b>\n'
+              'ℹ️ Umur mint belum diverifikasi; pool baru bisa berisi token lama.\n'
               f"💰 Market cap: <b>${market_cap(p):,.0f}</b>\n"
               f"💧 Likuiditas: <b>${p['liquidity']['usd']:,.0f}</b>\n"
               f"📊 Volume 5m: <b>${p['volume']['m5']:,.0f}</b>\n"
@@ -439,7 +445,7 @@ def main():
     print('TELEGRAM_DESTINATION_OK type='+group['type'])
     chat=group['id']
     if not state['initialized']:
-        msg=tg('sendMessage',chat_id=chat,text='✅ Bot screening tersambung. Pool maksimal 3 jam; maksimal 5 token per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
+        msg=tg('sendMessage',chat_id=chat,text='✅ Scanner pool baru Solana tersambung. Umur pool 5 menit–5 jam; maksimal 5 kandidat per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
         print('TELEGRAM_TEST_OK message_id='+str(msg['message_id']))
         state['initialized']=True;save(state)
     updates=tg('getUpdates',offset=state['offset'],timeout=0,allowed_updates=['callback_query'])

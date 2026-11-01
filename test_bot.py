@@ -46,28 +46,32 @@ class Filters(unittest.TestCase):
         self.assertIsNone(candidate(self.p,1000))
         self.assertIsNone(candidate(self.p,1239.99))
         self.assertIsNotNone(candidate(self.p,1240))
-        self.assertIsNotNone(candidate(self.p,11740))
-        self.assertIsNone(candidate(self.p,11740.01))
+        self.assertIsNotNone(candidate(self.p,18940))
+        self.assertIsNone(candidate(self.p,18940.01))
         self.assertIsNone(candidate(self.p,939))
     def test_missing_or_invalid(self):
         for field in ('liquidity','volume','txns','pairCreatedAt'):
             p=copy.deepcopy(self.p);del p[field];self.assertIsNone(candidate(p,1240))
         for val in (None,float('nan'),float('inf'),True,-1):
             p=copy.deepcopy(self.p);p['liquidity']['usd']=val;self.assertIsNone(candidate(p,1240))
-    def test_looser_market_thresholds(self):
+    def test_new_pool_market_thresholds(self):
         p=copy.deepcopy(self.p)
-        p['liquidity']['usd']=5000
-        p['volume']['m5']=500
-        p['txns']['m5']={'buys':5,'sells':5}
+        p['liquidity']['usd']=10000
+        p['volume']['m5']=1500
+        p['txns']['m5']={'buys':12,'sells':8}
         self.assertIsNotNone(candidate(p,1240))
-        p['liquidity']['usd']=4999
+        p['liquidity']['usd']=9999
         self.assertIsNone(candidate(p,1240))
-        p['liquidity']['usd']=5000
-        p['volume']['m5']=499
+        p['liquidity']['usd']=10000
+        p['volume']['m5']=1499
         self.assertIsNone(candidate(p,1240))
-        p['volume']['m5']=500
-        p['txns']['m5']['buys']=4
+        p['volume']['m5']=1500
+        p['txns']['m5']['buys']=11
         self.assertIsNone(candidate(p,1240))
+        p['txns']['m5']={'buys':12,'sells':9}
+        self.assertIsNone(candidate(p,1240))
+        p['txns']['m5']={'buys':12,'sells':0}
+        self.assertIsNotNone(candidate(p,1240))
     def test_pressure(self):
         self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1240))
     def test_malformed_feed_rows(self):
@@ -100,9 +104,28 @@ class Filters(unittest.TestCase):
             self.assertIsNone(market_cap(self.p))
         del self.p['marketCap']
         self.assertIsNone(market_cap(self.p))
+    def test_pool_expiring_during_risk_check_is_not_sent(self):
+        p=copy.deepcopy(self.p)
+        p.update(marketCap=100000,priceChange={'m5':3,'h1':12})
+        b=bytearray(82);b[45]=1
+        account={'owner':PROGRAM,'executable':False,'data':[base64.b64encode(b).decode(),'base64']}
+        clock=[1240]
+        def response(url,data=None):
+            if data is not None:
+                return {'result':{'value':[account]}}
+            if '/latest/dex/pairs/' in url:
+                return {'pairs':[p]}
+            if 'rugcheck.xyz' in url:
+                clock[0]=18940.01
+                return {'risks':[],'score_normalised':20}
+            raise AssertionError('Unexpected request')
+        with patch.object(bot,'discover',return_value=[p]), patch.object(bot.time,'time',side_effect=lambda:clock[0]), patch.object(bot,'request',side_effect=response), patch.object(bot,'holder_concentration',return_value=20), patch.object(bot,'tg') as telegram, patch.object(bot,'save') as save:
+            bot.scan({'sent':{}},'chat')
+        telegram.assert_not_called()
+        save.assert_not_called()
     def test_market_rejection_reasons(self):
         self.assertIsNone(market_rejection(self.p,1240))
-        cases=[('liquidity',lambda p:p['liquidity'].update(usd=4999)),('volume_5m',lambda p:p['volume'].update(m5=499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=4)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-11000000))]
+        cases=[('liquidity',lambda p:p['liquidity'].update(usd=9999)),('volume_5m',lambda p:p['volume'].update(m5=1499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=11)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-20000000))]
         for expected,modify in cases:
             p=copy.deepcopy(self.p);modify(p)
             self.assertEqual(market_rejection(p,1240),expected)
