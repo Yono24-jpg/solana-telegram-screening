@@ -54,11 +54,28 @@ export function mintSafe(a){
  }catch{return false;}
 }
 async function context(env){
- let count=0;const upstreamErrors=[];
- async function json(url,init={}){if(++count>38)throw Error('request_budget');const r=await fetch(url,{...init,headers:{'User-Agent':'Mozilla/5.0 (compatible; SolanaScreening/1.0)',...(init.headers||{})},signal:AbortSignal.timeout(10000)});if(!r.ok){upstreamErrors.push({host:new URL(url).hostname,status:r.status});throw Error('http_'+r.status);}return r.json();}
+ let count=0,rates={};const upstreamErrors=[];
+ const seenHosts=new Set();
+ async function json(url,init={}){
+  const host=new URL(url).hostname,now=Date.now()/1000,cache=globalThis.caches?.default,cacheKey=new Request('https://solana-screening-minute.maille47604.workers.dev/_provider_cooldown/'+host);
+  if(!seenHosts.has(host)){seenHosts.add(host);if(cache)try{const saved=await cache.match(cacheKey);if(saved){const j=await saved.json();if(finite(j.until))rates[host]=Math.max(rates[host]||0,j.until);}}catch{}}
+  if((rates[host]||0)>now)throw Error('provider_rate_limited');
+  if(++count>34)throw Error('request_budget');
+  const r=await fetch(url,{...init,headers:{'User-Agent':'Mozilla/5.0 (compatible; SolanaScreening/1.0)',...(init.headers||{})},signal:AbortSignal.timeout(10000)});
+  if(!r.ok){
+   upstreamErrors.push({host,status:r.status});
+   if(r.status===429){
+    const h=r.headers.get('Retry-After'),seconds=h!==null&&Number.isFinite(Number(h))?Number(h):(Date.parse(h||'')-Date.now())/1000;
+    const wait=Math.max(60,Math.min(finite(seconds)&&seconds>0?seconds:60,86400));rates[host]=Math.ceil(now+wait);
+    if(cache)try{await cache.put(cacheKey,new Response(JSON.stringify({until:rates[host]}),{headers:{'Content-Type':'application/json','Cache-Control':'public,max-age='+Math.ceil(wait)}}));}catch{}
+   }
+   throw Error('http_'+r.status);
+  }
+  delete rates[host];return r.json();
+ }
  async function rpc(method,params){const j=await json(env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(j.error||j.result===undefined)throw Error('rpc_rejected');return j.result;}
  async function tg(method,data){const j=await json('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!j.ok)throw Error('telegram_rejected');return j.result;}
- return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors};
+ return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;}};
 }
 async function discover(c,state={},now=Math.floor(Date.now()/1000)){
  const pools=new Map(),mints=new Set();
@@ -103,11 +120,12 @@ async function track(c,env,state,status,now,pools){
 }
 async function run(env,scheduled=true){
  const now=Math.floor(Date.now()/1000),c=await context(env),day=new Date().toISOString().slice(0,10);
- const status={at:now,scheduled,mode:'always_on',engine:'momentum_v2.1',enabled:true,checked:0,passed:0,sent:0,errors:0,rejected:{},performanceUpdates:0};
+ const status={at:now,scheduled,mode:'always_on',engine:'momentum_v2.2',enabled:true,checked:0,passed:0,sent:0,errors:0,rejected:{},performanceUpdates:0};
  const reject=reason=>{status.rejected[reason]=(status.rejected[reason]||0)+1;};
  let state={observations:{},alerts:[]};
  try{
   state=await env.SCANNER_STATE.get('history','json')||state;
+  state.cooldowns=state.cooldowns||{};c.useRates(state.cooldowns);
   const pools=new Map();await track(c,env,state,status,now,pools);
   const discovered=await discover(c,state,now);status.discovered=discovered.size;status.extraSourcePools=state.discovery?.pools?.length||0;
   for(const [id,p]of discovered)pools.set(id,p);
@@ -129,11 +147,11 @@ async function run(env,scheduled=true){
   ranked.sort((a,b)=>b.q.score-a.q.score);
   const unique=new Set(),candidates=ranked.filter(x=>{const mint=x.p.baseToken.address;if(unique.has(mint))return false;unique.add(mint);return true;}).slice(0,5),alerts=[];
   const daily=await env.SCANNER_STATE.get('deliveries:'+day,'json')||{count:0,mints:[]};
-  let accounts=[];if(candidates.length&&c.count()<=31)try{accounts=(await c.rpc('getMultipleAccounts',[candidates.map(x=>x.p.baseToken.address),{encoding:'base64',commitment:'confirmed'}])).value||[];}catch{status.errors++;reject('rpc_mint_unavailable');}
+  let accounts=[];if(candidates.length&&c.count()<=27)try{accounts=(await c.rpc('getMultipleAccounts',[candidates.map(x=>x.p.baseToken.address),{encoding:'base64',commitment:'confirmed'}])).value||[];}catch{status.errors++;reject('rpc_mint_unavailable');}
   for(let i=0;i<candidates.length;i++){
    const {p}=candidates[i],mint=p.baseToken.address,sample=samples.find(x=>x.pair===p.pairAddress);
    if(daily.mints.includes(mint)){reject('already_alerted');continue;}
-   if(c.count()>31){reject('complete_check_budget_exhausted');continue;}
+   if(c.count()>27){reject('complete_check_budget_exhausted');continue;}
    status.checked++;
    const fail=reason=>{reject(reason);if(sample){sample.reason=reason;sample.security='not_passed';}};
    try{
@@ -153,7 +171,7 @@ async function run(env,scheduled=true){
    }catch{status.errors++;fail('security_request_failed');}
   }
   for(const {p,q,top,observedAt}of alerts.slice(0,5)){
-   if(daily.count>=200||c.count()>=38)break;
+   if(daily.count>=200||c.count()>=34)break;
    if(!market(p,Date.now()/1000)||Date.now()/1000-observedAt>30){reject('market_snapshot_expired_before_send');continue;}
    const mint=p.baseToken.address,price=snap(p,now)?.price;
    if(!finite(price)||price<=0){reject('alert_price_missing');continue;}
@@ -178,7 +196,7 @@ async function run(env,scheduled=true){
 export default{
  async scheduled(event,env,ctx){ctx.waitUntil(run(env,true));},
  async fetch(request,env){
-  const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',engine:'momentum_v2.1',configured:!!env.SCANNER_STATE});
+  const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',engine:'momentum_v2.2',configured:!!env.SCANNER_STATE});
   if(path==='/data'){const s=await env.SCANNER_STATE.get('history','json')||{};return Response.json({status:s.status||{pending:true},samples:s.samples||[],results:(s.alerts||[]).map(({body,...entry})=>entry),note:'Samples are observations, not approved signals. Results exist only after a confirmed Telegram alert; price samples are not realised trading profit.'},{headers:{'Cache-Control':'no-store'}});}
   if(request.headers.get('Authorization')!=='Bearer '+env.DEPLOY_CHECK_KEY)return new Response('Forbidden',{status:403});
   if(path==='/admin/probe'&&request.method==='POST'){const c=await context(env),s=await env.SCANNER_STATE.get('history','json')||{},pools=await discover(c,s),rejected={},qualified=[];for(const p of pools.values()){const q=assess(p,s.observations?.[p.pairAddress],Date.now()/1000);if(q.reason)rejected[q.reason]=(rejected[q.reason]||0)+1;else qualified.push({symbol:p.baseToken.symbol,mint:p.baseToken.address,score:q.score,security:'not_checked'});}return Response.json({pools:pools.size,rejected,qualified,upstreamErrors:c.errors(),requests:c.count()});}
