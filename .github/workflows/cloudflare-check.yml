@@ -33,6 +33,12 @@ jobs:
           status['age_seconds']=round(now-status.get('at',0))
           status['time_wit']=datetime.datetime.fromtimestamp(status.get('at',0),datetime.timezone(datetime.timedelta(hours=9))).isoformat()
           print('LIVE_SCANNER_STATE '+json.dumps(status),flush=True)
+          sample_fields=('symbol','mint','pair','at','poolAgeMinutes','liquidity','volume5m','buys','sells','score','reason','security','source')
+          samples=[{k:s[k] for k in sample_fields if k in s} for s in state.get('samples',[]) if isinstance(s,dict)]
+          print('LIVE_CANDIDATE_OUTCOMES '+json.dumps(samples),flush=True)
+          receipt_fields=('mint','pair','alertAt','messageId','message_id','alertPrice','lastAt','gain')
+          alerts=[{k:a[k] for k in receipt_fields if k in a} for a in state.get('alerts',[]) if isinstance(a,dict)]
+          print('CONFIRMED_ALERT_RECORDS '+json.dumps(alerts),flush=True)
           rows=state.get('observations',{})
           fresh=[r for a in rows.values() for r in a if isinstance(r,dict) and 0<=now-r.get('t',0)<=1800]
           baselines=[r for r in fresh if 300<=now-r['t']<=900]
