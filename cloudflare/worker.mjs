@@ -200,7 +200,7 @@ async function run(env,scheduled=true){
     const holders=(await c.rpc('getTokenLargestAccounts',[mint,{commitment:'confirmed'}])).value;
     if(typeof supply!=='string'||!/^[0-9]+$/.test(supply)||BigInt(supply)<=0n||!Array.isArray(holders)||holders.length<10||!holders.slice(0,10).every(x=>typeof x.amount==='string'&&/^[0-9]+$/.test(x.amount))){fail('holder_data_incomplete');continue;}
     const top=holders.slice(0,10).reduce((a,x)=>a+BigInt(x.amount),0n);
-    if(top*100n>BigInt(supply)*30n){fail('top10_accounts_over_30pct');continue;}
+    if(top*100n>BigInt(supply)*50n){fail('top10_accounts_over_50pct');continue;}
     const rug=await c.json('https://api.rugcheck.xyz/v1/tokens/'+mint+'/report/summary');
     if(!Array.isArray(rug.risks)||rug.risks.some(x=>typeof x.level!=='string'||['danger','critical'].includes(x.level.toLowerCase()))||!finite(rug.score_normalised)||rug.score_normalised<0||rug.score_normalised>=60){fail('rugcheck_not_passed');continue;}
     let latest;
