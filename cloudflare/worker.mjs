@@ -102,6 +102,7 @@ export default{
  async fetch(request,env){
   const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',configured:!!env.SCANNER_STATE});
   if(request.headers.get('Authorization')!=='Bearer '+env.DEPLOY_CHECK_KEY)return new Response('Forbidden',{status:403});
+  if(path==='/admin/probe'&&request.method==='POST'){const c=await context(env);const pools=await discover(c);return Response.json({pools:pools.size,upstreamErrors:c.errors(),requests:c.count()});}
   if(path==='/admin/status')return Response.json((await env.SCANNER_STATE.get('history','json'))?.status||{pending:true});
   if(path==='/admin/test'&&request.method==='POST'){
    try{const c=await context(env),chat=await c.tg('getChat',{chat_id:env.TELEGRAM_CHAT_ID});if(!['channel','group','supergroup'].includes(chat.type))throw Error('unsupported_chat');const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text:'UJI CLOUDFLARE BERHASIL — pesan ini dikirim langsung oleh Worker. Jadwal screening dipasang terpisah. ON/OFF memakai kendali bersama bot GitHub; perubahan mengikuti pemrosesan bot tersebut. Ini pesan uji koneksi, bukan rekomendasi token.',reply_markup:KEYBOARD});console.log(JSON.stringify({event:'telegram_test_sent',message_id:r.message_id,chat_type:chat.type}));return Response.json({ok:true,message_id:r.message_id,chat_type:chat.type,chat_title:chat.title});}catch{return Response.json({ok:false,error:'telegram_test_failed'},{status:502});}

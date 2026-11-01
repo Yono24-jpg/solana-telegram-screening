@@ -75,6 +75,8 @@ def main():
     with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
         f.write('Worker: '+url+'\n\nTelegram test: '+json.dumps(test,ensure_ascii=False)+'\n\n')
     # Confirm a real cron invocation via the state it writes, not a manual scan.
+    probe=request(url+'/admin/probe','POST',b'{}',{'Authorization':'Bearer '+checkkey,'Content-Type':'application/json'})
+    print('MARKET_SOURCE_PROBE '+json.dumps(probe),flush=True)
     start=int(time.time())
     for i in range(30):
         try:
@@ -82,6 +84,7 @@ def main():
             status=state.get('status',{})
             if status.get('scheduled') is True and status.get('at',0)>=start-60:
                 print('SCHEDULED_RUN_CONFIRMED '+json.dumps(status),flush=True)
+                if status.get('enabled') and not status.get('discovered'):raise RuntimeError('scheduled_scan_has_no_market_data')
                 with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('Real scheduled run: '+json.dumps(status)+'\n')
                 return
         except RuntimeError:pass
