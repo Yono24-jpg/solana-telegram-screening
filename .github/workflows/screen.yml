@@ -2,7 +2,8 @@ name: Solana Telegram Screening
 # Run to process the latest Telegram ON/OFF callback.
 on:
   push:
-    paths: ['bot.py', 'test_bot.py', '.github/workflows/screen.yml']
+    branches: [main]
+    paths: ['bot.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
     - cron: '3-59/5 * * * *'
@@ -39,7 +40,7 @@ jobs:
           for scan in 1 2 3 4; do
             echo "SCAN_CYCLE=$scan UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             python3 bot.py || exit 1
-            if [ "$scan" -lt 4 ]; then sleep 60; fi
+            if [ "$scan" -lt 4 ]; then sleep 45; fi
           done
       - name: Persist control and delivery state
         if: always()
@@ -51,12 +52,14 @@ jobs:
             python3 - <<'PY'
           import json, subprocess, time
           from pathlib import Path
+          from signal_quality import merge_observations
           local=json.loads(Path('/tmp/scan-state.json').read_text())
           try:
               remote=json.loads(subprocess.check_output(['git','show','origin/main:state.json'],text=True))
           except (subprocess.CalledProcessError,ValueError):
               remote={}
           merged=dict(remote)
+          merged['observations']=merge_observations(remote.get('observations',{}),local.get('observations',{}),now=time.time())
           # Merge concurrent deliveries, but never restore entries older than five hours.
           merged['sent']={mint:ts for mint,ts in {**local.get('sent',{}),**remote.get('sent',{})}.items() if isinstance(ts,(int,float)) and not isinstance(ts,bool) and 0 <= time.time()-ts < 18000}
           merged['offset']=max(local.get('offset',0),remote.get('offset',0))
@@ -75,3 +78,4 @@ jobs:
           done
           echo "STATE_PERSIST_FAILED after retries"
           exit 1
+

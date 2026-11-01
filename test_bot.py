@@ -1,10 +1,17 @@
 import base64, copy, unittest
 from unittest.mock import patch
+from signal_quality import snapshot
 import bot
 from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, liquidity_risk_reason, rugcheck_risk_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
         self.p={'pairCreatedAt':940000,'chainId':'solana','baseToken':{'address':'mint','symbol':'TEST'},'pairAddress':'pair','liquidity':{'usd':20000},'volume':{'m5':2500},'txns':{'m5':{'buys':25,'sells':10}}}
+        self.p.update(priceUsd='1.05',marketCap=100000,priceChange={'m5':3,'h1':12})
+    def history(self,p):
+        before=copy.deepcopy(p)
+        before['priceUsd']='1.0'
+        before['volume']['m5']=1500
+        return {p['pairAddress']:[snapshot(before,940)]}
     def test_crash_risk_gate(self):
         p={'priceChange':{'m5':3,'h1':12}}
         self.assertIsNone(crash_risk_reason(p))
@@ -78,6 +85,9 @@ class Filters(unittest.TestCase):
         for row in (None,[],42,'invalid'):
             self.assertIsNone(candidate(row,1240))
             self.assertEqual(market_rejection(row,1240),'invalid_identity')
+        for address in ([],{},123,'bad/address','bad"link'):
+            p=copy.deepcopy(self.p);p['baseToken']['address']=address
+            self.assertIsNone(candidate(p,1240))
     def test_sent_tokens_do_not_starve_new_candidates(self):
         # Thirty higher-ranking old alerts previously excluded the unseen mint.
         pools=[]
@@ -89,12 +99,13 @@ class Filters(unittest.TestCase):
             pools.append(p)
             state['sent'][p['baseToken']['address']]=1240
         unseen=copy.deepcopy(self.p)
-        unseen['baseToken']['address']='new-mint'
+        unseen['baseToken']['address']='newMint'
         pools.extend([None,unseen])
-        with patch.object(bot,'discover',return_value=pools), patch.object(bot.time,'time',return_value=1240), patch.object(bot,'request',return_value={'result':{'value':[None]}}) as rpc, patch.object(bot,'tg') as telegram:
+        state['observations']=self.history(unseen)
+        with patch.object(bot,'discover',return_value=pools), patch.object(bot.time,'time',return_value=1240), patch.object(bot,'request',return_value={'result':{'value':[None]}}) as rpc, patch.object(bot,'tg') as telegram, patch.object(bot,'save'):
             bot.scan(state,'chat')
         rpc.assert_called_once()
-        self.assertEqual(rpc.call_args.args[1]['params'][0],['new-mint'])
+        self.assertEqual(rpc.call_args.args[1]['params'][0],['newMint'])
         telegram.assert_not_called()
     def test_market_cap(self):
         self.p['marketCap']=125000
@@ -120,9 +131,9 @@ class Filters(unittest.TestCase):
                 return {'risks':[],'score_normalised':20}
             raise AssertionError('Unexpected request')
         with patch.object(bot,'discover',return_value=[p]), patch.object(bot.time,'time',side_effect=lambda:clock[0]), patch.object(bot,'request',side_effect=response), patch.object(bot,'holder_concentration',return_value=20), patch.object(bot,'tg') as telegram, patch.object(bot,'save') as save:
-            bot.scan({'sent':{}},'chat')
+            bot.scan({'sent':{},'observations':self.history(p)},'chat')
         telegram.assert_not_called()
-        save.assert_not_called()
+        save.assert_called_once()
     def test_market_rejection_reasons(self):
         self.assertIsNone(market_rejection(self.p,1240))
         cases=[('liquidity',lambda p:p['liquidity'].update(usd=9999)),('volume_5m',lambda p:p['volume'].update(m5=1499)),('transactions_5m',lambda p:p['txns']['m5'].update(buys=11)),('buy_sell_ratio',lambda p:p['txns']['m5'].update(sells=30)),('age',lambda p:p.update(pairCreatedAt=-20000000))]

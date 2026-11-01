@@ -1,6 +1,7 @@
 """Alert-only screening. Never loads wallet keys or sends transactions."""
 import base64, html, json, math, os, struct, time, urllib.request, urllib.error
 from pathlib import Path
+from signal_quality import observe, assess
 DEX='https://api.dexscreener.com'
 PROGRAM='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
@@ -12,11 +13,14 @@ MIN_LIQUIDITY=10000
 MIN_VOLUME_5M=1500
 MIN_BUYS_5M=12
 MIN_BUY_SELL_RATIO=1.5
+REQUEST_DEADLINE=None
 
 def request(url, data=None):
+    remaining=18 if REQUEST_DEADLINE is None else REQUEST_DEADLINE-time.monotonic()
+    if remaining<=0: raise TimeoutError('Scan time budget exhausted')
     raw=None if data is None else json.dumps(data).encode()
     req=urllib.request.Request(url, data=raw, headers={'Content-Type':'application/json','User-Agent':'SolanaScreening/1.0'})
-    with urllib.request.urlopen(req,timeout=18) as r:
+    with urllib.request.urlopen(req,timeout=min(18,remaining)) as r:
         return json.load(r)
 
 def tg(method, **args):
@@ -58,8 +62,11 @@ def numeric(x):
 def market_rejection(p, now):
     if not isinstance(p,dict): return 'invalid_identity'
     try:
-        if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress'] or not p['baseToken']['symbol']:
+        identity=(p['baseToken']['address'],p['pairAddress'])
+        if (p['chainId']!='solana' or not all(isinstance(x,str) and x and len(x)<=64 and x.isascii() and x.isalnum() for x in identity)
+                or not isinstance(p['baseToken']['symbol'],str) or not p['baseToken']['symbol']):
             return 'invalid_identity'
+        if not numeric(p['pairCreatedAt']): return 'missing_metrics'
         created=p['pairCreatedAt']/1000
         lp=p['liquidity']['usd']; volume=p['volume']['m5']
         buys=p['txns']['m5']['buys']; sells=p['txns']['m5']['sells']
@@ -290,7 +297,10 @@ def holder_concentration(mint):
 def scan(state, chat):
     selected={}
     stats={'pools_seen':0,'market_rejected':0,'already_sent':0,'security_rejected':0,'market_expired':0,'refresh_rejected':0,'refresh_error':0}
-    for p in discover():
+    pools=discover()
+    observe(state,pools,time.time())
+    save(state)
+    for p in pools:
         stats['pools_seen']+=1
         # Sent tokens must not consume any of the 30 security-check slots.
         if isinstance(p,dict) and isinstance(p.get('baseToken'),dict):
@@ -300,13 +310,20 @@ def scan(state, chat):
                 continue
         c=candidate(p,time.time())
         if c:
+            cheap_reason=liquidity_risk_reason(c) or crash_risk_reason(c)
+            quality_reason,quality=assess(c,state['observations'],time.time())
+            rejection=cheap_reason or quality_reason
+            if rejection:
+                stats['quality_'+rejection]=stats.get('quality_'+rejection,0)+1
+                continue
+            c['quality']=quality
             mint=c['baseToken']['address']
-            if mint not in selected or selected[mint]['score']<c['score']: selected[mint]=c
+            if mint not in selected or selected[mint]['quality']['score']<quality['score']: selected[mint]=c
         else:
             stats['market_rejected']+=1
             reason=market_rejection(p,time.time()) or 'unknown_market'
             stats['market_'+reason]=stats.get('market_'+reason,0)+1
-    ranked=sorted(selected.values(),key=lambda p:p['score'],reverse=True)
+    ranked=sorted(selected.values(),key=lambda p:p['quality']['score'],reverse=True)
     # Explicitly show how many market-qualified mints use a supported token
     # program. Never downgrade the token-program requirement to boost alerts.
     print(f'MARKET_QUALIFIED unique_mints={len(ranked)}')
@@ -330,6 +347,9 @@ def scan(state, chat):
     print('SECURITY_OWNER_PROGRAMS '+json.dumps(owner_counts,sort_keys=True))
     holder_rpc_rate_limited=False
     for p,a in zip(ranked,accounts):
+        if REQUEST_DEADLINE is not None and time.monotonic()>=REQUEST_DEADLINE:
+            stats['time_budget_exhausted']=1
+            break
         mint=p['baseToken']['address']
         if mint in state['sent']:
             stats['already_sent']+=1;continue
@@ -399,10 +419,15 @@ def scan(state, chat):
         if candidate(p,time.time()) is None:
             stats['market_expired']+=1
             continue
+        quality_reason,quality=assess(p,state['observations'],time.time())
+        if quality_reason:
+            stats['quality_'+quality_reason]=stats.get('quality_'+quality_reason,0)+1
+            continue
         holder_info=f'📊 10 akun token terbesar: <b>{top_accounts_pct:.2f}%</b> (bukan Top 10 wallet)\n'
         symbol=html.escape(p['baseToken']['symbol'][:40]); age=int(time.time()-p['pairCreatedAt']/1000)
-        text=(f'🔎 <b>POOL BARU SOLANA | {symbol}</b>\n'
+        text=(f'🔎 <b>KANDIDAT AWAL SOLANA | {symbol}</b>\n'
               '━━━━━━━━━━━━━━━━━━\n'
+              f"🎯 Skor filter: <b>{quality['score']:.0f}/100</b> (bukan probabilitas untung)\n"
               f'⏱ Umur pool: <b>{age//60} menit</b>\n'
               'ℹ️ Umur mint belum diverifikasi; pool baru bisa berisi token lama.\n'
               f"💰 Market cap: <b>${market_cap(p):,.0f}</b>\n"
@@ -410,9 +435,16 @@ def scan(state, chat):
               f"📊 Volume 5m: <b>${p['volume']['m5']:,.0f}</b>\n"
               f"🟢 BUY / 🔴 SELL (5m): <b>{p['txns']['m5']['buys']} / {p['txns']['m5']['sells']}</b>\n"
               '━━━━━━━━━━━━━━━━━━\n'
+              '📈 <b>ALASAN LOLOS</b>\n'
+              f"• Porsi transaksi BUY: <b>{quality['buy_share']:.1f}%</b>\n"
+              f"• Volume 5m: <b>{quality['volume_growth']:.2f}×</b> dibanding {quality['comparison_minutes']:.0f} menit lalu\n"
+              f"• Likuiditas tersisa: <b>{quality['liquidity_retention']:.1f}%</b> dari pembanding\n"
+              f"• Harga 5m / 1j: <b>{quality['m5']:+.1f}% / {quality['h1']:+.1f}%</b>\n"
+              '━━━━━━━━━━━━━━━━━━\n'
               '🛡 <b>KEAMANAN</b>\n'
               '✅ Mint authority: nonaktif\n'
               '✅ Freeze authority: nonaktif\n'
+              '✅ Tidak ada flag bahaya dari pemeriksaan RugCheck\n'
               f'{holder_info}'
               '⚠️ Top 10 wallet: cek manual\n'
               '━━━━━━━━━━━━━━━━━━\n'
@@ -435,6 +467,9 @@ def save(state):
     tmp=STATE.with_suffix('.tmp');tmp.write_text(json.dumps(state));tmp.replace(STATE)
 
 def main():
+    global REQUEST_DEADLINE
+    # Bound network work so repeated scans leave time for state persistence.
+    REQUEST_DEADLINE=time.monotonic()+30
     chat=os.environ['TELEGRAM_CHAT_ID']
     state=json.loads(STATE.read_text()) if STATE.exists() else {'enabled':False,'offset':0,'sent':{},'initialized':False}
     tg('getMe')
