@@ -1,4 +1,6 @@
 import base64, copy, unittest
+from unittest.mock import patch
+import bot
 from bot import candidate, secure, market_cap, market_rejection, security_reason, crash_risk_reason, liquidity_risk_reason, rugcheck_risk_reason, PROGRAM, TOKEN_2022
 class Filters(unittest.TestCase):
     def setUp(self):
@@ -68,6 +70,28 @@ class Filters(unittest.TestCase):
         self.assertIsNone(candidate(p,1240))
     def test_pressure(self):
         self.p['txns']['m5']['sells']=40;self.assertIsNone(candidate(self.p,1240))
+    def test_malformed_feed_rows(self):
+        for row in (None,[],42,'invalid'):
+            self.assertIsNone(candidate(row,1240))
+            self.assertEqual(market_rejection(row,1240),'invalid_identity')
+    def test_sent_tokens_do_not_starve_new_candidates(self):
+        # Thirty higher-ranking old alerts previously excluded the unseen mint.
+        pools=[]
+        state={'sent':{}}
+        for i in range(30):
+            p=copy.deepcopy(self.p)
+            p['baseToken']['address']='sent'+str(i)
+            p['liquidity']['usd']=1000000
+            pools.append(p)
+            state['sent'][p['baseToken']['address']]=1240
+        unseen=copy.deepcopy(self.p)
+        unseen['baseToken']['address']='new-mint'
+        pools.extend([None,unseen])
+        with patch.object(bot,'discover',return_value=pools), patch.object(bot.time,'time',return_value=1240), patch.object(bot,'request',return_value={'result':{'value':[None]}}) as rpc, patch.object(bot,'tg') as telegram:
+            bot.scan(state,'chat')
+        rpc.assert_called_once()
+        self.assertEqual(rpc.call_args.args[1]['params'][0],['new-mint'])
+        telegram.assert_not_called()
     def test_market_cap(self):
         self.p['marketCap']=125000
         self.assertEqual(market_cap(self.p),125000)
@@ -132,3 +156,4 @@ class Filters(unittest.TestCase):
         b[46]=1;a['data'][0]=base64.b64encode(b).decode();self.assertFalse(secure(a))
         a['owner']='Token2022';self.assertFalse(secure(a));self.assertFalse(secure(None))
 if __name__=='__main__':unittest.main()
+
