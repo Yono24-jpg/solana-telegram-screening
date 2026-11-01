@@ -1,0 +1,49 @@
+name: Cloudflare Operational Check
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cloudflare-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read live Cloudflare state without redeploying or sending test messages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,time,datetime
+          sys.path.insert(0,'cloudflare')
+          import deploy as c
+          accounts=c.cf('accounts?per_page=50')
+          if len(accounts)!=1:raise SystemExit('ACCOUNT_SELECTION_REQUIRED')
+          prefix='accounts/'+accounts[0]['id']+'/'
+          namespaces=c.cf(prefix+'storage/kv/namespaces?per_page=100')
+          ns=next(x['id'] for x in namespaces if x['title']==c.NAME+'-state')
+          state=json.loads(c.cf(prefix+'storage/kv/namespaces/'+ns+'/values/history',raw=True))
+          status=state.get('status',{})
+          now=time.time()
+          status['age_seconds']=round(now-status.get('at',0))
+          status['time_wit']=datetime.datetime.fromtimestamp(status.get('at',0),datetime.timezone(datetime.timedelta(hours=9))).isoformat()
+          print('LIVE_SCANNER_STATE '+json.dumps(status),flush=True)
+          rows=state.get('observations',{})
+          fresh=[r for a in rows.values() for r in a if isinstance(r,dict) and 0<=now-r.get('t',0)<=1800]
+          baselines=[r for r in fresh if 300<=now-r['t']<=900]
+          print('HISTORY_SUMMARY '+json.dumps({'pools':len(rows),'fresh_snapshots':len(fresh),'comparison_snapshots':len(baselines)}),flush=True)
+          day=datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+          try:
+              delivery=json.loads(c.cf(prefix+'storage/kv/namespaces/'+ns+'/values/deliveries:'+day,raw=True))
+              print('DELIVERY_RESERVATIONS '+str(delivery.get('count',0)),flush=True)
+          except RuntimeError as e:
+              if str(e)=='http_404':print('DELIVERY_RESERVATIONS 0',flush=True)
+              else:raise
+          print('LIVE_CRON '+json.dumps(c.cf(prefix+'workers/scripts/'+c.NAME+'/schedules')),flush=True)
+          if status['age_seconds']>300:raise SystemExit('SCANNER_STATE_STALE')
+          if status.get('error'):raise SystemExit('SCANNER_DEGRADED '+status['error'])
+          print('LIVE_CHECK_OK',flush=True)
+          PY
