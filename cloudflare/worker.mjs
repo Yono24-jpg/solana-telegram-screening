@@ -1,5 +1,6 @@
 // Always-on Cloudflare scanner. No Telegram controls, webhook, or update polling.
 const DEX='https://api.dexscreener.com';
+const DEXFUN='https://data.dex.fun';
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const key=x=>typeof x==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(x);
 const esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -10,6 +11,17 @@ export function normalizePaprika(p,pair,now){
  if(!token||typeof token.symbol!=='string'||!token.symbol.trim()||!finite(token.fdv)||token.fdv<=0||!finite(created)||created>now||!finite(priced)||!finite(updated)||priced>now+5||updated>now+5||now-priced>120||now-updated>120)return null;
  if(!finite(p.last_price_usd)||p.last_price_usd<=0||!finite(p.liquidity_usd)||p.liquidity_usd<0||!finite(m5?.volume_usd)||m5.volume_usd<0||!Number.isInteger(m5.buys)||m5.buys<0||!Number.isInteger(m5.sells)||m5.sells<0||!finite(m5.last_price_usd_change)||!finite(h1?.last_price_usd_change))return null;
  return {chainId:'solana',pairAddress:pair,baseToken:{address:token.id,symbol:token.symbol},quoteToken:{address:p.quote_token_id},pairCreatedAt:created*1000,priceUsd:String(p.last_price_usd),fdv:token.fdv,liquidity:{usd:p.liquidity_usd},volume:{m5:m5.volume_usd},txns:{m5:{buys:m5.buys,sells:m5.sells}},priceChange:{m5:m5.last_price_usd_change,h1:h1.last_price_usd_change},_source:'dexpaprika',_sourceAt:Math.min(priced,updated)};
+}
+// Seeds discovery only. Final pool age and market/security checks remain tied to the existing pool-specific sources.
+export function normalizeDexFunLaunches(envelope,stage,nowMs,limit=30){
+ if(!envelope||envelope.stale!==false||!finite(envelope.asOf)||envelope.asOf>nowMs+5000||nowMs-envelope.asOf>90000||!Array.isArray(envelope.data)||!['new','bonding','graduated'].includes(stage))return [];
+ const timeField=stage==='graduated'?'graduatedAt':'createdAt',seen=new Set(),out=[];
+ for(const launch of envelope.data){
+  const at=launch?.[timeField];
+  if(launch?.stage!==stage||!key(launch?.mint)||!finite(at)||at<=0||at>nowMs||nowMs-at>600000||seen.has(launch.mint))continue;
+  seen.add(launch.mint);out.push(launch.mint);if(out.length>=limit)break;
+ }
+ return out;
 }
 export function marketReason(p,now){
  if(p?.chainId!=='solana'||!key(p.pairAddress)||!key(p.baseToken?.address)||typeof p.baseToken.symbol!=='string'||!p.baseToken.symbol.trim())return 'identity_missing';
@@ -65,13 +77,15 @@ export function mintSafe(a){
 async function context(env){
  let count=0,rates={},discoveryProof=null,knownFreeKey=false;const upstreamErrors=[];
  const keyFingerprint=typeof env.DEXPAPRIKA_API_KEY==='string'?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(env.DEXPAPRIKA_API_KEY))),b=>b.toString(16).padStart(2,'0')).join(''):null;
+ const dexFunKey=typeof env.DEXFUN_API_KEY==='string'?env.DEXFUN_API_KEY.trim():'';
+ const dexFunKeyFingerprint=dexFunKey?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(dexFunKey))),b=>b.toString(16).padStart(2,'0')).join(''):null;
  const seenHosts=new Set();
  async function json(url,init={}){
   const host=new URL(url).hostname,now=Date.now()/1000,cache=globalThis.caches?.default,cacheKey=new Request('https://solana-screening-minute.maille47604.workers.dev/_provider_cooldown/'+host);
   if(!seenHosts.has(host)){seenHosts.add(host);if(cache)try{const saved=await cache.match(cacheKey);if(saved){const j=await saved.json();if(finite(j.until))rates[host]=Math.max(rates[host]||0,j.until);}}catch{}}
   if((rates[host]||0)>now)throw Error('provider_rate_limited');
   if(++count>34)throw Error('request_budget');
-  const auth=host==='api.dexpaprika.com'&&env.DEXPAPRIKA_API_KEY?{Authorization:env.DEXPAPRIKA_API_KEY}:{};
+  const auth=host==='api.dexpaprika.com'&&env.DEXPAPRIKA_API_KEY?{Authorization:env.DEXPAPRIKA_API_KEY}:host==='data.dex.fun'&&dexFunKey?{Authorization:'Bearer '+dexFunKey}:{};
   const r=await fetch(url,{...init,headers:{'User-Agent':'Mozilla/5.0 (compatible; SolanaScreening/1.0)',...auth,...(init.headers||{})},signal:AbortSignal.timeout(10000)});
   if(!r.ok){
    upstreamErrors.push({host,status:r.status});
@@ -88,11 +102,34 @@ async function context(env){
    if(auth.Authorization&&plan!=='free'&&!(plan==='missing'&&knownFreeKey))throw Error('discovery_key_not_verified_free');
    if(auth.Authorization&&plan==='free')knownFreeKey=true;
   }
+  if(host==='data.dex.fun'&&r.url&&new URL(r.url).hostname!==host)throw Error('dexfun_redirect_rejected');
   delete rates[host];return r.json();
  }
  async function rpc(method,params){const j=await json(env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(j.error||j.result===undefined)throw Error('rpc_rejected');return j.result;}
  async function tg(method,data){const j=await json('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!j.ok)throw Error('telegram_rejected');return j.result;}
- return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY,discoveryProof:()=>discoveryProof,keyFingerprint:()=>keyFingerprint,trustPreviouslyVerifiedFreeKey:()=>{knownFreeKey=true;},verifiedFreeKeyFingerprint:()=>knownFreeKey?keyFingerprint:null};
+ return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY,discoveryProof:()=>discoveryProof,keyFingerprint:()=>keyFingerprint,trustPreviouslyVerifiedFreeKey:()=>{knownFreeKey=true;},verifiedFreeKeyFingerprint:()=>knownFreeKey?keyFingerprint:null,dexFunAuthenticated:!!dexFunKey,dexFunKeyFingerprint:()=>dexFunKeyFingerprint};
+}
+async function dexFunSeeds(c,state,now){
+ const cache=state.dexfun||{at:0,newMints:[],bondingMints:[],graduatedMints:[],blockedUntil:0};
+ const fp=c.dexFunKeyFingerprint();
+ if(cache.keyFingerprint&&cache.keyFingerprint!==fp){cache.at=0;cache.blockedUntil=0;cache.newMints=[];cache.bondingMints=[];cache.graduatedMints=[];cache.error=null;}
+ cache.keyFingerprint=fp;
+ if(!c.dexFunAuthenticated){cache.newMints=[];cache.bondingMints=[];cache.graduatedMints=[];cache.error='key_not_configured';state.dexfun=cache;return [];}
+ if(now>=cache.blockedUntil&&now-cache.at>=50){
+  cache.at=now;cache.newMints=[];cache.bondingMints=[];cache.graduatedMints=[];cache.error=null;cache.asOf=null;
+  for(const stage of ['new','bonding','graduated'])try{
+   const j=await c.json(DEXFUN+'/v1/launches?stage='+stage+'&sort=newest&limit=200');
+   const mints=normalizeDexFunLaunches(j,stage,Date.now(),20);
+   if(stage==='new')cache.newMints=mints;else if(stage==='bonding')cache.bondingMints=mints;else cache.graduatedMints=mints;
+   cache.asOf=Math.max(cache.asOf||0,finite(j.asOf)?j.asOf:0);
+  }catch(e){cache.error=e.message;}
+  if(!cache.newMints.length&&!cache.bondingMints.length&&!cache.graduatedMints.length&&!cache.error)cache.error='no_fresh_launches';
+  if(cache.error==='http_401')cache.blockedUntil=now+3600;
+  if(cache.error==='http_403')cache.blockedUntil=now+86400;
+ }
+ const fresh=now-cache.at<=90&&cache.asOf!==null&&cache.asOf<=Date.now()+5000&&Date.now()-cache.asOf<=90000;
+ state.dexfun=cache;
+ return fresh?[...new Set([...cache.graduatedMints,...cache.bondingMints,...cache.newMints])].slice(0,60):[];
 }
 async function discover(c,state={},now=Math.floor(Date.now()/1000)){
  const pools=new Map(),mints=new Set();
@@ -113,6 +150,8 @@ async function discover(c,state={},now=Math.floor(Date.now()/1000)){
   cache.proof=c.discoveryProof();cache.verifiedFreeKeyFingerprint=c.verifiedFreeKeyFingerprint();
  }
  cache.pools=(cache.pools||[]).filter(p=>now-p.created>=0&&now-p.created<=600);state.discovery=cache;
+ const dexFunMints=await dexFunSeeds(c,state,now);
+ for(const mint of dexFunMints)if(mints.size<90)mints.add(mint);
  const pap=cache.pools.map(p=>p.id);
  for(let i=0;i<pap.length;i+=20)try{const j=await c.json(DEX+'/latest/dex/pairs/solana/'+pap.slice(i,i+20).join(','));for(const p of j.pairs||[])if(p.chainId==='solana'&&pap.includes(p.pairAddress))pools.set(p.pairAddress,p);}catch{}
  for(const path of ['/token-profiles/latest/v1','/community-takeovers/latest/v1','/token-boosts/latest/v1','/ads/latest/v1'])try{const a=await c.json(DEX+path);if(Array.isArray(a))for(const t of a)if(t.chainId==='solana'&&key(t.tokenAddress)&&mints.size<90)mints.add(t.tokenAddress);}catch{}
@@ -169,7 +208,7 @@ async function run(env,scheduled=true){
   state=await env.SCANNER_STATE.get('history','json')||state;
   state.cooldowns=state.cooldowns||{};c.useRates(state.cooldowns);
   const pools=new Map();await track(c,env,state,status,now,pools);
-  const discovered=await discover(c,state,now);status.discovered=discovered.size;status.extraSourcePools=state.discovery?.pools?.length||0;status.extraSource={authenticated:!!state.discovery?.authenticated,error:state.discovery?.error||null,blockedUntil:state.discovery?.blockedUntil||null,proof:state.discovery?.proof||null};
+  const discovered=await discover(c,state,now);status.discovered=discovered.size;status.extraSourcePools=state.discovery?.pools?.length||0;status.extraSource={authenticated:!!state.discovery?.authenticated,error:state.discovery?.error||null,blockedUntil:state.discovery?.blockedUntil||null,proof:state.discovery?.proof||null};status.dexfun={configured:c.dexFunAuthenticated,newMints:state.dexfun?.newMints?.length||0,bondingMints:state.dexfun?.bondingMints?.length||0,graduatedMints:state.dexfun?.graduatedMints?.length||0,error:state.dexfun?.error||null};
   for(const [id,p]of discovered)pools.set(id,p);
   const rows=state.observations||{};await fallbackMarket(c,state,pools,status,now,rows);status.dexscreenerPools=discovered.size;status.discovered=pools.size;
   const watched=Object.entries(rows).filter(([,r])=>r.length&&now-r.at(-1).t<900).sort((a,b)=>b[1].at(-1).t-a[1].at(-1).t).map(([id])=>id).filter(id=>!pools.has(id)).slice(0,40);
@@ -249,7 +288,7 @@ export default{
    const c=await context(env),s=await env.SCANNER_STATE.get('history','json')||{},now=Math.floor(Date.now()/1000),rejected={},qualified=[],diagnostic={errors:0};c.useRates(s.cooldowns||{});
    const pools=await discover(c,s,now);await fallbackMarket(c,s,pools,diagnostic,now,s.observations||{});
    for(const p of pools.values()){const q=assess(p,s.observations?.[p.pairAddress],now);if(q.reason)rejected[q.reason]=(rejected[q.reason]||0)+1;else qualified.push({symbol:p.baseToken.symbol,mint:p.baseToken.address,score:q.score,security:'not_checked'});}
-   return Response.json({pools:pools.size,rejected,qualified,diagnostic,extraSource:{authenticated:!!s.discovery?.authenticated,pools:s.discovery?.pools?.length||0,error:s.discovery?.error||null,proof:s.discovery?.proof||null},upstreamErrors:c.errors(),requests:c.count()});
+   return Response.json({pools:pools.size,rejected,qualified,diagnostic,extraSource:{authenticated:!!s.discovery?.authenticated,pools:s.discovery?.pools?.length||0,error:s.discovery?.error||null,proof:s.discovery?.proof||null},dexfun:{configured:c.dexFunAuthenticated,newMints:s.dexfun?.newMints?.length||0,bondingMints:s.dexfun?.bondingMints?.length||0,graduatedMints:s.dexfun?.graduatedMints?.length||0,error:s.dexfun?.error||null},upstreamErrors:c.errors(),requests:c.count()});
   }
   if(path==='/admin/status')return Response.json((await env.SCANNER_STATE.get('history','json'))?.status||{pending:true});
   if(path==='/admin/test'&&request.method==='POST'){
