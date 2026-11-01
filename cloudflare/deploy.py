@@ -76,12 +76,19 @@ def main():
             print('WORKER_HEALTH_RETRY reason='+str(e),flush=True)
         time.sleep(5)
     else:raise RuntimeError('worker_health_failed')
-    # Send exactly once. Never retry an uncertain Telegram delivery.
-    test=request(url+'/admin/test','POST',b'{}',{'Authorization':'Bearer '+checkkey,'Content-Type':'application/json'})
-    if test.get('ok') is not True or not isinstance(test.get('message_id'),int):raise RuntimeError('telegram_delivery_unverified')
-    print('TELEGRAM_SEND_CONFIRMED '+json.dumps(test,ensure_ascii=False),flush=True)
+    # Avoid adding a test message to the user's Telegram chat on every routine deploy.
+    # Set TELEGRAM_TEST_ON_DEPLOY=true to opt in to one connectivity test.
+    test=None
+    if os.environ.get('TELEGRAM_TEST_ON_DEPLOY','').strip().lower()=='true':
+        test=request(url+'/admin/test','POST',b'{}',{'Authorization':'Bearer '+checkkey,'Content-Type':'application/json'})
+        if test.get('ok') is not True or not isinstance(test.get('message_id'),int):raise RuntimeError('telegram_delivery_unverified')
+        print('TELEGRAM_SEND_CONFIRMED '+json.dumps(test,ensure_ascii=False),flush=True)
+    else:
+        print('TELEGRAM_TEST_SKIPPED opt_in_with_TELEGRAM_TEST_ON_DEPLOY=true',flush=True)
     with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-        f.write('Worker: '+url+'\n\nTelegram test: '+json.dumps(test,ensure_ascii=False)+'\n\n')
+        f.write('Worker: '+url+'\n\n')
+        if test:f.write('Telegram test: '+json.dumps(test,ensure_ascii=False)+'\n\n')
+        else:f.write('Telegram test: skipped (optional)\n\n')
     # Confirm a real cron invocation via the state it writes, not a manual scan.
     probe=request(url+'/admin/probe','POST',b'{}',{'Authorization':'Bearer '+checkkey,'Content-Type':'application/json'})
     print('MARKET_SOURCE_PROBE '+json.dumps(probe),flush=True)

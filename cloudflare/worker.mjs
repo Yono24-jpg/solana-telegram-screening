@@ -57,13 +57,49 @@ export function assess(p,rows,now){
  return {reason:null,score,growth,retention,change,minutes:(now-base.t)/60,level:score>=85?'Momentum kuat':'Momentum berkembang',signal:growth>=1.1?'volume_bertumbuh':'aktivitas_kuat_bertahan'};
 }
 export function quality(p,rows,now){const q=assess(p,rows,now);return q.reason===null?q:null;}
+function formatPrice(value){
+ if(!finite(value)||value<=0)return 'tidak tersedia';
+ if(value<0.000001)return '$'+value.toExponential(3);
+ const digits=value>=1?Math.min(4,Math.max(0,5-Math.floor(Math.log10(value)))):Math.min(10,Math.max(6,Math.ceil(-Math.log10(value))+3));
+ return '$'+value.toFixed(digits).replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1');
+}
+function formatUsd(value){return finite(value)?'$'+Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','):'tidak tersedia';}
+function formatPercent(value){return finite(value)?value.toFixed(2).replace(/(\.\d*?[1-9])0+$|\.0+$/,'$1')+'%':'tidak tersedia';}
+export function formatAlertMessage(p,q,top,price){
+ const cap=valuation(p),change=`${q.change>=0?'+':''}${q.change.toFixed(1)}%`,source=p._source==='dexpaprika'?'DexPaprika':'DexScreener';
+ return `🚨 <b>ALERT MOMENTUM · SOLANA</b>
+<b>${esc(p.baseToken.symbol)}</b> · ${esc(q.level)} · skor <b>${q.score}/100</b>
+
+<b>DATA SAAT ALERT</b>
+Harga: ${formatPrice(price)}
+${cap.label}: ${formatUsd(cap.usd)}
+Umur pool: ${Math.floor((Date.now()-p.pairCreatedAt)/60000)} menit (umur token belum diverifikasi)
+Likuiditas: ${formatUsd(p.liquidity.usd)}
+Volume 5 menit: ${formatUsd(p.volume.m5)}
+Transaksi 5 menit: beli ${p.txns.m5.buys} · jual ${p.txns.m5.sells}
+Sumber harga: ${source}
+
+<b>MOMENTUM VS SAMPEL PEMBANDING</b>
+Volume 5 menit: ${q.growth.toFixed(2)}× dalam ${q.minutes.toFixed(1)} menit
+Perubahan harga: ${change}
+Likuiditas bertahan: ${(q.retention*100).toFixed(1)}%
+
+<b>PEMERIKSAAN RISIKO SAAT SCAN</b>
+10 akun terbesar: ${formatPercent(top)} dari suplai (bukan jumlah pemilik unik)
+Mint/freeze authority nonaktif · RugCheck lolos batas scanner
+
+Mint: <code>${p.baseToken.address}</code>
+<a href="https://axiom.trade/t/${p.baseToken.address}">Axiom</a> · <a href="https://dexscreener.com/solana/${p.pairAddress}">DexScreener</a>
+
+<i>Skor berdasarkan aturan scanner, bukan peluang sukses. Harga dapat berubah cepat; tidak ada jaminan profit. Bot tidak membeli token.</i>`;
+}
 export function observePerformance(entry,p,now){
  const price=typeof p?.priceUsd==='string'?Number(p.priceUsd):p?.priceUsd;
  if(!p||p.chainId!=='solana'||p.pairAddress!==entry.pair||p.baseToken?.address!==entry.mint||!finite(price)||price<=0||!finite(p.liquidity?.usd)||p.liquidity.usd<0||!finite(entry.alertPrice)||entry.alertPrice<=0)return null;
  const high=Math.max(entry.high||entry.alertPrice,price),low=Math.min(entry.low||entry.alertPrice,price);
  return {...entry,lastPrice:price,lastAt:now,lastSource:p._source||'dexscreener',high,low,liquidity:p.liquidity.usd,gain:100*(price/entry.alertPrice-1),peakGain:100*(high/entry.alertPrice-1),worstGain:100*(low/entry.alertPrice-1)};
 }
-export function performanceText(e){return `\n\nPEMANTAUAN SETELAH ALERT (bukan sinyal baru)\nHarga alert $${e.alertPrice.toPrecision(6)} → terpantau $${e.lastPrice.toPrecision(6)}\nPerubahan ${e.gain.toFixed(1)}% · tertinggi teramati ${e.peakGain.toFixed(1)}% · terendah teramati ${e.worstGain.toFixed(1)}%\nLP terpantau $${Math.round(e.liquidity)}; keamanan saat ini belum diperiksa ulang.\nDiperbarui ${new Date((e.lastAt+32400)*1000).toISOString().slice(0,19).replace('T',' ')} WIT\nAngka berbasis sampel harga, belum memperhitungkan biaya/slippage; bukan profit transaksi.`;}
+export function performanceText(e){return `\n\n📍 <b>PEMANTAUAN · BUKAN ALERT BARU</b>\nHarga alert: ${formatPrice(e.alertPrice)}\nHarga terbaru: ${formatPrice(e.lastPrice)}\nPerubahan dari harga alert: ${e.gain.toFixed(1)}%\nRentang terpantau: tertinggi ${e.peakGain.toFixed(1)}% · terendah ${e.worstGain.toFixed(1)}%\nLikuiditas terbaru: ${formatUsd(e.liquidity)}\nDiperbarui: ${new Date((e.lastAt+32400)*1000).toISOString().slice(0,19).replace('T',' ')} WIT\n<i>Ini sampel harga, bukan profit transaksi; biaya/slippage belum dihitung. Pemeriksaan keamanan tidak diulang.</i>`;}
 export function mintSafe(a){
  if(!a||a.executable!==false||!['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA','TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'].includes(a.owner)||a.data?.[1]!=='base64')return false;
  try{
@@ -262,7 +298,7 @@ async function run(env,scheduled=true){
    if(!finite(price)||price<=0){reject('alert_price_missing');continue;}
    daily.count++;daily.mints.push(mint);
    await env.SCANNER_STATE.put('deliveries:'+day,JSON.stringify(daily),{expirationTtl:172800});
-   const text=`MOMENTUM SOLANA · ${esc(p.baseToken.symbol)}\n${q.level} · skor ${q.score}/100 (skor aturan, bukan probabilitas)\nHarga rujukan saat alert $${price.toPrecision(6)} · ${valuation(p).label} $${Math.round(valuation(p).usd)}\nSumber ${p._source||'dexscreener'}\nUmur pool ${Math.floor((Date.now()-p.pairCreatedAt)/60000)} menit (umur mint belum diverifikasi)\nLikuiditas $${Math.round(p.liquidity.usd)} · Volume 5m $${Math.round(p.volume.m5)}\nBUY/SELL 5m ${p.txns.m5.buys}/${p.txns.m5.sells}\nVolume ${q.growth.toFixed(2)}x pembanding ${q.minutes.toFixed(1)} menit · retensi LP ${(q.retention*100).toFixed(1)}%\nTop 10 akun token ${top}% (bukan wallet unik)\nMint/freeze authority nonaktif; RugCheck lolos pada waktu pemeriksaan.\nMint: <code>${mint}</code>\n<a href="https://axiom.trade/t/${mint}">Axiom</a> · <a href="https://dexscreener.com/solana/${p.pairAddress}">Chart</a>\nRisiko tetap tinggi; tidak menjamin kenaikan. Tanpa trading otomatis.`;
+   const text=formatAlertMessage(p,q,top,price);
    const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text,parse_mode:'HTML',disable_web_page_preview:true}),alertAt=Math.floor(Date.now()/1000);
    if(!Number.isInteger(r.message_id)||r.message_id<=0)throw Error('missing_delivery_receipt');
    status.sent++;state.alerts=state.alerts||[];

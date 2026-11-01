@@ -19,7 +19,7 @@ jobs:
         run: python3 -m unittest discover -v
       - name: Verify separate Worker filters
         run: node --test cloudflare/*.test.mjs
-      - name: Deploy Worker and prove Telegram delivery and scheduled invocation
+      - name: Deploy Worker and verify scheduled invocation
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -27,4 +27,5 @@ jobs:
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
           DEXPAPRIKA_API_KEY: ${{ secrets.DEXPAPRIKA_API_KEY }}
           DEXFUN_API_KEY: ${{ secrets.DEXFUN_API_KEY }}
+          TELEGRAM_TEST_ON_DEPLOY: ${{ vars.TELEGRAM_TEST_ON_DEPLOY }}
         run: python3 cloudflare/deploy.py
