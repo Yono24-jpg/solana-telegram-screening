@@ -64,7 +64,7 @@ jobs:
               pair=items[0]['id']
               if not re.fullmatch('[1-9A-HJ-NP-Za-km-z]{32,44}',pair):raise RuntimeError('invalid_pool_id')
               p=api('/networks/solana/pools/'+pair)
-              fields=['id','chain','dex_id','price_usd','price_usd_0','price_usd_1','market_cap','market_cap_usd','fdv','fdv_usd','liquidity_usd','created_at','base_token_id','quote_token_id','token_id','reserve0','reserve1']
+              fields=['id','chain','dex_id','price_usd','price_usd_0','price_usd_1','market_cap','market_cap_usd','fdv','fdv_usd','liquidity_usd','created_at','last_price','last_price_usd','price_time','last_updated','base_token_id','quote_token_id','token_id','reserve0','reserve1']
               out={k:p.get(k) for k in fields if k in p}
               out['root_keys']=list(p)
               out['windows']={k:p[k] for k in ['1m','5m','15m','1h','24h'] if k in p}
