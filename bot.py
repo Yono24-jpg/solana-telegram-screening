@@ -50,6 +50,7 @@ def numeric(x):
     return isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x)
 
 def market_rejection(p, now):
+    if not isinstance(p,dict): return 'invalid_identity'
     try:
         if p['chainId']!='solana' or not p['baseToken']['address'] or not p['pairAddress'] or not p['baseToken']['symbol']:
             return 'invalid_identity'
@@ -68,6 +69,7 @@ def market_rejection(p, now):
         return 'missing_metrics'
 
 def candidate(p, now):
+    if not isinstance(p,dict): return None
     try:
         created=p['pairCreatedAt']/1000
         lp=p['liquidity']['usd']; volume=p['volume']['m5']
@@ -289,6 +291,12 @@ def scan(state, chat):
     stats={'pools_seen':0,'market_rejected':0,'already_sent':0,'security_rejected':0,'market_expired':0,'refresh_rejected':0,'refresh_error':0}
     for p in discover():
         stats['pools_seen']+=1
+        # Sent tokens must not consume any of the 30 security-check slots.
+        if isinstance(p,dict) and isinstance(p.get('baseToken'),dict):
+            mint=p['baseToken'].get('address')
+            if isinstance(mint,str) and mint in state['sent']:
+                stats['already_sent']+=1
+                continue
         c=candidate(p,time.time())
         if c:
             mint=c['baseToken']['address']
@@ -457,3 +465,4 @@ if __name__=='__main__':
     except Exception:
         # Exception URLs can contain bot credentials: never log them.
         print('RUN_FAILED: check secret configuration, Telegram access and API availability');raise SystemExit(1)
+
