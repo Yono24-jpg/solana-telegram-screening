@@ -18,7 +18,7 @@ jobs:
       - name: Verify existing Python scanner tests
         run: python3 -m unittest discover -v
       - name: Verify separate Worker filters
-        run: node --test cloudflare/worker.test.mjs
+        run: node --test cloudflare/*.test.mjs
       - name: Deploy Worker and prove Telegram delivery and scheduled invocation
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

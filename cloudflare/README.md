@@ -1,9 +1,29 @@
-# Separate Cloudflare scanner
+# Always-on Cloudflare momentum scanner
 
-This Worker leaves the existing Python bot, schedule and state file unchanged. It always runs every minute, independently of the old bot and its `state.json` switch. Worker messages have no ON/OFF buttons. No Telegram webhook is registered and no second `getUpdates` poller is installed.
+This is the existing separate Worker, updated in place. The original Python bot, its workflow and state file are unchanged. Cron runs every minute independently of Telegram controls or the phone. No wallet, trading, webhook or getUpdates consumer is installed.
 
-Pool ages: 5 to 10 minutes (the requested maximum pool age is 10 minutes). Pools can be observed before age 5 minutes to build the mandatory historical baseline; only qualifying pools aged 5–10 minutes can be sent. Full market data, historical momentum comparison, mint/freeze authority checks, supported token extensions, token-account concentration <=30%, RugCheck and fresh market checks are mandatory. Missing/failed checks never produce a token alert. At most four fully checked candidates per invocation, below the maximum five requested. Source coverage is sampled; alerts are the best passing tokens in that sample, not an exhaustive market ranking.
+## Market and momentum rules
 
-KV history is written every two minutes to remain within the free plan. Delivery reservations are written before sending. Up to 200 delivery attempts/day plus 720 history writes/day. This is deliberately conservative: an uncertain delivery is not retried. Top ten token accounts are not distinct wallet holders and can include liquidity vaults. Reserve/deduplication is eventually consistent KV, so strict cross-region exactly-once delivery is not guaranteed. No trades, wallet keys or transaction signing.
+Only pools aged 5–10 minutes may generate an initial candidate alert. Pools can be observed earlier to build a baseline. Required: complete market identity and metrics, liquidity >= $10,000, 5m volume >= $1,500, buys >= 12, sells >= 3, buy/sell >= 1.5, liquidity/market-cap >= 8%.
 
-Deployment uses only the GitHub Actions secrets and emits a Telegram message ID only after the Worker receives Telegram `ok: true`. It separately waits for state written by a real cron invocation. An auth check alone is not a deployment or messaging success. Verification requires a real cron state with mode `always_on`. Failed scans do not disable future scheduled attempts.
+Comparison baseline: a recorded snapshot 2–8 minutes earlier for the same pool and mint. Missing baseline fails closed. 5m price momentum must be 0–80%, 1h momentum >= -15%, price since the baseline 0–40%, LP retention >= 90%. 5m volume must grow >= 1.1x, or sustain >= 0.9x with volume >= $10,000, buys >= 50, buy share >= 62% and liquidity >= $15,000. Buy count cannot fall below 90% of its baseline. The previous blanket rejection above +15% in 5m and +60% in 1h has been removed.
+
+Score >= 70 combines buy pressure, rolling 5m volume growth, liquidity depth, buy activity and measured price extension. It is a transparent rule score, not an AI prediction, probability or validated return model. Thresholds are not fitted to a single historical winner. No return is promised.
+
+## Required security remains unchanged
+
+Mint and freeze authority disabled, standard mint or explicitly supported harmless Token-2022 extensions, top ten token accounts <=30% of supply, complete RugCheck summary with no danger/critical risks and normalized risk <60, and fresh complete market/momentum checks. Top ten token accounts are not unique wallets and can include liquidity vaults. A failed or unavailable security check never produces an initial alert. At most five ranked distinct mints are checked per run, subject to completing all checks within the request budget.
+
+## Delivery and measured results
+
+Only after Telegram confirms an initial candidate message ID is its price, observation time, alert time and receipt added to performance records. Tracking uses the same pool and mint. Both increases and decreases are recorded, with the highest and lowest *sampled* price; these are not exact ATH/ATL or realised profit. Missing subsequent data is labelled unavailable, never extrapolated. There are no fabricated winner records.
+
+Up to 40 latest confirmed alerts are tracked for 24 hours. At sampled +50% steps or -20% drawdown steps, the original message can be edited (at most two edits/run), showing current gain, sampled high/low, liquidity and update time. These are monitoring updates, not new buy signals, and do not claim a fresh security check. The latest 200 records are retained for up to seven days; untracked/expired records are labelled. Slippage, fees and execution are not included.
+
+Public read-only `/data` displays recent observations with rejection reasons and actual receipt-backed performance records. Observations are not approved signals. `/health` reports the engine revision. Credentials and chat IDs are not included.
+
+## Free limits and verification
+
+History checkpoints every three minutes (480 writes/day), plus at most 200 delivery reservation writes and at most 200 extra receipt checkpoints/day, keep expected KV writes <=880/day. Initial alert attempts remain capped at 200/day. No uncertain initial delivery is automatically retried. KV is eventually consistent; strict cross-region exactly-once delivery is not guaranteed. Requests are capped at 38 externally so KV operations remain within the free invocation budget; incomplete checks are discarded. Provider rate limits can temporarily reduce discovery. Cron retries next minute rather than turning the bot off.
+
+Deployment runs the original Python regression tests and Worker tests, sends an explicitly labelled real connection test (not a candidate alert), and waits for a real scheduled state tagged `momentum_v2`. Tests with synthetic fixtures do not establish market performance. An initial real candidate and subsequent price history are required before claiming successful token selection.
