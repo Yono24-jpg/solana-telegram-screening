@@ -46,6 +46,8 @@ def main():
         bindings.append({'type':'secret_text','name':name,'text':value})
     if os.environ.get('SOLANA_RPC_URL'):
         bindings.append({'type':'secret_text','name':'SOLANA_RPC_URL','text':os.environ['SOLANA_RPC_URL']})
+    if os.environ.get('DEXPAPRIKA_API_KEY'):
+        bindings.append({'type':'secret_text','name':'DEXPAPRIKA_API_KEY','text':os.environ['DEXPAPRIKA_API_KEY']})
     metadata={'main_module':'worker.mjs','compatibility_date':'2026-10-01','bindings':bindings,'observability':{'enabled':True}}
     boundary='----'+secrets.token_hex(16)
     parts=[]
@@ -85,7 +87,7 @@ def main():
         try:
             state=json.loads(cf(prefix+'storage/kv/namespaces/'+namespace+'/values/history',raw=True))
             status=state.get('status',{})
-            if status.get('scheduled') is True and status.get('mode')=='always_on' and status.get('engine')=='momentum_v2.2' and status.get('enabled') is True and status.get('at',0)>=start-60:
+            if status.get('scheduled') is True and status.get('mode')=='always_on' and status.get('engine')=='momentum_v2.3' and status.get('enabled') is True and status.get('at',0)>=start-60:
                 print('SCHEDULED_RUN_CONFIRMED '+json.dumps(status),flush=True)
                 if status.get('enabled') and not status.get('discovered'):raise RuntimeError('scheduled_scan_has_no_market_data')
                 with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('Real scheduled run: '+json.dumps(status)+'\n')
