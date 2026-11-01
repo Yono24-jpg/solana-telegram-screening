@@ -12,7 +12,7 @@ Score >= 70 combines buy pressure, rolling 5m volume growth, liquidity depth, bu
 
 ## Required security remains unchanged
 
-Mint and freeze authority disabled, standard mint or explicitly supported harmless Token-2022 extensions, top ten token accounts <=30% of supply, complete RugCheck summary with no danger/critical risks and normalized risk <60, and fresh complete market/momentum checks. Top ten token accounts are not unique wallets and can include liquidity vaults. A failed or unavailable security check never produces an initial alert. At most five ranked distinct mints are checked per run, subject to completing all checks within the request budget.
+Mint and freeze authority disabled, standard mint or explicitly supported harmless Token-2022 extensions, top ten token accounts <=50% of supply, complete RugCheck summary with no danger/critical risks and normalized risk <60, and fresh complete market/momentum checks. Top ten token accounts are not unique wallets and can include liquidity vaults. A failed or unavailable security check never produces an initial alert. At most five ranked distinct mints are checked per run, subject to completing all checks within the request budget.
 
 ## Extra pool discovery
 
