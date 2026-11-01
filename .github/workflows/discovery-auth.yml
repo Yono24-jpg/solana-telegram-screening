@@ -1,0 +1,47 @@
+name: Discovery Authentication Diagnostics
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/discovery-auth.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect authentication metadata only
+        env:
+          DEXPAPRIKA_API_KEY: ${{ secrets.DEXPAPRIKA_API_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os,json,urllib.request,urllib.error
+          raw=os.environ.get('DEXPAPRIKA_API_KEY','')
+          key=raw.strip()
+          print('KEY_PRESENT '+str(bool(key)).lower())
+          print('KEY_FORMAT '+json.dumps({'api_prefix':key.startswith('api_'),'length':len(key),'outer_whitespace':raw!=key}))
+          labels={'free','keyless','free_tier','free_registered','free_unregistered','free_key','starter','hobby','developer','dev','pro','enterprise','basic','anonymous'}
+          def describe(value):
+              v=str(value).strip().lower()
+              return v if v in labels else 'unrecognized'
+          def walk(data,path='',depth=0):
+              if depth>4:return []
+              out=[]
+              if isinstance(data,dict):
+                  for k,v in data.items():
+                      k=str(k);p=path+'.'+k if path else k
+                      if k.lower() in ['plan','tier','plan_name','plan_type','subscription_tier'] and isinstance(v,str):out.append({'field':p,'value':describe(v)})
+                      if k.lower() in ['authenticated','is_authenticated','api_key_valid'] and isinstance(v,bool):out.append({'field':p,'value':v})
+                      if k.lower() in ['limit','used','remaining','credits_limit','credits_remaining','credits_used','quota'] and isinstance(v,(int,float)):out.append({'field':p,'value':v})
+                      if isinstance(v,dict):out.extend(walk(v,p,depth+1))
+              return out
+          for name,path in [('usage','/usage'),('pools','/networks/solana/pools/search?order_by=created_at&sort=desc&limit=1&created_after=-10m&liquidity_usd_min=5000')]:
+              req=urllib.request.Request('https://api.dexpaprika.com'+path,headers={'Authorization':key,'User-Agent':'Mozilla/5.0 (compatible; ScannerAuthCheck/1.0)'})
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as r:
+                      j=json.load(r)
+                      print('AUTH_METADATA '+json.dumps({'endpoint':name,'http':r.status,'final_host':urllib.parse.urlsplit(r.url).hostname,'plan_header_present':r.headers.get('x-api-plan') is not None,'plan_header':describe(r.headers.get('x-api-plan','')),'plan_exact_free':r.headers.get('x-api-plan')=='free','api_header_names':[x for x in r.headers if x.lower().startswith('x-api-')],'root_keys':list(j) if isinstance(j,dict) else [],'plan_fields':walk(j),'pool_count':len(j.get('results',[])) if isinstance(j,dict) and name=='pools' else None}))
+              except urllib.error.HTTPError as e:print('AUTH_HTTP_ERROR '+json.dumps({'endpoint':name,'http':e.code}))
+              except Exception as e:print('AUTH_CHECK_ERROR '+json.dumps({'endpoint':name,'type':type(e).__name__}))
+          PY
