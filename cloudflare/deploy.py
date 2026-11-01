@@ -7,7 +7,7 @@ TOKEN=os.environ.get('CLOUDFLARE_API_TOKEN','').strip()
 NAME='solana-screening-minute'
 
 def request(url, method='GET', data=None, headers=None, raw=False):
-    req=urllib.request.Request(url,data=data,method=method,headers=headers or {})
+    req=urllib.request.Request(url,data=data,method=method,headers={'User-Agent':'Mozilla/5.0 (compatible; SolanaScannerDeployment/1.0)',**(headers or {})})
     try:
         with urllib.request.urlopen(req,timeout=30) as r: body=r.read()
     except urllib.error.HTTPError as e:
@@ -64,7 +64,8 @@ def main():
         try:
             health=request(url+'/health')
             if health.get('configured'):break
-        except RuntimeError:pass
+        except RuntimeError as e:
+            print('WORKER_HEALTH_RETRY reason='+str(e),flush=True)
         time.sleep(5)
     else:raise RuntimeError('worker_health_failed')
     # Send exactly once. Never retry an uncertain Telegram delivery.
