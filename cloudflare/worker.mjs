@@ -54,7 +54,7 @@ export function mintSafe(a){
  }catch{return false;}
 }
 async function context(env){
- let count=0,rates={};const upstreamErrors=[];
+ let count=0,rates={},discoveryProof=null;const upstreamErrors=[];
  const seenHosts=new Set();
  async function json(url,init={}){
   const host=new URL(url).hostname,now=Date.now()/1000,cache=globalThis.caches?.default,cacheKey=new Request('https://solana-screening-minute.maille47604.workers.dev/_provider_cooldown/'+host);
@@ -72,23 +72,32 @@ async function context(env){
    }
    throw Error('http_'+r.status);
   }
-  if(auth.Authorization&&r.headers.get('x-api-plan')!=='free')throw Error('discovery_key_not_verified_free');
+  if(host==='api.dexpaprika.com'){
+   const rawPlan=r.headers.get('x-api-plan'),plan=rawPlan?.trim().toLowerCase()||'missing';
+   discoveryProof={plan:['free','keyless','dev','pro','enterprise','missing'].includes(plan)?plan:'other',headerPresent:rawPlan!==null,finalHost:r.url?new URL(r.url).hostname:host,redirected:!!r.redirected,keyType:typeof env.DEXPAPRIKA_API_KEY,keyLength:typeof env.DEXPAPRIKA_API_KEY==='string'?env.DEXPAPRIKA_API_KEY.length:0};
+   if(auth.Authorization&&plan!=='free')throw Error('discovery_key_not_verified_free');
+  }
   delete rates[host];return r.json();
  }
  async function rpc(method,params){const j=await json(env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});if(j.error||j.result===undefined)throw Error('rpc_rejected');return j.result;}
  async function tg(method,data){const j=await json('https://api.telegram.org/bot'+env.TELEGRAM_BOT_TOKEN+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!j.ok)throw Error('telegram_rejected');return j.result;}
- return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY};
+ return {json,rpc,tg,count:()=>count,errors:()=>upstreamErrors,useRates:r=>{rates=r;},discoveryAuthenticated:!!env.DEXPAPRIKA_API_KEY,discoveryProof:()=>discoveryProof};
 }
 async function discover(c,state={},now=Math.floor(Date.now()/1000)){
  const pools=new Map(),mints=new Set();
  // Keyless: <=7,200/30d; registered free key: <=43,200/30d. Never use a paid host.
  // Keep only pool addresses; never substitute this source's metrics for DEX validation.
  const cache=state.discovery||{at:0,pools:[]},authenticated=c.discoveryAuthenticated;
+ if(cache.validationRevision!=='free_plan_retry_v2'){
+  if(cache.error==='discovery_key_not_verified_free'){cache.blockedUntil=0;cache.at=0;delete cache.error;}
+  cache.validationRevision='free_plan_retry_v2';
+ }
  if(cache.authenticated!==authenticated){cache.blockedUntil=0;cache.at=0;cache.authenticated=authenticated;}
  if((authenticated||Math.floor(now/60)%6===0)&&now-cache.at>=(authenticated?50:300)&&now>=(cache.blockedUntil||0)){
   cache.at=now;
   try{const j=await c.json('https://api.dexpaprika.com/networks/solana/pools/search?order_by=created_at&sort=desc&limit=50&created_after=-10m&liquidity_usd_min=5000');delete cache.error;cache.pools=(j.results||[]).filter(p=>p.chain==='solana'&&key(p.id)&&finite(Date.parse(p.created_at))&&now-Date.parse(p.created_at)/1000>=0&&now-Date.parse(p.created_at)/1000<=600).map(p=>({id:p.id,created:Date.parse(p.created_at)/1000}));}
-  catch(e){cache.error=e.message;if(e.message==='http_402')cache.blockedUntil=now+2592000;else if(e.message==='http_403'||e.message==='discovery_key_not_verified_free')cache.blockedUntil=now+86400;}
+  catch(e){cache.error=e.message;if(e.message==='http_402')cache.blockedUntil=now+2592000;else if(e.message==='http_403')cache.blockedUntil=now+86400;else if(e.message==='discovery_key_not_verified_free')cache.blockedUntil=now+180;}
+  cache.proof=c.discoveryProof();
  }
  cache.pools=(cache.pools||[]).filter(p=>now-p.created>=0&&now-p.created<=600);state.discovery=cache;
  const pap=cache.pools.map(p=>p.id);
@@ -123,14 +132,14 @@ async function track(c,env,state,status,now,pools){
 }
 async function run(env,scheduled=true){
  const now=Math.floor(Date.now()/1000),c=await context(env),day=new Date().toISOString().slice(0,10);
- const status={at:now,scheduled,mode:'always_on',engine:'momentum_v2.3',enabled:true,checked:0,passed:0,sent:0,errors:0,rejected:{},performanceUpdates:0};
+ const status={at:now,scheduled,mode:'always_on',engine:'momentum_v2.4',enabled:true,checked:0,passed:0,sent:0,errors:0,rejected:{},performanceUpdates:0};
  const reject=reason=>{status.rejected[reason]=(status.rejected[reason]||0)+1;};
  let state={observations:{},alerts:[]};
  try{
   state=await env.SCANNER_STATE.get('history','json')||state;
   state.cooldowns=state.cooldowns||{};c.useRates(state.cooldowns);
   const pools=new Map();await track(c,env,state,status,now,pools);
-  const discovered=await discover(c,state,now);status.discovered=discovered.size;status.extraSourcePools=state.discovery?.pools?.length||0;status.extraSource={authenticated:!!state.discovery?.authenticated,error:state.discovery?.error||null,blockedUntil:state.discovery?.blockedUntil||null};
+  const discovered=await discover(c,state,now);status.discovered=discovered.size;status.extraSourcePools=state.discovery?.pools?.length||0;status.extraSource={authenticated:!!state.discovery?.authenticated,error:state.discovery?.error||null,blockedUntil:state.discovery?.blockedUntil||null,proof:state.discovery?.proof||null};
   for(const [id,p]of discovered)pools.set(id,p);
   const rows=state.observations||{};
   const watched=Object.entries(rows).filter(([,r])=>r.length&&now-r.at(-1).t<900).sort((a,b)=>b[1].at(-1).t-a[1].at(-1).t).map(([id])=>id).filter(id=>!pools.has(id)).slice(0,40);
@@ -199,7 +208,7 @@ async function run(env,scheduled=true){
 export default{
  async scheduled(event,env,ctx){ctx.waitUntil(run(env,true));},
  async fetch(request,env){
-  const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',engine:'momentum_v2.3',configured:!!env.SCANNER_STATE});
+  const path=new URL(request.url).pathname;if(path==='/health')return Response.json({service:'solana-screening',engine:'momentum_v2.4',configured:!!env.SCANNER_STATE});
   if(path==='/data'){const s=await env.SCANNER_STATE.get('history','json')||{};return Response.json({status:s.status||{pending:true},samples:s.samples||[],results:(s.alerts||[]).map(({body,...entry})=>entry),note:'Samples are observations, not approved signals. Results exist only after a confirmed Telegram alert; price samples are not realised trading profit.'},{headers:{'Cache-Control':'no-store'}});}
   if(request.headers.get('Authorization')!=='Bearer '+env.DEPLOY_CHECK_KEY)return new Response('Forbidden',{status:403});
   if(path==='/admin/probe'&&request.method==='POST'){const c=await context(env),s=await env.SCANNER_STATE.get('history','json')||{},pools=await discover(c,s),rejected={},qualified=[];for(const p of pools.values()){const q=assess(p,s.observations?.[p.pairAddress],Date.now()/1000);if(q.reason)rejected[q.reason]=(rejected[q.reason]||0)+1;else qualified.push({symbol:p.baseToken.symbol,mint:p.baseToken.address,score:q.score,security:'not_checked'});}return Response.json({pools:pools.size,rejected,qualified,upstreamErrors:c.errors(),requests:c.count()});}
