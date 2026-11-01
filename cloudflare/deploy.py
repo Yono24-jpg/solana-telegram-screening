@@ -75,6 +75,13 @@ def main():
     test=request(url+'/admin/test','POST',b'{}',{'Authorization':'Bearer '+checkkey,'Content-Type':'application/json'})
     if test.get('ok') is not True or not isinstance(test.get('message_id'),int):raise RuntimeError('telegram_delivery_unverified')
     print('TELEGRAM_SEND_CONFIRMED '+json.dumps(test,ensure_ascii=False),flush=True)
+    removed=0
+    for message_id in [83,84,85,86]:
+        try:
+            result=request('https://api.telegram.org/bot'+os.environ['TELEGRAM_BOT_TOKEN']+'/editMessageReplyMarkup','POST',json.dumps({'chat_id':os.environ['TELEGRAM_CHAT_ID'],'message_id':message_id,'reply_markup':{'inline_keyboard':[]}}).encode(),{'Content-Type':'application/json'})
+            if result.get('ok'):removed+=1
+        except RuntimeError:pass
+    print('OLD_WORKER_KEYBOARDS_REMOVED '+str(removed),flush=True)
     with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
         f.write('Worker: '+url+'\n\nTelegram test: '+json.dumps(test,ensure_ascii=False)+'\n\n')
     # Confirm a real cron invocation via the state it writes, not a manual scan.
@@ -85,7 +92,7 @@ def main():
         try:
             state=json.loads(cf(prefix+'storage/kv/namespaces/'+namespace+'/values/history',raw=True))
             status=state.get('status',{})
-            if status.get('scheduled') is True and status.get('at',0)>=start-60:
+            if status.get('scheduled') is True and status.get('mode')=='always_on' and status.get('enabled') is True and status.get('at',0)>=start-60:
                 print('SCHEDULED_RUN_CONFIRMED '+json.dumps(status),flush=True)
                 if status.get('enabled') and not status.get('discovered'):raise RuntimeError('scheduled_scan_has_no_market_data')
                 with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:f.write('Real scheduled run: '+json.dumps(status)+'\n')

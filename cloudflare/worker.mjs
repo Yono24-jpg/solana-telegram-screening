@@ -1,7 +1,5 @@
-// Separate Cloudflare scanner. Never installs a Telegram webhook or consumes updates.
+// Always-on Cloudflare scanner. No Telegram controls, webhook, or update polling.
 const DEX='https://api.dexscreener.com';
-const STATE_URL='https://raw.githubusercontent.com/Yono24-jpg/solana-telegram-screening/main/state.json';
-const KEYBOARD={inline_keyboard:[[{text:'ON',callback_data:'on'},{text:'OFF',callback_data:'off'}]]};
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const key=x=>typeof x==='string'&&/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(x);
 const esc=x=>String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
@@ -51,11 +49,8 @@ async function discover(c){
 }
 async function run(env,scheduled=true){
  const now=Math.floor(Date.now()/1000),c=await context(env),day=new Date().toISOString().slice(0,10);
- const status={at:now,scheduled,enabled:false,checked:0,passed:0,sent:0,errors:0};
+ const status={at:now,scheduled,mode:'always_on',enabled:true,checked:0,passed:0,sent:0,errors:0};
  try{
-  // Old bot remains the sole callback consumer; unavailable/invalid shared state means OFF.
-  const control=await c.json(STATE_URL+'?minute='+Math.floor(now/60),{headers:{'Cache-Control':'no-cache'}});
-  if(typeof control.enabled!=='boolean')throw Error('control_unverified');status.enabled=control.enabled;
   const state=await env.SCANNER_STATE.get('history','json')||{observations:{}};
   if(status.enabled){
    const pools=await discover(c),rows=state.observations||{},ranked=[];
@@ -89,7 +84,7 @@ async function run(env,scheduled=true){
     // Reserve before send: a failed or interrupted delivery is never retried automatically.
     daily.count++;daily.mints.push(p.baseToken.address);await env.SCANNER_STATE.put('deliveries:'+day,JSON.stringify(daily),{expirationTtl:172800});
     const text=`Cloudflare · ${esc(p.baseToken.symbol)} · skor ${q.score}/100\nUmur pool ${Math.floor((Date.now()-p.pairCreatedAt)/60000)} menit (umur mint belum diverifikasi)\nLikuiditas $${Math.round(p.liquidity.usd)} · Volume 5m $${Math.round(p.volume.m5)}\nBUY/SELL 5m ${p.txns.m5.buys}/${p.txns.m5.sells}\nPertumbuhan volume ${q.growth.toFixed(2)}x · retensi LP ${(q.retention*100).toFixed(1)}%\nTop 10 akun token ${top}% (bukan jumlah wallet unik)\nMint/freeze authority nonaktif; pemeriksaan RugCheck lolos.\nMint: <code>${p.baseToken.address}</code>\n<a href="https://axiom.trade/t/${p.baseToken.address}">Axiom</a> · <a href="https://dexscreener.com/solana/${p.pairAddress}">Chart</a>\nRisiko tetap tinggi; bukan jaminan aman. Tanpa transaksi otomatis.`;
-    const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text,parse_mode:'HTML',disable_web_page_preview:true,reply_markup:KEYBOARD});status.sent++;console.log(JSON.stringify({event:'telegram_alert_sent',message_id:r.message_id}));
+    const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text,parse_mode:'HTML',disable_web_page_preview:true});status.sent++;console.log(JSON.stringify({event:'telegram_alert_sent',message_id:r.message_id}));
    }
    state.observations=Object.fromEntries(Object.entries(rows).filter(([,r])=>r.some(x=>now-x.t<=1800)).sort((a,b)=>b[1].at(-1).t-a[1].at(-1).t).slice(0,160));
   }
@@ -105,7 +100,7 @@ export default{
   if(path==='/admin/probe'&&request.method==='POST'){const c=await context(env);const pools=await discover(c);return Response.json({pools:pools.size,upstreamErrors:c.errors(),requests:c.count()});}
   if(path==='/admin/status')return Response.json((await env.SCANNER_STATE.get('history','json'))?.status||{pending:true});
   if(path==='/admin/test'&&request.method==='POST'){
-   try{const c=await context(env),chat=await c.tg('getChat',{chat_id:env.TELEGRAM_CHAT_ID});if(!['channel','group','supergroup'].includes(chat.type))throw Error('unsupported_chat');const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text:'UJI CLOUDFLARE BERHASIL — pesan ini dikirim langsung oleh Worker. Jadwal screening dipasang terpisah. ON/OFF memakai kendali bersama bot GitHub; perubahan mengikuti pemrosesan bot tersebut. Ini pesan uji koneksi, bukan rekomendasi token.',reply_markup:KEYBOARD});console.log(JSON.stringify({event:'telegram_test_sent',message_id:r.message_id,chat_type:chat.type}));return Response.json({ok:true,message_id:r.message_id,chat_type:chat.type,chat_title:chat.title});}catch{return Response.json({ok:false,error:'telegram_test_failed'},{status:502});}
+   try{const c=await context(env),chat=await c.tg('getChat',{chat_id:env.TELEGRAM_CHAT_ID});if(!['channel','group','supergroup'].includes(chat.type))throw Error('unsupported_chat');const r=await c.tg('sendMessage',{chat_id:env.TELEGRAM_CHAT_ID,text:'SCANNER SELALU AKTIF — Cloudflare memindai otomatis setiap 1 menit, tanpa tombol ON/OFF dan tanpa bergantung pada HP atau status bot GitHub lama. Hanya kandidat yang lolos semua filter dikirim. Ini pesan uji koneksi, bukan rekomendasi token.'});console.log(JSON.stringify({event:'telegram_test_sent',message_id:r.message_id,chat_type:chat.type}));return Response.json({ok:true,message_id:r.message_id,chat_type:chat.type,chat_title:chat.title});}catch{return Response.json({ok:false,error:'telegram_test_failed'},{status:502});}
   }
   return new Response('Not found',{status:404});
  }
