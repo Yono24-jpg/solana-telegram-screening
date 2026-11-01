@@ -15,9 +15,11 @@ jobs:
       - name: Read live Cloudflare state without redeploying or sending test messages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DEXPAPRIKA_API_KEY: ${{ secrets.DEXPAPRIKA_API_KEY }}
         run: |
           python3 - <<'PY'
-          import sys,json,time,datetime
+          import sys,json,time,datetime,os
+          print('DISCOVERY_REPOSITORY_SECRET_PRESENT '+str(bool(os.environ.get('DEXPAPRIKA_API_KEY','').strip())).lower(),flush=True)
           sys.path.insert(0,'cloudflare')
           import deploy as c
           accounts=c.cf('accounts?per_page=50')
