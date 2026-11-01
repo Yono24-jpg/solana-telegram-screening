@@ -1,0 +1,9 @@
+# Separate Cloudflare scanner
+
+This Worker leaves the existing Python bot, schedule and state file unchanged. It runs every minute and uses the existing bot as the only Telegram callback consumer. ON/OFF buttons share the existing `state.json` switch; responsiveness depends on the GitHub bot processing the callback. No Telegram webhook is registered and no second `getUpdates` poller is installed.
+
+Pool ages: 5 minutes to 3 hours. Full market data, historical momentum comparison, mint/freeze authority checks, supported token extensions, token-account concentration <=30%, RugCheck and fresh market checks are mandatory. Missing/failed checks never produce a token alert. At most four fully checked candidates per invocation, below the maximum five requested. Source coverage is sampled; alerts are the best passing tokens in that sample, not an exhaustive market ranking.
+
+KV history is written every two minutes to remain within the free plan. Delivery reservations are written before sending. Up to 200 delivery attempts/day plus 720 history writes/day. This is deliberately conservative: an uncertain delivery is not retried. Top ten token accounts are not distinct wallet holders and can include liquidity vaults. Reserve/deduplication is eventually consistent KV, so strict cross-region exactly-once delivery is not guaranteed. No trades, wallet keys or transaction signing.
+
+Deployment uses only the GitHub Actions secrets and emits a Telegram message ID only after the Worker receives Telegram `ok: true`. It separately waits for state written by a real cron invocation. An auth check alone is not a deployment or messaging success.

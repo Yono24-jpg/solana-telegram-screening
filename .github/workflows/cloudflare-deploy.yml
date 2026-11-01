@@ -12,38 +12,17 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Verify Cloudflare authorization without exposing secrets
+      - name: Verify existing Python scanner tests
+        run: python3 -m unittest discover -v
+      - name: Verify separate Worker filters
+        run: node --test cloudflare/worker.test.mjs
+      - name: Deploy Worker and prove Telegram delivery and scheduled invocation
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          python3 - <<'PY'
-          import os,json,urllib.request,urllib.error
-          token=os.environ.get('CLOUDFLARE_API_TOKEN','').strip()
-          if not token:
-              print('CLOUDFLARE_AUTH_FAILED reason=missing_repository_secret')
-              raise SystemExit(1)
-          def api(path):
-              req=urllib.request.Request('https://api.cloudflare.com/client/v4/'+path,headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'})
-              try:
-                  with urllib.request.urlopen(req,timeout=25) as r: data=json.load(r)
-              except urllib.error.HTTPError as e:
-                  print('CLOUDFLARE_AUTH_FAILED http='+str(e.code))
-                  raise SystemExit(1)
-              if not data.get('success'):
-                  print('CLOUDFLARE_AUTH_FAILED reason=api_rejected')
-                  raise SystemExit(1)
-              return data['result']
-          result=api('user/tokens/verify')
-          if result.get('status')!='active':
-              print('CLOUDFLARE_AUTH_FAILED reason=token_not_active')
-              raise SystemExit(1)
-          accounts=api('accounts?per_page=50')
-          print('CLOUDFLARE_AUTH_OK accessible_accounts='+str(len(accounts)))
-          if len(accounts)!=1:
-              print('CLOUDFLARE_ACCOUNT_SELECTION_REQUIRED')
-              raise SystemExit(1)
-          print('CLOUDFLARE_ACCOUNT_ACCESS_OK')
-          PY
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: python3 cloudflare/deploy.py
