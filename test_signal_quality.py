@@ -76,6 +76,19 @@ class Quality(unittest.TestCase):
         save.assert_called_once()
         rpc.assert_not_called();telegram.assert_not_called()
         self.assertIn('pair',state['observations'])
+    def test_watchlist_keeps_pool_after_discovery_feed_drops_it(self):
+        with patch.object(bot,'request',return_value={'pairs':[self.pool]}) as request:
+            pools=bot.refresh_watchlist([],{'observations':self.history},self.now)
+        self.assertEqual(pools,[self.pool])
+        self.assertIn('/solana/pair',request.call_args.args[0])
+        with patch.object(bot,'request') as request:
+            self.assertEqual(bot.refresh_watchlist([self.pool],{'observations':self.history},self.now),[self.pool])
+        request.assert_not_called()
+    def test_expired_pool_does_not_renew_observations(self):
+        state={}
+        p=copy.deepcopy(self.pool);p['pairCreatedAt']=(self.now-18001)*1000
+        observe(state,[p],self.now)
+        self.assertEqual(state['observations'],{})
     def test_scan_refresh_deterioration_cannot_send_alert(self):
         state={'sent':{},'observations':self.history}
         refreshed=copy.deepcopy(self.pool)

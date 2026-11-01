@@ -42,6 +42,8 @@ RugCheck danger/critical flags or normalized score >=60 reject the candidate. Mi
 
 Discovery retains DexScreener profiles, boosts, community takeovers and ads plus three pages of GeckoTerminal new Solana pools normalized with DexScreener. Feed coverage is incomplete; paid promotion is not an endorsement.
 
+Up to 80 observed pools absent from the latest discovery pages are refreshed in bounded batches. This retains comparisons when a new pool leaves the newest-feed pages; failed refreshes never reuse an old snapshot as current market data.
+
 GitHub Actions uses a five-minute cron, with four scan cycles separated by 45-second pauses. Each bot invocation has a 30-second network budget to leave time for persistence in the five-minute job. Schedules can be delayed or dropped, so this is not a continuous real-time launch monitor.
 
 ON/OFF callbacks are processed during runs and require destination administrator rights. Only ON/OFF buttons are shown. Existing control state is retained. Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID; optional SOLANA_RPC_URL. The dedicated bot must be allowed to post in its group, supergroup or channel with no webhook configured.

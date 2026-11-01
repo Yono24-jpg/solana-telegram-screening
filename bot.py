@@ -1,7 +1,7 @@
 """Alert-only screening. Never loads wallet keys or sends transactions."""
 import base64, html, json, math, os, struct, time, urllib.request, urllib.error
 from pathlib import Path
-from signal_quality import observe, assess
+from signal_quality import observe, assess, merge_observations
 DEX='https://api.dexscreener.com'
 PROGRAM='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
 TOKEN_2022='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb'
@@ -294,10 +294,30 @@ def holder_concentration(mint):
     if not 0<=pct<=100.000001: raise ValueError('invalid holder concentration')
     return pct
 
+def refresh_watchlist(pools, state, now):
+    """Keep observing new pools after they leave the latest-discovery pages."""
+    history=merge_observations(state.get('observations',{}),now=now)
+    present={p.get('pairAddress') for p in pools if isinstance(p,dict) and isinstance(p.get('pairAddress'),str)}
+    watched=[pair for pair,rows in history.items() if pair not in present
+             and pair.isascii() and pair.isalnum() and len(pair)<=64][:80]
+    refreshed=[]
+    for i in range(0,len(watched),20):
+        batch=watched[i:i+20]
+        try:
+            response=request(DEX+'/latest/dex/pairs/solana/'+','.join(batch))
+            for pool in response.get('pairs') or []:
+                if (isinstance(pool,dict) and pool.get('chainId')=='solana'
+                        and pool.get('pairAddress') in batch):
+                    refreshed.append(pool)
+        except Exception:
+            print('WATCHLIST_BATCH_UNAVAILABLE')
+    print(f'WATCHLIST_REFRESH requested={len(watched)} received={len(refreshed)}')
+    return pools+refreshed
+
 def scan(state, chat):
     selected={}
     stats={'pools_seen':0,'market_rejected':0,'already_sent':0,'security_rejected':0,'market_expired':0,'refresh_rejected':0,'refresh_error':0}
-    pools=discover()
+    pools=refresh_watchlist(discover(),state,time.time())
     observe(state,pools,time.time())
     save(state)
     for p in pools:

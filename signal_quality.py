@@ -58,6 +58,11 @@ def merge_observations(*histories, now):
 def observe(state, pools, now):
     history=merge_observations(state.get('observations',{}),now=now)
     for pool in pools:
+        try:
+            created=pool['pairCreatedAt']
+            if not finite(created) or not 0<=now-created/1000<=18000: continue
+        except (KeyError,TypeError):
+            continue
         row=snapshot(pool,now)
         if row is None: continue
         pair=pool['pairAddress']
