@@ -23,7 +23,7 @@ BUY $5, TP +20%, SL −10%, maximum two positions. Modeled costs remain 1.3% plu
 The root page provides ON and OFF plus a read-only result display. It requires a separate generated control token for authenticated API calls; this token has no wallet authority. It must be retrieved through the deployment provider's secret configuration, never posted publicly or committed. HTTPS is provided by the platform. Authorization headers are not logged and the token is not saved in browser storage.
 
 - `POST /api/on` allows paper entries only after all existing filters pass.
-- `POST /api/off` blocks new entries, including a final BUY decision already being evaluated. It pauses subsequent discovery rounds. Existing positions continue being monitored for simulated exits.
+- `POST /api/off` blocks new entries, including a final BUY decision already being evaluated. It cancels new discovery/verification requests between HTTP calls and pauses subsequent discovery rounds. A currently in-flight HTTP call is allowed to time out. Existing positions continue being monitored for simulated exits.
 - `GET /api/report` returns results, costs, positions, session deadline and process/round records; authentication required.
 - `GET /healthz` exposes only mode and worker liveness.
 
@@ -51,6 +51,10 @@ Before declaring deployment operational, the deployment must reach `live`, retur
 
 ## Current deployment gate
 
-Render account discovery succeeds. It contains `My Workspace` (`tea-dbidjjt9fdbs73c0kml0`), but no workspace is selected. The access tool explicitly requires the user to confirm the destination before resource operations. No paid resource has been created and no deployment has been triggered. One confirmation is required: use that workspace for the reviewed approximately $7.25/month deployment.
+Render account discovery succeeds. It contains `My Workspace` (`tea-dbidjjt9fdbs73c0kml0`), but no workspace is selected. The access tool explicitly requires the user to confirm the destination before resource operations. No paid resource has been created and no deployment has been triggered. One confirmation is required: use that workspace for the reviewed approximately $7.25/month deployment. The Render access response says `no workspace selected` and explicitly forbids choosing a workspace for the user.
 
 The existing GitHub repository is available with write access. Deployment source is prepared on a separate `solana-ai-sniper-paper` branch. The scanner's main branch, workflow, settings and secrets are not changed. Source publishing does not mean the cloud worker is running.
+
+An initial bounded local ON test exceeded 300 seconds while the existing API pipeline was still running. SIGTERM then needed a hard stop at the smoke-check limit. The worker shell was corrected to cancel requests between calls when entries are OFF or the process is stopping; this does not change market/security filters. The initial failure is preserved in `sniper_cloud_live_initial.json`; the final run is recorded separately.
+
+Final local operational run: PASS in 54.22 seconds, health + authenticated ON/OFF, two completed rounds, 5 real read-only API requests in the ON round and 0 in the subsequent OFF round. Discovery returned 38 previously unseen addresses; 59 unique mints were checked, 5 passed market thresholds. The deliberate OFF cancelled pending security reads: those candidates remain unverified, rejected or deferred. BUY 0, SELL 0, positions 0. This does not prove a complete live-security pass or a real-market paper round trip. Seven small operational fixture checks also pass, including non-empty position recovery, two-position cap, dedup, TP/SL and costs; these fixture trades are synthetic.

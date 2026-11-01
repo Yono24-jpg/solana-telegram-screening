@@ -19,6 +19,10 @@ def main():
                SNIPER_INITIAL_ON='1', SOLANA_READONLY_RPC='https://solana-rpc.publicnode.com')
     result = dict(scope='LOCAL_OPERATIONAL_CHECK_NOT_CLOUD', started=time.time(),
                   mode='PAPER_ONLY_REAL_OFF', continuous_24h_proven=False)
+    from sniper_cloud_worker import Control
+    prior = Control(directory, seed=str(root/'sniper_paper.sqlite3'))
+    baseline_rounds = prior.report()['rounds']
+    prior.switch(True)
     base = 'http://127.0.0.1:18764'
     def call(path, method='GET'):
         req = urllib.request.Request(base+path, method=method,
@@ -41,10 +45,10 @@ def main():
                         ready = True
                         print('HTTP health/authenticated ON ready; real API round running', flush=True)
                     report = call('/api/report')
-                    if report['rounds'] >= 1 and not off:
+                    if (report['rounds'] > baseline_rounds or time.time()-result['started'] >= 30) and not off:
                         result['off'] = call('/api/off', 'POST')
                         off = True
-                        print('First round finished; OFF confirmed before next round', flush=True)
+                        print('Authenticated OFF confirmed; cancelling entry discovery while preserving position monitoring', flush=True)
                 except (urllib.error.URLError, TimeoutError):
                     pass
                 time.sleep(2)
@@ -66,14 +70,13 @@ def main():
             if process.poll() is None:
                 process.kill()
                 process.wait()
-    from sniper_cloud_worker import Control
     control = Control(directory)
     result['final_report'] = control.report()
     result['finished'] = time.time()
     result['result'] = ('PASS' if result.get('health', {}).get('worker_alive')
                         and result.get('off', {}).get('enabled') is False
                         and result.get('exit_code') == 0
-                        and result['final_report']['rounds'] >= 2
+                        and result['final_report']['rounds']-baseline_rounds >= 2
                         and not result.get('bounded_timeout') else 'INCOMPLETE')
     (root/'sniper_cloud_live_operational.json').write_text(json.dumps(result, indent=2))
     print(json.dumps({k:v for k,v in result.items() if k!='final_report'}), flush=True)

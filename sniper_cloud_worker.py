@@ -245,12 +245,15 @@ class Worker:
                         def stopping_request(*args, **kwargs):
                             if self.stop.is_set():
                                 raise InterruptedError('worker_stopping')
+                            if reader._cloud_entry_phase and not self.control.entries_allowed():
+                                raise InterruptedError('entries_paused')
                             return request(*args, **kwargs)
                         reader.request = stopping_request
                         discover = reader.discover
                         def gated_discover(*args, **kwargs):
                             if self.stop.is_set() or not self.control.entries_allowed():
                                 return [], [], dict(entries_paused=True, new_unique_addresses=0)
+                            reader._cloud_entry_phase = True
                             return discover(*args, **kwargs)
                         reader.discover = gated_discover
                         if hasattr(reader, 'limits'):
@@ -260,6 +263,7 @@ class Worker:
                             for limiter in reader.limits.values():
                                 limiter.sleep = paced_sleep
                     reader.store = store
+                    reader._cloud_entry_phase = False
                     reader.requests = []
                     return reader
 
@@ -274,6 +278,7 @@ class Worker:
                         evidence = engine.run(args, reader_factory=factory)
                         report = dict(started=started, finished=time.time(), summary=evidence['summary'],
                                       errors=evidence['errors'], request_count=len(evidence['requests']),
+                                      entries_paused=not self.control.entries_allowed(),
                                       discovery=[r.get('discovery', {}) for r in evidence['rounds']])
                         with gzip.open(self.control.directory / 'latest_round.json.gz', 'wt') as out:
                             json.dump(evidence, out, allow_nan=False)
