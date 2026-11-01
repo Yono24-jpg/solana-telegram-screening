@@ -1,0 +1,49 @@
+name: View Scanner Data
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cloudflare-data.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read real scanner observations and latest market data
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import sys,json,time,datetime
+          sys.path.insert(0,'cloudflare')
+          import deploy as c
+          accounts=c.cf('accounts?per_page=50')
+          if len(accounts)!=1:raise SystemExit('ACCOUNT_SELECTION_REQUIRED')
+          prefix='accounts/'+accounts[0]['id']+'/'
+          ns=next(x['id'] for x in c.cf(prefix+'storage/kv/namespaces?per_page=100') if x['title']==c.NAME+'-state')
+          state=json.loads(c.cf(prefix+'storage/kv/namespaces/'+ns+'/values/history',raw=True))
+          print('SCANNER_STATUS '+json.dumps(state.get('status',{})),flush=True)
+          rows=[]
+          for pair,items in state.get('observations',{}).items():
+              if items:
+                  r=dict(items[-1]);r['pair']=pair
+                  rows.append(r)
+          rows.sort(key=lambda x:x.get('t',0),reverse=True)
+          rows=rows[:10]
+          print('RECORDED_OBSERVATIONS '+json.dumps(rows),flush=True)
+          if rows:
+              try:
+                  market=c.request('https://api.dexscreener.com/latest/dex/pairs/solana/'+','.join(x['pair'] for x in rows))
+                  markets=[]
+                  wanted={x['pair']:x['mint'] for x in rows}
+                  now=time.time()
+                  for p in market.get('pairs') or []:
+                      if p.get('pairAddress') not in wanted or p.get('baseToken',{}).get('address')!=wanted[p['pairAddress']]:continue
+                      markets.append({'symbol':p['baseToken'].get('symbol'),'mint':p['baseToken']['address'],'pair':p['pairAddress'],'pool_age_minutes':round((now-p['pairCreatedAt']/1000)/60,1) if isinstance(p.get('pairCreatedAt'),(int,float)) else None,'liquidity_usd':p.get('liquidity',{}).get('usd'),'volume_5m_usd':p.get('volume',{}).get('m5'),'buys_5m':p.get('txns',{}).get('m5',{}).get('buys'),'sells_5m':p.get('txns',{}).get('m5',{}).get('sells'),'fetched_at':int(now)})
+                  print('LATEST_MARKET_DATA '+json.dumps(markets),flush=True)
+              except RuntimeError as e:print('MARKET_REFRESH_UNAVAILABLE '+str(e),flush=True)
+          print('DATA_READ_OK',flush=True)
+          PY
