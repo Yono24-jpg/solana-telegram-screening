@@ -1,0 +1,32 @@
+name: Telegram Connection Check
+on:
+  workflow_dispatch:
+  push:
+    branches: ['upgrade/scanner-v2-20261108']
+    paths: ['.github/workflows/telegram-check.yml']
+permissions:
+  contents: read
+concurrency:
+  group: telegram-connection-test
+  cancel-in-progress: false
+jobs:
+  check:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test without sending messages
+        run: python3 -m unittest -v
+      - name: Identify existing bot and send one test
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PYTHONUNBUFFERED: '1'
+        run: python3 telegram_check.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: telegram-connection-evidence-${{ github.run_id }}
+          path: reports/telegram-test.json
+          if-no-files-found: ignore

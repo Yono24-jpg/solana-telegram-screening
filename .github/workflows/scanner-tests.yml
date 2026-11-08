@@ -1,0 +1,14 @@
+name: Scanner Upgrade Tests
+on:
+  pull_request:
+  push:
+    branches: ['upgrade/**']
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest -v

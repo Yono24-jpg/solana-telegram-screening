@@ -20,7 +20,7 @@ def request(url, data=None):
     if remaining<=0: raise TimeoutError('Scan time budget exhausted')
     raw=None if data is None else json.dumps(data).encode()
     req=urllib.request.Request(url, data=raw, headers={'Content-Type':'application/json','User-Agent':'SolanaScreening/1.0'})
-    with urllib.request.urlopen(req,timeout=min(18,remaining)) as r:
+    with urllib.request.urlopen(req,timeout=min(8,remaining)) as r:
         return json.load(r)
 
 def tg(method, **args):
@@ -492,7 +492,10 @@ def main():
     REQUEST_DEADLINE=time.monotonic()+30
     chat=os.environ['TELEGRAM_CHAT_ID']
     state=json.loads(STATE.read_text()) if STATE.exists() else {'enabled':False,'offset':0,'sent':{},'initialized':False}
-    tg('getMe')
+    identity=tg('getMe')
+    username=identity.get('username','')
+    if isinstance(username,str) and username.replace('_','').isalnum():
+        print('TELEGRAM_BOT username=@'+username)
     group=tg('getChat',chat_id=chat)
     if group['type'] not in ('group','supergroup','channel'):
         print('TELEGRAM_ERROR reason=unsupported_destination_type')
@@ -500,7 +503,7 @@ def main():
     print('TELEGRAM_DESTINATION_OK type='+group['type'])
     chat=group['id']
     if not state['initialized']:
-        msg=tg('sendMessage',chat_id=chat,text='✅ Scanner pool baru Solana tersambung. Umur pool 5 menit–5 jam; maksimal 5 kandidat per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
+        msg=tg('sendMessage',chat_id=chat,text='✅ Scanner pool baru Solana tersambung. Umur pool 1 menit–24 jam; prioritas 1–60 menit. EARLY WATCH dan STRONG SIGNAL; maksimal 5 kandidat per scan. Klik ON untuk mulai. Tanpa trading otomatis.',reply_markup=KEYBOARD)
         print('TELEGRAM_TEST_OK message_id='+str(msg['message_id']))
         state['initialized']=True;save(state)
     updates=tg('getUpdates',offset=state['offset'],timeout=0,allowed_updates=['callback_query'])
@@ -516,9 +519,15 @@ def main():
             try: tg('answerCallbackQuery',callback_query_id=q['id'])
             except Exception: pass
         state['offset']=u['update_id']+1;save(state)
-    state['sent']={k:v for k,v in state['sent'].items() if time.time()-v<18000}
+    state['sent']={k:v for k,v in state['sent'].items() if isinstance(v,(int,float)) and not isinstance(v,bool) and 0<=time.time()-v<172800}
     save(state)
-    if state['enabled']: scan(state,chat)
+    if state['enabled']:
+        # Keep the original scan() for rollback and its regression tests.
+        # Telegram control latency must not consume the market-evidence budget.
+        import sys
+        from scanner_v2 import run
+        REQUEST_DEADLINE=time.monotonic()+100
+        run(state,chat,sys.modules[__name__])
     else: print('SCREENING_OFF')
 
 if __name__=='__main__':
@@ -526,4 +535,5 @@ if __name__=='__main__':
     except Exception:
         # Exception URLs can contain bot credentials: never log them.
         print('RUN_FAILED: check secret configuration, Telegram access and API availability');raise SystemExit(1)
+
 

@@ -1,9 +1,8 @@
 name: Solana Telegram Screening
-# Run to process the latest Telegram ON/OFF callback.
 on:
   push:
     branches: [main]
-    paths: ['bot.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
+    paths: ['bot.py', 'scanner_v2.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
     - cron: '3-59/5 * * * *'
@@ -15,67 +14,42 @@ concurrency:
 jobs:
   screen:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Show trigger and UTC time
-        run: echo "TRIGGER=${{ github.event_name }} UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-      - name: Verify fail-closed filters
+      - name: Verify original and upgraded filters
         run: python3 -m unittest -v
-      - name: Refresh latest control and delivery state
+      - name: Refresh durable state
         run: |
-          # Checkout may be pinned to an older push commit. Always read the
-          # latest persisted state before scanning to avoid duplicate alerts.
           git fetch origin main
           git show origin/main:state.json > /tmp/latest-screening-state.json
           python3 -m json.tool /tmp/latest-screening-state.json > /dev/null
           cp /tmp/latest-screening-state.json state.json
-          echo "STATE_REFRESH_OK"
       - name: Scan and process Telegram controls
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          X_READS_ENABLED: ${{ vars.X_READS_ENABLED }}
+          PYTHONUNBUFFERED: '1'
         run: |
-          for scan in 1 2 3 4; do
-            echo "SCAN_CYCLE=$scan UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            python3 bot.py || exit 1
-            if [ "$scan" -lt 4 ]; then sleep 45; fi
+          failed=0
+          for scan in 1 2 3; do
+            echo "SCAN_CYCLE=$scan"
+            python3 bot.py || failed=1
+            python3 persist_state.py || exit 1
+            if [ "$scan" -lt 3 ]; then sleep 30; fi
           done
-      - name: Persist control and delivery state
+          exit "$failed"
+      - name: Persist even after a failed cycle
         if: always()
-        run: |
-          if [ ! -f state.json ]; then exit 0; fi
-          cp state.json /tmp/scan-state.json
-          for attempt in 1 2 3 4 5; do
-            git fetch origin main
-            python3 - <<'PY'
-          import json, subprocess, time
-          from pathlib import Path
-          from signal_quality import merge_observations
-          local=json.loads(Path('/tmp/scan-state.json').read_text())
-          try:
-              remote=json.loads(subprocess.check_output(['git','show','origin/main:state.json'],text=True))
-          except (subprocess.CalledProcessError,ValueError):
-              remote={}
-          merged=dict(remote)
-          merged['observations']=merge_observations(remote.get('observations',{}),local.get('observations',{}),now=time.time())
-          # Merge concurrent deliveries, but never restore entries older than five hours.
-          merged['sent']={mint:ts for mint,ts in {**local.get('sent',{}),**remote.get('sent',{})}.items() if isinstance(ts,(int,float)) and not isinstance(ts,bool) and 0 <= time.time()-ts < 18000}
-          merged['offset']=max(local.get('offset',0),remote.get('offset',0))
-          merged['initialized']=bool(local.get('initialized') or remote.get('initialized'))
-          # The most recent callback processed by the scan takes precedence.
-          merged['enabled']=local.get('enabled',remote.get('enabled',False)) if local.get('offset',0)>remote.get('offset',0) else remote.get('enabled',local.get('enabled',False))
-          Path('/tmp/merged-state.json').write_text(json.dumps(merged,sort_keys=True))
-          PY
-            git reset --hard origin/main
-            cp /tmp/merged-state.json state.json
-            git add state.json
-            if git diff --cached --quiet; then exit 0; fi
-            git -c user.name=solana-screening-bot -c user.email=solana-screening-bot@users.noreply.github.com commit -m 'Persist screening control and delivery state'
-            if git push origin HEAD:main; then exit 0; fi
-            echo "State push race; retry $attempt"
-          done
-          echo "STATE_PERSIST_FAILED after retries"
-          exit 1
-
+        run: python3 persist_state.py
+      - name: Save observed scan and performance reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanner-v2-report-${{ github.run_id }}
+          path: reports/*.json
+          if-no-files-found: ignore
+          retention-days: 14
