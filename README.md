@@ -1,3 +1,11 @@
+# Solana Telegram Screening v2
+
+Upgrade berjalan pada bot dan secrets yang sama. Baca [UPGRADE.md](UPGRADE.md) untuk aturan EARLY WATCH/STRONG SIGNAL, skor terpisah, keterbatasan bukti, dan operasional terbaru. Mode tetap ALERT ONLY.
+
+Kode `scan()` lama dan seluruh tesnya dipertahankan. Catatan di bawah adalah dokumentasi versi sebelumnya, bukan konfigurasi aktif v2.
+
+---
+
 # Solana Telegram Screening
 
 Alert-only screening for early Solana pool candidates, with Indonesian Telegram alerts and ON/OFF controls. No wallet credentials, signing or trading.
@@ -53,4 +61,5 @@ State stores controls, public mint delivery history and bounded public price/vol
 Run `python3 -m unittest -v` to test without sending real Telegram messages. GitHub may disable schedules after repository inactivity.
 
 API references: https://docs.dexscreener.com/api/reference and https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+
 
