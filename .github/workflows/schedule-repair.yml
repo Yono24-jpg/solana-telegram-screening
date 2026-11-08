@@ -1,0 +1,71 @@
+name: Restore Scanner Schedule
+on:
+  workflow_dispatch:
+  push:
+    branches: ['upgrade/scanner-scheduler-repair-20261108']
+    paths: ['.github/workflows/schedule-repair.yml']
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: scanner-schedule-maintenance
+  cancel-in-progress: false
+jobs:
+  restore:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Enable existing workflow and request one recovery scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+          from pathlib import Path
+          repo = os.environ['GITHUB_REPOSITORY']
+          root = 'https://api.github.com/repos/' + repo
+          workflow = '/actions/workflows/screen.yml'
+          report = {'enable_verified':False, 'recovery_dispatch_accepted':False,
+                    'note':'A recovery dispatch does not prove the schedule has fired.'}
+          def call(method, path, body=None):
+              payload = None if body is None else json.dumps(body).encode()
+              request = urllib.request.Request(root+path, data=payload, method=method,
+                  headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                           'Accept':'application/vnd.github+json',
+                           'Content-Type':'application/json',
+                           'X-GitHub-Api-Version':'2022-11-28'})
+              with urllib.request.urlopen(request,timeout=20) as response:
+                  raw=response.read()
+                  return response.status, json.loads(raw) if raw else {}
+          failed = False
+          try:
+              _,before=call('GET',workflow)
+              if before.get('path')!='.github/workflows/screen.yml':
+                  raise ValueError('workflow_identity_mismatch')
+              report['before_state']=before.get('state')
+              status,_=call('PUT',workflow+'/enable')
+              if status!=204: raise ValueError('enable_not_confirmed')
+              _,after=call('GET',workflow)
+              report['after_state']=after.get('state')
+              if after.get('state')!='active': raise ValueError('workflow_not_active')
+              report['enable_verified']=True
+              status,_=call('POST',workflow+'/dispatches',{'ref':'main'})
+              if status!=204: raise ValueError('dispatch_not_confirmed')
+              report['recovery_dispatch_accepted']=True
+          except urllib.error.HTTPError as error:
+              report['http_error']=error.code; failed=True
+          except Exception as error:
+              report['error_type']=type(error).__name__; failed=True
+          Path('reports').mkdir(exist_ok=True)
+          Path('reports/schedule-repair.json').write_text(json.dumps(report,indent=2))
+          print('SCHEDULE_REPAIR '+json.dumps(report,sort_keys=True))
+          raise SystemExit(1 if failed else 0)
+          PY
+      - name: Save schedule repair evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanner-schedule-repair-${{ github.run_id }}
+          path: reports/schedule-repair.json
+          if-no-files-found: ignore
