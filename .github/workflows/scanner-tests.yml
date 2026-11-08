@@ -12,3 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest -vb
+      - name: Read-only live vault verification
+        if: github.event_name == 'push' && github.ref == 'refs/heads/upgrade/vault-risk-v22-20261108'
+        env:
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: python3 vault_audit.py
+      - name: Save live verification result
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/upgrade/vault-risk-v22-20261108'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vault-live-evidence-${{ github.run_id }}
+          path: reports/vault-live-audit.json
+          if-no-files-found: ignore

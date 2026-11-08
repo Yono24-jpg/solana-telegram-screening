@@ -14,6 +14,8 @@ def migrate(state, now):
     state.setdefault('performance', {})
     state.setdefault('evidence_cache', {})
     state.setdefault('pool_watchlist', {})
+    state['scan_history'] = sorted([r for r in state.get('scan_history',[]) if isinstance(r,dict)
+                                   and number(r.get('at')) and 0<=now-r['at']<=7*86400],key=lambda r:r['at'])[-100:]
     state['gecko_requests'] = sorted(set(t for t in state.get('gecko_requests',[]) if number(t) and 0 <= now-t <= 120))[-100:]
     state['pool_watchlist'] = {k:v for k,v in state['pool_watchlist'].items() if address(k) and isinstance(v,dict)
                               and address(v.get('mint')) and number(v.get('created_at')) and 0 <= now-v['created_at'] <= 86400
@@ -56,6 +58,8 @@ def merge(remote, local, now):
         out[key] = records
     out['observations'] = merge_observations(remote.get('observations', {}), local.get('observations', {}), now=now)
     out['gecko_requests'] = remote.get('gecko_requests',[])+local.get('gecko_requests',[])
+    out['scan_history'] = list({(r['at'],r.get('run_id')):r for r in remote.get('scan_history',[])+local.get('scan_history',[])
+                               if isinstance(r,dict) and number(r.get('at'))}.values())
     out['pool_watchlist'] = copy.deepcopy(remote.get('pool_watchlist',{}))
     for key,value in local.get('pool_watchlist',{}).items():
         old = out['pool_watchlist'].get(key,{})
