@@ -62,10 +62,15 @@ class Rules(unittest.TestCase):
         self.assertEqual(rules.choose_tier(m,sec(),social(),{'strong':True},mint_age()),'STRONG SIGNAL')
     def test_unknown_evidence_cannot_be_strong(self):
         base=[rules.market(pool(),history(),NOW),sec(),social(),{'strong':True},mint_age()]
-        for index,key,value in [(0,'score',79),(1,'complete',False),(1,'score',79),(2,'complete',False),(2,'score',None),(2,'score',79),(3,'strong',False),(4,'verified',False)]:
+        for index,key,value in [(0,'score',79),(1,'complete',False),(1,'score',79),(2,'score',79),(3,'strong',False),(4,'verified',False)]:
             rows=copy.deepcopy(base);rows[index][key]=value
             if index==0: rows[0]['strong']=False
             self.assertEqual(rules.choose_tier(*rows),'EARLY WATCH')
+    def test_optional_social_evidence_still_requires_security(self):
+        m=rules.market(pool(),history(),NOW)
+        s=sec(); s['complete']=False
+        c=social(); c.update(complete=False,score=None)
+        self.assertEqual(rules.choose_tier(m,s,c,{'strong':True},mint_age()),'EARLY WATCH')
     def test_hard_security_rejection_blocks_early_too(self):
         s=sec();s['reject']='mint_authority_active'
         self.assertIsNone(rules.choose_tier(rules.market(pool(),{},NOW),s,social(),{},{}))

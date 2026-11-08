@@ -35,11 +35,11 @@ class Pipeline(unittest.TestCase):
         self.assertIn('STRONG SIGNAL',tg.call_args.kwargs['text'])
         restored=json.loads(json.dumps(state))
         self.assertEqual(self.run_scan(restored).call_count,0)
-    def test_missing_social_data_only_watch_and_once(self):
+    def test_missing_social_data_strong_if_other_evidence_verified_and_once(self):
         state={'enabled':True,'observations':history()}
         unknown=social();unknown.update(complete=False,score=None)
         tg=self.run_scan(state,community=unknown)
-        self.assertIn('EARLY WATCH',tg.call_args.kwargs['text'])
+        self.assertIn('STRONG SIGNAL',tg.call_args.kwargs['text'])
         self.assertIn('belum cukup data',tg.call_args.kwargs['text'])
         self.assertEqual(self.run_scan(state,community=unknown).call_count,0)
     def test_security_failure_blocks_all_notifications(self):

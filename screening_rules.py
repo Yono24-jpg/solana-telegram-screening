@@ -206,7 +206,8 @@ def evidence_rejection(market_data, security, buyers, mint_age):
 def choose_tier(market_data, security, community, buyers, mint_age):
     if evidence_rejection(market_data, security, buyers, mint_age): return None
     full = (market_data.get('strong') and security.get('complete') and security.get('score', 0) >= 80
-            and community.get('complete') and (community.get('score') or 0) >= 80
+            and not community.get('risks')
+            and (not community.get('complete') or (community.get('score') or 0) >= 80)
             and buyers.get('strong') and mint_age.get('verified')
             and number(mint_age.get('age_seconds')) and 0 <= mint_age['age_seconds'] <= MAX_AGE
             and mint_age['age_seconds'] >= market_data.get('age_seconds', MAX_AGE)-60)
