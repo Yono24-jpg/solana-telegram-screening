@@ -2,10 +2,11 @@ name: Solana Telegram Screening
 on:
   push:
     branches: [main]
-    paths: ['bot.py', 'scanner_v2.py', 'market_data.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
+    paths: ['bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
-    - cron: '3-59/5 * * * *'
+    # Explicit five-minute slots away from the beginning of each hour (UTC).
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
 permissions:
   contents: write
 concurrency:

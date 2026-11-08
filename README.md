@@ -1,4 +1,4 @@
-# Solana Telegram Screening v2
+# Solana Telegram Screening v2.2
 
 Upgrade berjalan pada bot dan secrets yang sama. Baca [UPGRADE.md](UPGRADE.md) untuk aturan EARLY WATCH/STRONG SIGNAL, skor terpisah, keterbatasan bukti, dan operasional terbaru. Mode tetap ALERT ONLY.
 

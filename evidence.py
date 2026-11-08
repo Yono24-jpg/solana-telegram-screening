@@ -7,6 +7,7 @@ import urllib.request
 from html.parser import HTMLParser
 from urllib.parse import urlencode, urlsplit
 from screening_rules import address, number, timestamp, social_links, trade_evidence
+import vault_checks
 
 
 class PublicPosts(HTMLParser):
@@ -92,7 +93,7 @@ def mint_creation(mint, api, now):
     return out
 
 
-def security(mint, api, now):
+def security(mint, api, now, pool=None):
     out = {'score': 0, 'authority_verified': False, 'complete': False, 'reject': None, 'risks': [], 'top10_accounts_pct': None}
     try:
         account = rpc(api, 'getAccountInfo', [mint, {'encoding': 'base64', 'commitment': 'finalized'}])['value']
@@ -103,10 +104,21 @@ def security(mint, api, now):
     except Exception:
         out['reject'] = 'mint_security_unavailable'; return out
     try:
-        pct = api.holder_concentration(mint)
+        if pool is not None:
+            distribution = vault_checks.concentration(pool, account, api, rpc)
+            out['distribution'] = distribution
+            pct = distribution['top10_accounts_pct']
+            if distribution.get('reject'):
+                out['reject'] = distribution['reject']; return out
+        else:
+            distribution = None
+            pct = api.holder_concentration(mint)  # Preserved legacy caller behavior.
         if not number(pct) or not 0 <= pct <= 100: raise ValueError('invalid_holders')
         out['top10_accounts_pct'] = round(pct, 2)
         if pct > 30: out['reject'] = 'top10_accounts_over_30'; return out
+        if distribution and (distribution.get('top1_observed_owner_pct') or 0) > 15:
+            out['reject'] = 'observed_owner_over_15'; return out
+        if distribution and not distribution['verified']: raise ValueError('distribution_snapshot_incomplete')
         out['score'] += 30
     except Exception: out['risks'].append('Distribusi token belum terverifikasi')
     try:

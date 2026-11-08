@@ -140,6 +140,14 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
     missing = [label+' belum terverifikasi' for k, label in [('x','X'),('telegram','Telegram')] if k not in social.get('verified_links', {})]
     intro = 'Pantauan awal; verifikasi belum lengkap.' if tier == 'EARLY WATCH' else 'Lolos seluruh gerbang bukti v2; bukan jaminan keuntungan.'
     top = sec.get('top10_accounts_pct')
+    distribution = sec.get('distribution') or {}
+    excluded = distribution.get('excluded_vaults',[])
+    holder_line = ''
+    if top is not None:
+        label = 'setelah mengecualikan vault LP terbukti' if excluded else 'tanpa pengecualian vault yang belum terbukti'
+        holder_line = f'• 10 akun token terbesar {top:.2f}% ({label}; bukan 10 pemilik).\n'
+        if excluded:
+            holder_line += f'• Sebelum koreksi {distribution["raw_top10_pct"]:.2f}%; vault LP {distribution["excluded_pct"]:.2f}% dari suplai.\n'
     valuation = ('FDV (MC belum tersedia)' if m.get('cap_basis') == 'fdv_proxy' else 'MC')
     return (f'🔎 <b>{tier} | {symbol}</b>\n{name}\n{intro}\n'
             f'⏱ Pool: <b>{m["age_seconds"]/60:.0f} menit</b> | Mint: {token_age}\n'
@@ -149,7 +157,7 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
             f'🎯 Market {m["score"]}/100 | Keamanan {sec["score"]}/100 | Komunitas {community_score}\n'
             f'📈 Harga 5m {m["m5"]:+.1f}%\n<b>Alasan</b>: {momentum}\n'
             f'• Tekanan BUY {100*m["buys"]/(m["buys"]+m["sells"]):.1f}%; mint/freeze nonaktif.\n'
-            + (f'• 10 akun token terbesar {top:.2f}% (termasuk vault; bukan 10 pemilik).\n' if top is not None else '')
+            + holder_line
             + '<b>Risiko</b>:\n'+'\n'.join('• '+esc(r) for r in risks[:7])
             + f'\n📋 <code>{mint}</code>\n'+' | '.join(links)
             + ('\n'+ '; '.join(missing) if missing else '')
@@ -185,7 +193,8 @@ def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
 
 def run(state, chat, api):
     now = time.time(); migrate(state, now)
-    report = {'version': '2.1', 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [], 'missing_fields':{},
+    report = {'version': '2.2', 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [], 'missing_fields':{}, 'security_checks':[],
+              'trigger':os.environ.get('GITHUB_EVENT_NAME','local'), 'run_id':os.environ.get('GITHUB_RUN_ID'),
               'capabilities': {'x_bearer_configured': bool(os.environ.get('X_BEARER_TOKEN')), 'x_reads_enabled': os.environ.get('X_READS_ENABLED') == '1'}}
     gecko = market_data.GeckoClient(api, state)
     pools, discovery = discover(api, gecko); report['discovery'] = discovery
@@ -217,7 +226,14 @@ def run(state, chat, api):
         if already_delivered(state, mint, 'STRONG SIGNAL', time.time()): continue
         # Already-watched tokens get expensive checks only when market conditions can promote them.
         if already_delivered(state, mint, 'EARLY WATCH', time.time()) and not m['strong']: continue
-        sec = evidence.security(mint, api, time.time())
+        sec = evidence.security(mint, api, time.time(), pool=pool)
+        distribution = sec.get('distribution') or {}
+        report['security_checks'].append({'mint':mint,'pair':pair,'rejection':sec.get('reject'),
+                                         'raw_top10_pct':distribution.get('raw_top10_pct'),
+                                         'adjusted_top10_pct':sec.get('top10_accounts_pct'),
+                                         'vault_status':distribution.get('vault_status'),
+                                         'verified_vault_count':len(distribution.get('excluded_vaults',[])),
+                                         'top1_observed_owner_pct':distribution.get('top1_observed_owner_pct')})
         if sec['reject']:
             reason = sec['reject']; report['rejected'][reason] = report['rejected'].get(reason, 0)+1; continue
         metadata_key = hashlib.sha256(json.dumps(social_links(pool), sort_keys=True).encode()).hexdigest()[:16]
@@ -254,14 +270,19 @@ def run(state, chat, api):
     report['health'] = 'degraded' if not pools or any(v!='ok' for v in discovery.get('sources',{}).values()) else 'ok'
     previous = state.get('last_scan',{}).get('at')
     if isinstance(previous,(int,float)) and now >= previous: report['seconds_since_previous_scan'] = round(now-previous)
+    report['previous_scan_gap_over_15m'] = report.get('seconds_since_previous_scan',0)>900
+    state.setdefault('scan_history',[]).append({'at':now,'trigger':report['trigger'],'run_id':report['run_id'],'seen':report['seen'],'sent':report['sent']})
     state['last_scan'] = report; migrate(state, time.time()); checkpoint(state, api, durable=True)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/latest.json').write_text(json.dumps(report, indent=2))
+    Path('reports/operations.json').write_text(json.dumps({'last_trigger':report['trigger'],'recent_scans':state['scan_history'],
+        'note':'A successful push/manual run does not prove that GitHub schedule has fired.'},indent=2))
     Path('reports/performance.json').write_text(json.dumps({'note':'Observed price changes; not executed profit; excludes fees/slippage.', 'summary':performance_summary(state), 'signals':state['performance']}, indent=2))
     summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary_path:
         with open(summary_path,'a',encoding='utf-8') as output:
-            output.write(f'\n### Scanner v2.1 — ALERT ONLY\n\nPool diperiksa: {report["seen"]}. Alert baru: {report["sent"]}. Kondisi data: {report["health"]}.\n\n')
+            output.write(f'\n### Scanner v2.2 — ALERT ONLY\n\nPool diperiksa: {report["seen"]}. Alert baru: {report["sent"]}. Kondisi data: {report["health"]}. Pemicu: {report["trigger"]}.\n\n')
+            if report['previous_scan_gap_over_15m']: output.write(f'Perhatian: jarak dari scan sebelumnya {report["seconds_since_previous_scan"]} detik. Jadwal sebelumnya tidak boleh dianggap berjalan normal.\n\n')
             output.write('Penolakan: `'+json.dumps(report['rejected'],sort_keys=True)+'`.\n\n')
             output.write('Data kosong: `'+json.dumps(report['missing_fields'],sort_keys=True)+'`.\n\n')
             output.write('Performa ini pengamatan harga, bukan laba transaksi. '+json.dumps(performance_summary(state))+'\n')
