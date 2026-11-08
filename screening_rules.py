@@ -83,17 +83,20 @@ def social_links(pool):
 
 def market(pool, history, now):
     try:
-        if pool['chainId'] != 'solana' or not address(pool['pairAddress']) or not address(pool['baseToken']['address']):
+        if pool['chainId'] != 'solana' or not address(pool['pairAddress']) or not address(pool['baseToken']['address']) or pool.get('identityConflict'):
             return {'reject': 'invalid_identity'}
         age = now - pool['pairCreatedAt'] / 1000
+        if not number(age): return {'reject': 'missing_market_data'}
+        if not MIN_AGE <= age <= MAX_AGE: return {'reject': 'pool_age'}
         lp = pool['liquidity']['usd']; vol = pool['volume']['m5']
         buys = pool['txns']['m5']['buys']; sells = pool['txns']['m5']['sells']
-        cap = pool['marketCap']; m5 = pool['priceChange']['m5']; h1 = pool['priceChange'].get('h1')
+        market_cap = pool.get('marketCap'); fdv = pool.get('fdv')
+        cap = market_cap if market_cap is not None else fdv
+        cap_basis = 'market_cap' if market_cap is not None else 'fdv_proxy'
+        m5 = pool['priceChange']['m5']; h1 = pool['priceChange'].get('h1'); h24 = pool['priceChange'].get('h24')
         price = amount(pool['priceUsd'])
         if not all(number(x) for x in (age, lp, vol, buys, sells, cap, m5, price)):
             return {'reject': 'missing_market_data'}
-        if not MIN_AGE <= age <= MAX_AGE:
-            return {'reject': 'pool_age'}
         if cap <= 0 or price <= 0 or min(buys, sells) < 0 or int(buys) != buys or int(sells) != sells:
             return {'reject': 'invalid_market_data'}
         if lp < 10000 or lp / cap < .08:
@@ -102,6 +105,8 @@ def market(pool, history, now):
             return {'reject': 'weak_activity'}
         if m5 < 0 or m5 > 25 or (number(h1) and (h1 < -15 or h1 > 80)):
             return {'reject': 'late_or_falling_price'}
+        if number(h24) and h24 > 200:
+            return {'reject': 'already_extended_24h'}
         rows = history.get(pool['pairAddress'], []) if isinstance(history, dict) else []
         eligible = [r for r in rows if isinstance(r, dict) and r.get('mint') == pool['baseToken']['address']
                     and all(number(r.get(k)) for k in ('t', 'price', 'lp', 'volume', 'buys', 'sells'))
@@ -126,13 +131,15 @@ def market(pool, history, now):
         score = round(sum(parts.values()), 1)
         if score < 60:
             return {'reject': 'market_score_below_60'}
-        strong = (score >= 80 and growth is not None and growth['volume'] >= 1.1 and growth['buys'] >= 1.1
+        strong = (cap_basis == 'market_cap' and not pool.get('ageConflict')
+                  and score >= 80 and growth is not None and growth['volume'] >= 1.1 and growth['buys'] >= 1.1
                   and growth['transactions'] >= 1.1 and -5 <= growth['price'] <= 15
                   and sells >= 3 and m5 <= 15 and number(h1) and -15 <= h1 <= 60)
         return {'reject': None, 'score': score, 'parts': {k: round(v, 1) for k, v in parts.items()},
                 'age_seconds': age, 'priority': age <= 3600, 'price': price, 'lp': lp, 'volume': vol,
-                'buys': buys, 'sells': sells, 'cap': cap, 'm5': m5, 'h1': h1 if number(h1) else None,
-                'growth': growth, 'strong': strong}
+                'buys': buys, 'sells': sells, 'cap': cap, 'cap_basis':cap_basis,
+                'm5': m5, 'h1': h1 if number(h1) else None, 'h24':h24 if number(h24) else None,
+                'growth': growth, 'strong': strong, 'age_conflict':bool(pool.get('ageConflict'))}
     except (KeyError, TypeError, ValueError, ZeroDivisionError, OverflowError):
         return {'reject': 'missing_market_data'}
 
@@ -185,9 +192,19 @@ def trade_evidence(payload, mint, now):
     return out
 
 
-def choose_tier(market_data, security, community, buyers, mint_age):
+def evidence_rejection(market_data, security, buyers, mint_age):
     if market_data.get('reject') or security.get('reject') or not security.get('authority_verified'):
-        return None
+        return market_data.get('reject') or security.get('reject') or 'authority_unverified'
+    if buyers.get('risks'):
+        return 'suspicious_buyer_sample'
+    if mint_age.get('verified') and number(mint_age.get('age_seconds')):
+        if not 0 <= mint_age['age_seconds'] <= MAX_AGE: return 'token_older_than_24h'
+        if mint_age['age_seconds'] < market_data.get('age_seconds',0)-60: return 'mint_pool_age_conflict'
+    return None
+
+
+def choose_tier(market_data, security, community, buyers, mint_age):
+    if evidence_rejection(market_data, security, buyers, mint_age): return None
     full = (market_data.get('strong') and security.get('complete') and security.get('score', 0) >= 80
             and community.get('complete') and (community.get('score') or 0) >= 80
             and buyers.get('strong') and mint_age.get('verified')

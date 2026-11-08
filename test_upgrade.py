@@ -62,7 +62,7 @@ class Rules(unittest.TestCase):
         self.assertEqual(rules.choose_tier(m,sec(),social(),{'strong':True},mint_age()),'STRONG SIGNAL')
     def test_unknown_evidence_cannot_be_strong(self):
         base=[rules.market(pool(),history(),NOW),sec(),social(),{'strong':True},mint_age()]
-        for index,key,value in [(0,'score',79),(1,'complete',False),(1,'score',79),(2,'complete',False),(2,'score',None),(2,'score',79),(3,'strong',False),(4,'verified',False),(4,'age_seconds',86401)]:
+        for index,key,value in [(0,'score',79),(1,'complete',False),(1,'score',79),(2,'complete',False),(2,'score',None),(2,'score',79),(3,'strong',False),(4,'verified',False)]:
             rows=copy.deepcopy(base);rows[index][key]=value
             if index==0: rows[0]['strong']=False
             self.assertEqual(rules.choose_tier(*rows),'EARLY WATCH')

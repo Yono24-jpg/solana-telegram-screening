@@ -2,7 +2,7 @@ name: Solana Telegram Screening
 on:
   push:
     branches: [main]
-    paths: ['bot.py', 'scanner_v2.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
+    paths: ['bot.py', 'scanner_v2.py', 'market_data.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
     - cron: '3-59/5 * * * *'
@@ -14,11 +14,11 @@ concurrency:
 jobs:
   screen:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Verify original and upgraded filters
-        run: python3 -m unittest -v
+        run: python3 -m unittest -vb
       - name: Refresh durable state
         run: |
           git fetch origin main
@@ -39,7 +39,7 @@ jobs:
             echo "SCAN_CYCLE=$scan"
             python3 bot.py || failed=1
             python3 persist_state.py || exit 1
-            if [ "$scan" -lt 3 ]; then sleep 30; fi
+            if [ "$scan" -lt 3 ]; then sleep 65; fi
           done
           exit "$failed"
       - name: Persist even after a failed cycle
