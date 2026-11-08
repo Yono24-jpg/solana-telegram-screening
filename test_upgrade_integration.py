@@ -17,6 +17,9 @@ from test_upgrade import pool, history, sec, social, mint_age, NOW, MINT
 
 class Pipeline(unittest.TestCase):
     def setUp(self):
+        self.summary_env = patch.dict(os.environ, {'GITHUB_STEP_SUMMARY':''})
+        self.summary_env.start()
+        self.addCleanup(self.summary_env.stop)
         self.api = bot
         self.old_deadline = bot.REQUEST_DEADLINE
         bot.REQUEST_DEADLINE = None

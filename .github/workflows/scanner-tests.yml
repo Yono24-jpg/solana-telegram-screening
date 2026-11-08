@@ -11,4 +11,4 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m unittest -v
+      - run: python3 -m unittest -vb

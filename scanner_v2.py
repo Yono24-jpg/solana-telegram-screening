@@ -9,8 +9,9 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from signal_quality import snapshot, merge_observations
-from screening_rules import address, amount, market, choose_tier, social_links, MAX_AGE
-from state_store import migrate, already_delivered, sample_performance, HORIZONS
+from screening_rules import address, amount, market, choose_tier, evidence_rejection, social_links, MAX_AGE
+from state_store import migrate, already_delivered, sample_performance, performance_summary, HORIZONS
+import market_data
 import evidence
 
 
@@ -27,19 +28,22 @@ def checkpoint(state, api, durable=False):
         state.clear(); state.update(merged)
 
 
-def discover(api):
+def discover(api, gecko=None):
+    gecko = gecko or market_data.GeckoClient(api, {})
     urls = [(api.DEX+p, label) for p, label in SOURCES]
-    urls += [('https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page='+str(p), 'gecko_'+str(p)) for p in (1, 2, 3)]
+    urls += [(market_data.GECKO+'/networks/solana/new_pools?page='+str(p)+'&include=base_token,quote_token,dex', 'gecko_'+str(p)) for p in (1, 2, 3)]
     def read(item):
         url, label = item
-        try: return label, api.request(url)
+        try: return label, (gecko.request(url) if label.startswith('gecko') else api.request(url))
         except Exception: return label, None
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(read, urls))
-    tokens = []; pairs = []; metadata = {}; statuses = {}
+    tokens = []; pairs = []; metadata = {}; statuses = {}; native = {}
     for label, data in results:
-        statuses[label] = 'ok' if isinstance(data, (dict, list)) else 'unavailable'
+        valid = isinstance(data, dict) and isinstance(data.get('data'), list) if label.startswith('gecko') else isinstance(data, list)
+        statuses[label] = 'ok' if valid else 'unavailable'
         if label.startswith('gecko'):
+            native.update({p['pairAddress']:p for p in market_data.gecko_pools(data)})
             for row in data.get('data', []) if isinstance(data, dict) else []:
                 a = row.get('attributes', {}).get('address') if isinstance(row, dict) else None
                 if address(a) and a not in pairs: pairs.append(a)
@@ -67,7 +71,10 @@ def discover(api):
                 if not isinstance(info, dict): pool['info'] = info = {}
                 info['socials'] = (info.get('socials') if isinstance(info.get('socials'), list) else []) + [r for r in metadata.get(mint, []) if isinstance(r, dict)]
                 pools[pool['pairAddress']] = pool
-    return list(pools.values()), {'sources': statuses, 'token_addresses': len(tokens), 'new_pool_addresses': len(pairs), 'batch_failures': failures}
+    combined = {pair:market_data.select_pool(pools.get(pair), native.get(pair)) for pair in sorted(set(pools)|set(native))}
+    return list(combined.values()), {'sources': statuses, 'token_addresses': len(tokens), 'new_pool_addresses': len(pairs),
+            'gecko_native_pools':len(native), 'gecko_independent_pools':sum(p.get('dataSource')=='geckoterminal' for p in combined.values()),
+            'dex_pool_count':len(pools), 'batch_failures': failures}
 
 
 def observe(state, pools, now):
@@ -83,23 +90,18 @@ def observe(state, pools, now):
     state['observations'] = merge_observations(history, now=now)
 
 
-def refresh(pair, mint, api):
-    result = api.request(api.DEX+'/latest/dex/pairs/solana/'+pair)
-    for row in result.get('pairs') or []:
-        if (isinstance(row, dict) and row.get('chainId') == 'solana' and row.get('pairAddress') == pair
-                and (row.get('baseToken') or {}).get('address') == mint):
-            return row
-    raise ValueError('refresh_identity_mismatch')
+def refresh(pair, mint, api, gecko=None):
+    return market_data.refresh_pool(pair, mint, api, gecko or market_data.GeckoClient(api, {}))
 
 
-def followup(state, pools, api, now):
+def followup(state, pools, api, now, gecko=None):
     current = {(p.get('pairAddress'), (p.get('baseToken') or {}).get('address')):p for p in pools if isinstance(p, dict)}
     due = [r for r in state['performance'].values() if any(str(h) not in r.get('samples', {}) and now >= r['at']+h for h in HORIZONS)]
     for record in sorted(due, key=lambda r:r.get('last_observed_at', 0))[:30]:
         if api.REQUEST_DEADLINE and time.monotonic() >= api.REQUEST_DEADLINE-20: break
         pool = current.get((record['pair'], record['mint']))
         if pool is None:
-            try: pool = refresh(record['pair'], record['mint'], api)
+            try: pool = refresh(record['pair'], record['mint'], api, gecko)
             except Exception: pool = {}
         price = amount(pool.get('priceUsd'))
         sample_performance(record, price, time.time())
@@ -124,6 +126,8 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
     momentum = (f"Volume {growth['volume']:.2f}×; BUY {growth['buys']:.2f}×; transaksi {growth['transactions']:.2f}× vs {growth['minutes']:.0f} menit lalu"
                 if growth else 'Menunggu observasi kedua untuk membuktikan percepatan')
     risks = list(sec.get('risks', []))+list(social.get('risks', []))+list(buyers.get('risks', []))
+    if m.get('cap_basis') == 'fdv_proxy': risks.insert(0,'Market cap belum tersedia; FDV hanya perkiraan valuasi terdilusi')
+    if m.get('age_conflict'): risks.insert(0,'Waktu pembuatan pool berbeda antar penyedia')
     if not mint_age.get('verified'): risks.append('Pool baru dapat berisi token lama')
     elif mint_age.get('age_seconds', 0) > MAX_AGE: risks.append('Mint berumur lebih dari 24 jam; yang baru hanya pool')
     if not social.get('complete'): risks.append('Verifikasi komunitas belum lengkap')
@@ -136,9 +140,10 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
     missing = [label+' belum terverifikasi' for k, label in [('x','X'),('telegram','Telegram')] if k not in social.get('verified_links', {})]
     intro = 'Pantauan awal; verifikasi belum lengkap.' if tier == 'EARLY WATCH' else 'Lolos seluruh gerbang bukti v2; bukan jaminan keuntungan.'
     top = sec.get('top10_accounts_pct')
+    valuation = ('FDV (MC belum tersedia)' if m.get('cap_basis') == 'fdv_proxy' else 'MC')
     return (f'🔎 <b>{tier} | {symbol}</b>\n{name}\n{intro}\n'
             f'⏱ Pool: <b>{m["age_seconds"]/60:.0f} menit</b> | Mint: {token_age}\n'
-            f'💧 LP ${m["lp"]:,.0f} | MC ${m["cap"]:,.0f}\n'
+            f'💧 LP ${m["lp"]:,.0f} | {valuation} ${m["cap"]:,.0f}\n'
             f'📊 Volume 5m ${m["volume"]:,.0f} | BUY/SELL {m["buys"]}/{m["sells"]}\n'
             f'👥 Pembeli: {unique}\n'
             f'🎯 Market {m["score"]}/100 | Keamanan {sec["score"]}/100 | Komunitas {community_score}\n'
@@ -148,6 +153,7 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
             + '<b>Risiko</b>:\n'+'\n'.join('• '+esc(r) for r in risks[:7])
             + f'\n📋 <code>{mint}</code>\n'+' | '.join(links)
             + ('\n'+ '; '.join(missing) if missing else '')
+            + '\nSumber pasar: '+esc(pool.get('dataSource','dexscreener'))
             + '\nALERT ONLY • Tidak ada transaksi otomatis. Skor bukan probabilitas profit.')
 
 
@@ -179,16 +185,17 @@ def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
 
 def run(state, chat, api):
     now = time.time(); migrate(state, now)
-    report = {'version': 2, 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [],
+    report = {'version': '2.1', 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [], 'missing_fields':{},
               'capabilities': {'x_bearer_configured': bool(os.environ.get('X_BEARER_TOKEN')), 'x_reads_enabled': os.environ.get('X_READS_ENABLED') == '1'}}
-    pools, discovery = discover(api); report['discovery'] = discovery
-    pools = api.refresh_watchlist(pools, state, time.time())
+    gecko = market_data.GeckoClient(api, state)
+    pools, discovery = discover(api, gecko); report['discovery'] = discovery
+    pools = market_data.refresh_watchlist(pools, state, api, gecko, time.time())
     # Record eligible early observations even before safety data is available.
     observe(state, pools, time.time()); checkpoint(state, api)
     original_deadline = api.REQUEST_DEADLINE
     api.REQUEST_DEADLINE = min(original_deadline, time.monotonic()+35) if original_deadline else time.monotonic()+35
     try:
-        followup(state, pools, api, time.time())
+        followup(state, pools, api, time.time(), gecko)
     finally:
         api.REQUEST_DEADLINE = original_deadline
     chosen = {}
@@ -197,6 +204,8 @@ def run(state, chat, api):
         m = market(pool, state['observations'], time.time())
         if m.get('reject'):
             reason = m['reject']; report['rejected'][reason] = report['rejected'].get(reason, 0)+1
+            if reason == 'missing_market_data':
+                for field in market_data.missing_fields(pool): report['missing_fields'][field] = report['missing_fields'].get(field,0)+1
             continue
         mint = pool['baseToken']['address']
         if mint not in chosen or m['score'] > chosen[mint][1]['score']: chosen[mint] = (pool, m)
@@ -215,9 +224,12 @@ def run(state, chat, api):
         social = cached(state, 'social:'+mint+':'+metadata_key, time.time(), 900, lambda:evidence.community(pool, api, time.time()))
         creation = cached(state, 'mint:'+mint, time.time(), 3600, lambda:evidence.mint_creation(mint, api, time.time()))
         if creation.get('verified'): creation['age_seconds'] = time.time()-creation['created_at']
-        buyers = evidence.buyers(pool, api, time.time())
+        buyers = evidence.buyers(pool, api, time.time(), gecko)
         try:
-            fresh = refresh(pair, mint, api)
+            fresh = refresh(pair, mint, api, gecko)
+            # Carry observed cross-source conflicts into the final decision.
+            for flag in ('identityConflict','ageConflict'):
+                if pool.get(flag): fresh[flag] = True
             # Social fields may be absent from a single-pair refresh; the inspected evidence remains timestamped.
             m = market(fresh, state['observations'], time.time())
             fresh_links, fresh_conflicts = social_links(fresh)
@@ -227,16 +239,30 @@ def run(state, chat, api):
         except Exception:
             report['rejected']['refresh_unavailable'] = report['rejected'].get('refresh_unavailable', 0)+1; continue
         tier = choose_tier(m, sec, social, buyers, creation)
+        reason = evidence_rejection(m, sec, buyers, creation)
+        if reason: report['rejected'][reason] = report['rejected'].get(reason,0)+1
         summary = {'mint': mint, 'tier': tier, 'market_score': m.get('score'), 'security_score': sec['score'],
                    'community_score': social['score'], 'x_status': social['x']['status'],
                    'telegram_status': social['telegram']['status'], 'unique_buyers': buyers.get('unique_buyers'),
-                   'mint_age_status': creation['status']}
+                   'mint_age_status': creation['status'], 'rejection':reason,
+                   'cap_basis':m.get('cap_basis'), 'market_source':pool.get('dataSource','dexscreener')}
         report['candidates'].append(summary)
         if tier and deliver(state, api, chat, pool, m, sec, social, buyers, creation, tier):
             report['sent'] += 1
             if report['sent'] >= 5: break
+    report['watchlist_size'] = len(state.get('pool_watchlist',{})); report['gecko_budget_limited'] = gecko.limited
+    report['health'] = 'degraded' if not pools or any(v!='ok' for v in discovery.get('sources',{}).values()) else 'ok'
+    previous = state.get('last_scan',{}).get('at')
+    if isinstance(previous,(int,float)) and now >= previous: report['seconds_since_previous_scan'] = round(now-previous)
     state['last_scan'] = report; migrate(state, time.time()); checkpoint(state, api, durable=True)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/latest.json').write_text(json.dumps(report, indent=2))
-    Path('reports/performance.json').write_text(json.dumps({'note':'Observed price changes; not executed profit; excludes fees/slippage.', 'signals':state['performance']}, indent=2))
+    Path('reports/performance.json').write_text(json.dumps({'note':'Observed price changes; not executed profit; excludes fees/slippage.', 'summary':performance_summary(state), 'signals':state['performance']}, indent=2))
+    summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summary_path:
+        with open(summary_path,'a',encoding='utf-8') as output:
+            output.write(f'\n### Scanner v2.1 — ALERT ONLY\n\nPool diperiksa: {report["seen"]}. Alert baru: {report["sent"]}. Kondisi data: {report["health"]}.\n\n')
+            output.write('Penolakan: `'+json.dumps(report['rejected'],sort_keys=True)+'`.\n\n')
+            output.write('Data kosong: `'+json.dumps(report['missing_fields'],sort_keys=True)+'`.\n\n')
+            output.write('Performa ini pengamatan harga, bukan laba transaksi. '+json.dumps(performance_summary(state))+'\n')
     print('SCANNER_V2 '+json.dumps(report, sort_keys=True))

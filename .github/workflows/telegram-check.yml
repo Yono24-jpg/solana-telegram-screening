@@ -2,7 +2,7 @@ name: Telegram Connection Check
 on:
   workflow_dispatch:
   push:
-    branches: ['upgrade/scanner-v2-20261108']
+    branches: ['upgrade/scanner-v2-20261108', 'upgrade/early-discovery-v21-20261108']
     paths: ['.github/workflows/telegram-check.yml']
 permissions:
   contents: read
@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test without sending messages
-        run: python3 -m unittest -v
+        run: python3 -m unittest -vb
       - name: Identify existing bot and send one test
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

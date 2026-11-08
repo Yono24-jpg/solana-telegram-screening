@@ -200,13 +200,13 @@ def community(pool, api, now):
     tg = telegram_analysis(links['telegram'].rsplit('/', 1)[-1], mint, api, now) if links['telegram'] else {'score': None, 'complete': False, 'status': 'missing_metadata', 'verified_link': False}
     score = round((x['score']+tg['score'])/2, 1) if x.get('score') is not None and tg.get('score') is not None else None
     return {'score': score, 'complete': bool(x.get('complete') and tg.get('complete') and not conflicts),
-            'x': x, 'telegram': tg, 'metadata_links': links, 'verified_links': {k: links[k] for k, v in [('x', x), ('telegram', tg)] if v.get('verified_link')},
+            'x': x, 'telegram': tg, 'metadata_links': links, 'verified_links': {k: links[k] for k, v in [('x', x), ('telegram', tg)] if v.get('verified_link') and v.get('identity_consistent')},
             'risks': conflicts + x.get('risks', []) + tg.get('risks', [])}
 
 
-def buyers(pool, api, now):
+def buyers(pool, api, now, gecko=None):
     try:
-        data = api.request('https://api.geckoterminal.com/api/v2/networks/solana/pools/' + pool['pairAddress'] + '/trades')
+        data = (gecko.request if gecko else api.request)('https://api.geckoterminal.com/api/v2/networks/solana/pools/' + pool['pairAddress'] + '/trades')
         return trade_evidence(data, pool['baseToken']['address'], now)
     except Exception:
         return {'status': 'unavailable', 'unique_buyers': None, 'strong': False, 'risks': []}
