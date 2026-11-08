@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mail-solana-scheduler",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-08",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": { "SCHEDULER_ENABLED": "true" },
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "SCHEDULER_LOCK", "class_name": "SchedulerCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SchedulerCoordinator"] }],
+  "observability": { "enabled": true }
+}
