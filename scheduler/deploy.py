@@ -111,7 +111,8 @@ def deploy(prefix, existing):
     before = {r['id'] for r in runs()}
     admin = secrets.token_urlsafe(40)
     metadata = {'main_module': 'worker.mjs', 'compatibility_date': '2026-11-08',
-                'observability': {'enabled': True}, 'bindings': [
+                'observability': {'enabled': True, 'traces': {'enabled': True}}, 'bindings': [
+                    {'type':'ai','name':'AI'},
         {'type': 'secret_text', 'name': 'GITHUB_TOKEN', 'text': os.environ['SCHEDULER_GITHUB_TOKEN']},
         {'type': 'secret_text', 'name': 'SCHEDULER_ADMIN_TOKEN', 'text': admin},
         {'type': 'plain_text', 'name': 'SCHEDULER_ENABLED', 'text': 'true'},

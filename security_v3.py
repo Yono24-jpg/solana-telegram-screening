@@ -2,6 +2,8 @@
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 import re
+import hashlib
+import vault_checks
 import time
 import evidence
 from screening_rules import address, amount, number
@@ -90,6 +92,30 @@ def owner_balances(rows, owner, mint):
     return total
 
 
+def has_pool_swap(tx, pair):
+    """A pool reference alone is not a swap: require a supported program instruction."""
+    instructions = list(tx.get('transaction',{}).get('message',{}).get('instructions',[]))
+    for group in tx.get('meta',{}).get('innerInstructions') or []:
+        instructions.extend(group.get('instructions',[]))
+    names = {
+        vault_checks.PUMP: ('buy','sell','buy_exact_quote_in'),
+        vault_checks.CPMM: ('swap_base_input','swap_base_output'),
+        vault_checks.CLMM: ('swap','swap_v2','swap_router_base_in'),
+    }
+    for instruction in instructions:
+        if not isinstance(instruction,dict) or pair not in instruction.get('accounts',[]): continue
+        program = instruction.get('programId'); encoded = instruction.get('data')
+        if program not in (*names,vault_checks.AMM_V4) or not isinstance(encoded,str) or not 1<=len(encoded)<=4096: continue
+        try:
+            value=0
+            for letter in encoded: value=value*58+vault_checks.ALPHABET.index(letter)
+            raw=b'\0'*(len(encoded)-len(encoded.lstrip('1')))+(value.to_bytes((value.bit_length()+7)//8,'big') if value else b'')
+            if program==vault_checks.AMM_V4 and raw and raw[0] in (9,11): return True
+            if program in names and raw[:8] in [hashlib.sha256(('global:'+name).encode()).digest()[:8] for name in names[program]]: return True
+        except (ValueError,OverflowError): continue
+    return False
+
+
 def transaction_sample(pool, buyers, api, now):
     mint = pool['baseToken']['address']; pair = pool['pairAddress']
     sample = buyers.get('transactions', [])
@@ -115,6 +141,7 @@ def transaction_sample(pool, buyers, api, now):
             if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict): raise EvidenceMissing('trade_transaction_missing')
             meta = tx['meta']; when = tx.get('blockTime'); slot = tx.get('slot')
             if meta.get('err') is not None or not number(when) or not 0<=now-when<=300 or not isinstance(slot,int): raise EvidenceMissing('trade_transaction_failed_or_stale')
+            if not has_pool_swap(tx,pair): raise EvidenceMissing('supported_pool_swap_unverified')
             keys = tx['transaction']['message']['accountKeys']
             if not isinstance(keys,list) or not all(isinstance(k,dict) for k in keys): raise EvidenceMissing('trade_keys_unavailable')
             addresses = [k.get('pubkey') for k in keys]; wallet = row['wallet']
