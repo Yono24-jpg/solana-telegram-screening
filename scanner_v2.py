@@ -13,6 +13,8 @@ from screening_rules import address, amount, market, choose_tier, evidence_rejec
 from state_store import migrate, already_delivered, sample_performance, performance_summary, HORIZONS
 import market_data
 import evidence
+import narrative_v3
+import security_v3
 
 
 SOURCES = [('/token-profiles/latest/v1', 'dex_profiles'), ('/token-boosts/latest/v1', 'dex_latest_boosts'),
@@ -115,7 +117,26 @@ def cached(state, key, now, ttl, read):
     return result
 
 
+def render_v3(pool, m, tier):
+    esc = lambda value: html.escape(str(value),quote=True)
+    n = pool['_narrative_v3']; safety = pool['_security_v3']; mint = pool['baseToken']['address']; pair = pool['pairAddress']
+    sources = '\n'.join('• <a href="'+esc(a['url'])+'">'+esc(a['publisher'])+'</a>: '+esc(a['title'][:120])+' ('+time.strftime('%d/%m %H:%M UTC',time.gmtime(a['published_at']))+')' for a in n['sources'][:2])
+    return (f'🔎 <b>MAIL Narrative Hunter v3.0 | {esc(tier)}</b>\n'
+            f"{esc(pool['baseToken'].get('name','?')[:60])} ({esc(pool['baseToken'].get('symbol','?')[:32])})\n"
+            f"MC ${m['cap']:,.0f} | LP ${m['lp']:,.0f}\n"
+            f"Umur pool {m['age_seconds']/60:.1f} menit | Prioritas 1–60m: {'ya' if m['priority'] else 'tidak'}\n"
+            f"Volume 1h ${pool['volume']['h1']:,.0f} | BUY/SELL 5m {m['buys']}/{m['sells']} ({m['buys']/max(m['sells'],1):.2f}×)\n"
+            f"Skor Narasi {n['score']}/100 | Momentum {m['score']}/100 | Keamanan {safety['score']}/100\n"
+            f"Alasan: {esc(n['reason'])}\nLP terkunci dilaporkan {safety['checks']['provider']['lp_locked_pct']:.1f}% pada pool ini.\n"
+            f"Jual berhasil: {safety['checks']['transactions']['finalized_sells']} wallet pada sampel finalized.\n"
+            '<b>Sumber narasi</b>:\n'+sources+'\n<b>Risiko</b>:\n'+ '\n'.join('• '+esc(r) for r in safety['risks'])+
+            f'\nCA: <code>{esc(mint)}</code>\n<a href="https://dexscreener.com/solana/{esc(pair)}">DexScreener</a> | <a href="https://axiom.trade/t/{esc(mint)}">Axiom</a>'
+            '\nALERT ONLY • Skor berbasis aturan bukti, bukan probabilitas profit atau jaminan bebas rug pull.')
+
+
 def render(pool, m, sec, social, buyers, mint_age, tier):
+    if pool.get('_security_v3',{}).get('complete'):
+        return render_v3(pool,m,tier)
     esc = lambda value: html.escape(str(value), quote=True)
     mint = pool['baseToken']['address']; symbol = esc(pool['baseToken'].get('symbol', '?')[:32])
     name = esc(pool['baseToken'].get('name', symbol)[:60]); pair = pool['pairAddress']
@@ -166,6 +187,8 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
 
 
 def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
+    # Defense in depth: legacy EARLY WATCH cannot bypass v3's mandatory evidence.
+    if not pool.get('_security_v3',{}).get('complete') or pool.get('_narrative_v3',{}).get('reject',True) is not None: return False
     now = time.time(); mint = pool['baseToken']['address']; key = mint+':'+tier
     if already_delivered(state, mint, tier, now): return False
     reservation = uuid.uuid4().hex
@@ -193,11 +216,16 @@ def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
 
 def run(state, chat, api):
     now = time.time(); migrate(state, now)
-    report = {'version': '2.2', 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [], 'missing_fields':{}, 'security_checks':[],
+    report = {'version': '3.0', 'at': now, 'mode': 'ALERT ONLY', 'seen': 0, 'sent': 0, 'rejected': {}, 'candidates': [], 'missing_fields':{}, 'security_checks':[],
               'trigger':os.environ.get('GITHUB_EVENT_NAME','local'), 'run_id':os.environ.get('GITHUB_RUN_ID'),
               'capabilities': {'x_bearer_configured': bool(os.environ.get('X_BEARER_TOKEN')), 'x_reads_enabled': os.environ.get('X_READS_ENABLED') == '1'}}
     gecko = market_data.GeckoClient(api, state)
+    narrative_feed = narrative_v3.collect(api, state, now)
+    report['narrative'] = {'engine':narrative_feed['engine'],'llm_used':narrative_feed['llm_used'], 'sources':narrative_feed['sources'], 'trends':narrative_v3.trends(narrative_feed,now), 'social_coverage':narrative_feed['social_coverage'], 'ai':narrative_feed.get('ai',{})}
     pools, discovery = discover(api, gecko); report['discovery'] = discovery
+    narrative_pools = narrative_v3.search_pools(api,narrative_feed,time.time())
+    report['discovery']['narrative_search_pools'] = len(narrative_pools)
+    pools = list({p.get('pairAddress'):p for p in pools+narrative_pools}.values())
     pools = market_data.refresh_watchlist(pools, state, api, gecko, time.time())
     # Record eligible early observations even before safety data is available.
     observe(state, pools, time.time()); checkpoint(state, api)
@@ -211,6 +239,11 @@ def run(state, chat, api):
     for pool in pools:
         report['seen'] += 1
         m = market(pool, state['observations'], time.time())
+        v3_reason = narrative_v3.market_gate(pool,time.time())
+        narrative = narrative_v3.match(pool,narrative_feed,time.time())
+        if v3_reason or narrative.get('reject'):
+            reason = v3_reason or narrative['reject']; report['rejected'][reason] = report['rejected'].get(reason,0)+1; continue
+        pool['_narrative_v3'] = narrative
         if m.get('reject'):
             reason = m['reject']; report['rejected'][reason] = report['rejected'].get(reason, 0)+1
             if reason == 'missing_market_data':
@@ -254,6 +287,18 @@ def run(state, chat, api):
             pool = fresh
         except Exception:
             report['rejected']['refresh_unavailable'] = report['rejected'].get('refresh_unavailable', 0)+1; continue
+        # Revalidate market and narrative after refresh; never reuse a changed name's match.
+        narrative = narrative_v3.match(pool,narrative_feed,time.time())
+        v3_reason = narrative_v3.market_gate(pool,time.time()) or narrative.get('reject')
+        if not v3_reason:
+            safety = security_v3.inspect(pool,sec,buyers,api,time.time())
+            v3_reason = safety.get('reject') or (None if safety.get('complete') else 'v3_security_incomplete')
+        else:
+            safety = {'complete':False,'score':None,'reject':v3_reason}
+        pool['_narrative_v3'] = narrative; pool['_security_v3'] = safety
+        report.setdefault('v3_checks',[]).append({'mint':mint,'narrative_score':narrative.get('score'),'security':safety,'rejection':v3_reason})
+        if v3_reason:
+            report['rejected'][v3_reason] = report['rejected'].get(v3_reason,0)+1; continue
         tier = choose_tier(m, sec, social, buyers, creation)
         reason = evidence_rejection(m, sec, buyers, creation)
         if reason: report['rejected'][reason] = report['rejected'].get(reason,0)+1
@@ -267,7 +312,7 @@ def run(state, chat, api):
             report['sent'] += 1
             if report['sent'] >= 5: break
     report['watchlist_size'] = len(state.get('pool_watchlist',{})); report['gecko_budget_limited'] = gecko.limited
-    report['health'] = 'degraded' if not pools or any(v!='ok' for v in discovery.get('sources',{}).values()) else 'ok'
+    report['health'] = 'degraded' if not pools or any(v!='ok' for v in discovery.get('sources',{}).values()) or any(v!='ok' for v in narrative_feed['sources'].values()) else 'ok'
     previous = state.get('last_scan',{}).get('at')
     if isinstance(previous,(int,float)) and now >= previous: report['seconds_since_previous_scan'] = round(now-previous)
     report['previous_scan_gap_over_15m'] = report.get('seconds_since_previous_scan',0)>900
@@ -281,9 +326,9 @@ def run(state, chat, api):
     summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary_path:
         with open(summary_path,'a',encoding='utf-8') as output:
-            output.write(f'\n### Scanner v2.2 — ALERT ONLY\n\nPool diperiksa: {report["seen"]}. Alert baru: {report["sent"]}. Kondisi data: {report["health"]}. Pemicu: {report["trigger"]}.\n\n')
+            output.write(f'\n### Narrative Hunter v3.0 — ALERT ONLY\n\nPool diperiksa: {report["seen"]}. Alert baru: {report["sent"]}. Kondisi data: {report["health"]}. Pemicu: {report["trigger"]}.\n\n')
             if report['previous_scan_gap_over_15m']: output.write(f'Perhatian: jarak dari scan sebelumnya {report["seconds_since_previous_scan"]} detik. Jadwal sebelumnya tidak boleh dianggap berjalan normal.\n\n')
             output.write('Penolakan: `'+json.dumps(report['rejected'],sort_keys=True)+'`.\n\n')
             output.write('Data kosong: `'+json.dumps(report['missing_fields'],sort_keys=True)+'`.\n\n')
             output.write('Performa ini pengamatan harga, bukan laba transaksi. '+json.dumps(performance_summary(state))+'\n')
-    print('SCANNER_V2 '+json.dumps(report, sort_keys=True))
+    print('SCANNER_V3 '+json.dumps(report, sort_keys=True))

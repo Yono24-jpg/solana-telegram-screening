@@ -197,7 +197,8 @@ class StateAndDelivery(unittest.TestCase):
     def test_send_failure_is_not_retried_after_reload(self):
         state=state_store.migrate({},NOW)
         with patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(bot,'tg',side_effect=TimeoutError()) as tg:
-            args=(state,bot,123,pool(),rules.market(pool(),history(),NOW),sec(),social(),{'unique_buyers':20,'strong':True},mint_age(),'EARLY WATCH')
+            from v3_test_support import approved
+            args=(state,bot,123,approved(pool()),rules.market(pool(),history(),NOW),sec(),social(),{'unique_buyers':20,'strong':True},mint_age(),'EARLY WATCH')
             self.assertFalse(scanner_v2.deliver(*args));self.assertFalse(scanner_v2.deliver(*args))
             tg.assert_called_once()
         self.assertEqual(state['delivery'][MINT+':EARLY WATCH']['status'],'unknown')
@@ -205,12 +206,12 @@ class StateAndDelivery(unittest.TestCase):
         state=state_store.migrate({},NOW)
         with patch.object(scanner_v2,'checkpoint',side_effect=RuntimeError()),patch.object(bot,'tg') as tg:
             with self.assertRaises(RuntimeError):
-                scanner_v2.deliver(state,bot,123,pool(),{},sec(),social(),{},mint_age(),'EARLY WATCH')
+                scanner_v2.deliver(state,bot,123,__import__('v3_test_support').approved(pool()),{},sec(),social(),{},mint_age(),'EARLY WATCH')
         tg.assert_not_called()
     def test_verified_send_records_message_and_performance(self):
         state=state_store.migrate({},NOW)
         with patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(bot,'tg',return_value={'message_id':55,'chat':{'id':123}}) as tg:
-            self.assertTrue(scanner_v2.deliver(state,bot,123,pool(),rules.market(pool(),history(),NOW),sec(),social(),{'unique_buyers':20,'strong':True},mint_age(),'STRONG SIGNAL'))
+            self.assertTrue(scanner_v2.deliver(state,bot,123,__import__('v3_test_support').approved(pool()),rules.market(pool(),history(),NOW),sec(),social(),{'unique_buyers':20,'strong':True},mint_age(),'STRONG SIGNAL'))
         self.assertEqual(state['delivery'][MINT+':STRONG SIGNAL']['message_id'],55)
         self.assertIn(MINT+':STRONG SIGNAL',state['performance'])
         self.assertIn('Test &lt;coin&gt;',tg.call_args.kwargs['text'])

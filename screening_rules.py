@@ -149,7 +149,7 @@ def trade_evidence(payload, mint, now):
     out = {'status': 'unavailable', 'unique_buyers': None, 'strong': False, 'risks': []}
     if not isinstance(payload, dict) or not isinstance(payload.get('data'), list):
         return out
-    seen = set(); wallets = {}; sell_wallets = set(); sizes = {}; count = 0
+    seen = set(); wallets = {}; sell_wallets = set(); sizes = {}; count = 0; transactions = []
     for row in payload['data']:
         a = row.get('attributes', {}) if isinstance(row, dict) else {}
         when = timestamp(a.get('block_timestamp'))
@@ -170,6 +170,7 @@ def trade_evidence(payload, mint, now):
             out['risks'].append('provider_anomalous_trade')
             continue
         seen.add(tx)
+        transactions.append({'signature':tx,'wallet':wallet,'kind':kind,'at':when})
         if kind == 'buy':
             count += 1
             wallets[wallet] = wallets.get(wallet, 0) + usd
@@ -187,7 +188,7 @@ def trade_evidence(payload, mint, now):
     if repeats > .6 and count >= 10: risks.append('nominal_transaksi_berulang')
     out.update(status='observed_sample', unique_buyers=len(wallets), buy_transactions=count,
                top_buyer_share=round(100*concentration, 1), roundtrip_share=round(100*overlap, 1),
-               risks=risks, strong=len(wallets) >= 20 and len(sell_wallets) >= 3 and not risks,
+               transactions=transactions[:100], risks=risks, strong=len(wallets) >= 20 and len(sell_wallets) >= 3 and not risks,
                caveat='Sampel alamat unik; bukan bukti manusia atau bebas wash trading.')
     return out
 
