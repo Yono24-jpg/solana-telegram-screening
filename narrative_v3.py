@@ -83,7 +83,7 @@ def parse_feed(xml, category, now, fallback=None):
 def collect(api, state, now):
     old = state.get('narrative_feed_v3', {})
     # Cache retrieval, never renew article timestamps. Failures cannot resurrect old news.
-    if old.get('value',{}).get('revision')=='oidc-2' and number(old.get('at')) and 0 <= now-old['at'] < 600: return old['value']
+    if old.get('value',{}).get('revision')=='oidc-3' and number(old.get('at')) and 0 <= now-old['at'] < 600: return old['value']
     def read(item):
         category, query = item
         url = 'https://news.google.com/rss/search?'+urlencode({'q':query+' when:2d','hl':'en-US','gl':'US','ceid':'US:en'})
@@ -101,7 +101,7 @@ def collect(api, state, now):
         for category, articles, result in executor.map(read, TOPICS.items()):
             rows.extend(articles); status[category] = result
     ai = extract_ai(api,state,rows,now)
-    value = {'revision':'oidc-2', 'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
+    value = {'revision':'oidc-3', 'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
              'social_coverage':'public_news_about_social_trends; no direct X/TikTok firehose'}
     state['narrative_feed_v3'] = {'at':now, 'value':value}
     return value
@@ -203,7 +203,7 @@ def extract_ai(api, state, articles, now):
     if not articles: return {'status':'no_articles','entities':[],'model_used':None}
     if not oidc and not os.environ.get('CLOUDFLARE_API_TOKEN'): return {'status':'not_configured','entities':[],'model_used':None}
     day = int(now//86400); calls = old.get('calls',0) if old.get('day')==day else 0
-    if calls>=8: return {'status':'daily_budget_reached','entities':[],'model_used':None}
+    if calls>=8 and not oidc: return {'status':'daily_budget_reached','entities':[],'model_used':None}
     # Reserve budget before network I/O; errors and crashes still count.
     value = {'status':'unavailable','entities':[],'model_used':None}
     state['narrative_ai_v3'] = {'at':now,'day':day,'calls':calls+1,'value':value}

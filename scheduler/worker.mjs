@@ -178,30 +178,36 @@ async function boundedText(response, maxBytes) {
 }
 
 function decode64(value) {
-  return Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(normalized + '='.repeat((4 - normalized.length % 4) % 4)), c => c.charCodeAt(0));
 }
 
 export async function githubIdentity(request, now = Date.now() / 1000, fetcher = fetch) {
+  const deny = reason => { console.log('NARRATIVE_AUTH_REJECT', reason); return false; };
   try {
     const auth = request.headers.get('Authorization') || '';
-    if (!auth.startsWith('Bearer ') || auth.length > 16000) return false;
-    const parts = auth.slice(7).split('.'); if (parts.length !== 3) return false;
+    if (!auth.startsWith('Bearer ') || auth.length > 16000) return deny('header');
+    const parts = auth.slice(7).split('.'); if (parts.length !== 3) return deny('format');
     const [header, claims] = parts.slice(0, 2).map(p => JSON.parse(new TextDecoder().decode(decode64(p))));
-    if (header.alg !== 'RS256' || typeof header.kid !== 'string') return false;
+    if (header.alg !== 'RS256' || typeof header.kid !== 'string') return deny('algorithm');
     if (claims.iss !== ISSUER || claims.aud !== AUDIENCE || claims.repository !== TARGET ||
         claims.repository_id !== '1439952946' || claims.repository_owner_id !== '290577634' ||
         claims.ref !== 'refs/heads/main' || claims.workflow_ref !== WORKFLOW_REF ||
-        !['push', 'workflow_dispatch', 'schedule'].includes(claims.event_name)) return false;
+        !['push', 'workflow_dispatch', 'schedule'].includes(claims.event_name)) {
+      const expected = { iss: ISSUER, aud: AUDIENCE, repository: TARGET, repository_id: '1439952946', repository_owner_id: '290577634', ref: 'refs/heads/main', workflow_ref: WORKFLOW_REF };
+      return deny('claims_' + Object.keys(expected).filter(k => claims[k] !== expected[k]).join('_'));
+    }
     if (![claims.exp, claims.iat, claims.nbf].every(Number.isFinite) || claims.exp <= now ||
-        claims.iat > now + 30 || now - claims.iat > 600 || claims.nbf > now + 30 || claims.exp > now + 900) return false;
-    const response = await fetcher(`${ISSUER}/.well-known/jwks`, { redirect: 'error', signal: AbortSignal.timeout(5000) });
-    if (!response.ok) return false;
+        claims.iat > now + 30 || now - claims.iat > 600 || claims.nbf > now + 30 || claims.exp > now + 900) return deny('time_bounds');
+    const response = await fetcher(`${ISSUER}/.well-known/jwks`, { headers: { 'User-Agent': 'MAIL-Narrative-Hunter/3.0', Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return deny('jwks_http_' + response.status);
     const jwks = JSON.parse(await boundedText(response, 65536));
     const jwk = jwks.keys?.find(k => k.kid === header.kid && k.kty === 'RSA' && (!k.alg || k.alg === 'RS256'));
-    if (!jwk) return false;
+    if (!jwk) return deny('signing_key_unknown');
     const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-    return await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decode64(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
-  } catch { return false; }
+    const verified = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decode64(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+    return verified || deny('signature_invalid');
+  } catch { return deny('identity_unavailable'); }
 }
 
 function validHeadlines(value) {
