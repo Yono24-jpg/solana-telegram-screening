@@ -3,6 +3,7 @@ import html
 import json
 import os
 import urllib.request
+import urllib.error
 import re
 import time
 import unicodedata
@@ -226,5 +227,7 @@ def extract_ai(api, state, articles, now):
         output = re.sub(r'^```(?:json)?\s*|\s*```$','',output.strip())
         entities = validate_entities(json.loads(output),articles)
         value.update(status='ok',entities=entities,model_used=AI_MODEL)
+    except urllib.error.HTTPError as error:
+        value['status'] = {401:'unauthorized',403:'permission_denied',429:'quota_or_rate_limited'}.get(error.code,'provider_error')
     except Exception: pass
     return value

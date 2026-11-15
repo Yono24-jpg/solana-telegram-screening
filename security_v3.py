@@ -151,6 +151,8 @@ def inspect(pool, sec, buyers, api, now):
         if not distribution.get('verified') or not number(distribution.get('top1_observed_owner_pct')): raise EvidenceMissing('holder_owner_coverage_incomplete')
         if buyers.get('risks') or not buyers.get('strong'): raise EvidenceMissing('wash_sample_risky_or_incomplete')
         report = api.request('https://api.rugcheck.xyz/v1/tokens/'+pool['baseToken']['address']+'/report')
+        if sec.get('token_program') != report.get('tokenProgram') or sec.get('mint_supply') != (report.get('token') or {}).get('supply'):
+            raise EvidenceMissing('provider_onchain_mint_mismatch')
         reason = report_gate(report,pool)
         if reason: raise EvidenceMissing(reason)
         out['checks']['provider'] = {'fetched_at':now,'insider_networks':0,'pool':pool['pairAddress'],

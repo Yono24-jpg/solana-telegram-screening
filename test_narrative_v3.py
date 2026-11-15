@@ -155,6 +155,19 @@ class Security(unittest.TestCase):
         with patch.object(bot,'request',side_effect=TimeoutError('secret_url')):
             result=s.inspect(pool(),security,{'strong':True},bot,NOW)
         self.assertFalse(result['complete']);self.assertNotIn('secret_url',str(result))
+    def test_full_security_collector_success_and_provider_mismatch(self):
+        security=dict(sec(),token_program=bot.PROGRAM,mint_supply=1000000,distribution={'verified':True,'top1_observed_owner_pct':2})
+        buyers,txs=self.sample();buyers.update(strong=True,risks=[])
+        def rpc(_api,method,args):
+            if method=='getTokenAccountsByOwner':return {'value':[]}
+            if method=='getSignaturesForAddress':return [{'signature':'old','blockTime':NOW-7200,'err':None}]
+            return txs[args[0]]
+        with patch.object(bot,'request',return_value=report()),patch.object(evidence,'rpc',side_effect=rpc),patch.object(s.time,'time',return_value=NOW):
+            result=s.inspect(pool(),security,buyers,bot,NOW)
+            self.assertTrue(result['complete']);self.assertEqual(result['checks']['transactions']['finalized_sells'],3)
+            security['mint_supply']=999
+            self.assertEqual(s.inspect(pool(),security,buyers,bot,NOW)['reject'],'provider_onchain_mint_mismatch')
+
     def test_delivery_cannot_use_legacy_gate(self):
         with patch.object(bot,'tg') as tg:
             self.assertFalse(scanner_v2.deliver({},bot,123,pool(),{},sec(),{}, {},{},'EARLY WATCH'))

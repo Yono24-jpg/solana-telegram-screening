@@ -100,7 +100,8 @@ def security(mint, api, now, pool=None):
         reason = api.security_reason(account)
         if reason:
             out['reject'] = reason; return out
-        out.update(authority_verified=True, score=40)
+        raw = vault_checks.raw_data(account)
+        out.update(authority_verified=True, score=40, token_program=account['owner'], mint_supply=int.from_bytes(raw[36:44],'little'))
     except Exception:
         out['reject'] = 'mint_security_unavailable'; return out
     try:

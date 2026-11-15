@@ -163,7 +163,7 @@ class Evidence(unittest.TestCase):
             r=evidence.telegram_analysis('validuser',MINT,bot,NOW)
         self.assertIsNone(r['score']);self.assertFalse(r['complete'])
     def test_distribution_and_rugcheck_failures_remain_explicit(self):
-        with patch.object(evidence,'rpc',return_value={'value':{}}),patch.object(bot,'security_reason',return_value=None),patch.object(bot,'holder_concentration',side_effect=RuntimeError()),patch.object(bot,'request',side_effect=RuntimeError()):
+        with patch.object(evidence.vault_checks,'raw_data',return_value=bytes(82)),patch.object(evidence,'rpc',return_value={'value':{'owner':bot.PROGRAM}}),patch.object(bot,'security_reason',return_value=None),patch.object(bot,'holder_concentration',side_effect=RuntimeError()),patch.object(bot,'request',side_effect=RuntimeError()):
             r=evidence.security(MINT,bot,NOW)
         self.assertFalse(r['complete']);self.assertEqual(r['score'],40);self.assertEqual(len(r['risks']),2)
 
