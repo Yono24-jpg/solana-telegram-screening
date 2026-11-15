@@ -83,17 +83,16 @@ class IndependentFeeds(unittest.TestCase):
         api=SimpleNamespace(DEX=bot.DEX,request=Mock(side_effect=TimeoutError()))
         gecko=SimpleNamespace(request=Mock(side_effect=TimeoutError()))
         with self.assertRaises(ValueError):data.refresh_pool(PAIR,MINT,api,gecko)
-    def test_native_only_pool_can_send_labelled_watch_once_end_to_end(self):
+    def test_native_only_fdv_pool_cannot_send_v3_alert(self):
         def request(url,*args):
             if url.startswith(data.GECKO):return payload()
             if '/latest/dex/pairs/' in url:return {'pairs':[]}
             return []
         state={'enabled':True};unknown=social();unknown.update(score=None,complete=False)
-        with patch.dict(os.environ,{'GITHUB_STEP_SUMMARY':''}),patch.object(bot,'request',side_effect=request),patch.object(bot,'tg',return_value={'message_id':42,'chat':{'id':123}}) as tg,patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2,'followup'),patch.object(evidence,'security',return_value=sec()),patch.object(evidence,'community',return_value=unknown),patch.object(evidence,'mint_creation',return_value=mint_age()),patch.object(evidence,'buyers',return_value={'strong':True,'unique_buyers':25}),patch.object(scanner_v2.Path,'mkdir'),patch.object(scanner_v2.Path,'write_text'):
+        with patch.object(scanner_v2.narrative_v3,'collect',return_value=__import__('v3_test_support').feed()),patch.dict(os.environ,{'GITHUB_STEP_SUMMARY':''}),patch.object(bot,'request',side_effect=request),patch.object(bot,'tg',return_value={'message_id':42,'chat':{'id':123}}) as tg,patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2,'followup'),patch.object(evidence,'security',return_value=sec()),patch.object(evidence,'community',return_value=unknown),patch.object(evidence,'mint_creation',return_value=mint_age()),patch.object(evidence,'buyers',return_value={'strong':True,'unique_buyers':25}),patch.object(scanner_v2.Path,'mkdir'),patch.object(scanner_v2.Path,'write_text'):
             scanner_v2.run(state,123,bot)
-            self.assertEqual(tg.call_count,1)
-            self.assertIn('FDV (MC belum tersedia)',tg.call_args.kwargs['text'])
-            self.assertIn('geckoterminal',tg.call_args.kwargs['text'])
+            tg.assert_not_called()
+            self.assertGreater(state['last_scan']['rejected'].get('v3_market_missing',0),0)
             restored=json.loads(json.dumps(state));tg.reset_mock()
             scanner_v2.run(restored,123,bot)
             tg.assert_not_called()

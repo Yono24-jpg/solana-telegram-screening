@@ -12,6 +12,9 @@ import evidence
 import persist_state
 import scanner_v2
 import state_store
+import narrative_v3
+import security_v3
+from v3_test_support import approved, narrative, safety, feed
 from test_upgrade import pool, history, sec, social, mint_age, NOW, MINT
 
 
@@ -20,12 +23,14 @@ class Pipeline(unittest.TestCase):
         self.summary_env = patch.dict(os.environ, {'GITHUB_STEP_SUMMARY':''})
         self.summary_env.start()
         self.addCleanup(self.summary_env.stop)
+        for obj,name,value in [(narrative_v3,'collect',feed()),(narrative_v3,'match',narrative()),(security_v3,'inspect',safety())]:
+            mock = patch.object(obj,name,return_value=value); mock.start(); self.addCleanup(mock.stop)
         self.api = bot
         self.old_deadline = bot.REQUEST_DEADLINE
         bot.REQUEST_DEADLINE = None
     def tearDown(self):bot.REQUEST_DEADLINE=self.old_deadline
     def run_scan(self,state,security=None,community=None,creation=None,buyers=None):
-        with patch.object(scanner_v2,'discover',return_value=([pool()],{'sources':{}})),patch.object(bot,'refresh_watchlist',side_effect=lambda pools,*_:pools),patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2,'followup'),patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(evidence,'security',return_value=security or sec()),patch.object(evidence,'community',return_value=community or social()),patch.object(evidence,'mint_creation',return_value=creation or mint_age()),patch.object(evidence,'buyers',return_value=buyers or {'strong':True,'unique_buyers':25}),patch.object(scanner_v2,'refresh',return_value=pool()),patch.object(scanner_v2.Path,'mkdir'),patch.object(scanner_v2.Path,'write_text'),patch.object(bot,'tg',return_value={'message_id':99,'chat':{'id':123}}) as tg:
+        with patch.object(scanner_v2,'discover',return_value=([approved(pool())],{'sources':{}})),patch.object(bot,'refresh_watchlist',side_effect=lambda pools,*_:pools),patch.object(scanner_v2,'checkpoint'),patch.object(scanner_v2,'followup'),patch.object(scanner_v2.time,'time',return_value=NOW),patch.object(evidence,'security',return_value=security or sec()),patch.object(evidence,'community',return_value=community or social()),patch.object(evidence,'mint_creation',return_value=creation or mint_age()),patch.object(evidence,'buyers',return_value=buyers or {'strong':True,'unique_buyers':25}),patch.object(scanner_v2,'refresh',return_value=approved(pool())),patch.object(scanner_v2.Path,'mkdir'),patch.object(scanner_v2.Path,'write_text'),patch.object(bot,'tg',return_value={'message_id':99,'chat':{'id':123}}) as tg:
             scanner_v2.run(state,123,bot)
             return tg
     def test_full_pipeline_strong_and_restart_dedup(self):
@@ -40,7 +45,7 @@ class Pipeline(unittest.TestCase):
         unknown=social();unknown.update(complete=False,score=None)
         tg=self.run_scan(state,community=unknown)
         self.assertIn('STRONG SIGNAL',tg.call_args.kwargs['text'])
-        self.assertIn('belum cukup data',tg.call_args.kwargs['text'])
+        self.assertIn('Narasi 90/100',tg.call_args.kwargs['text'])
         self.assertEqual(self.run_scan(state,community=unknown).call_count,0)
     def test_security_failure_blocks_all_notifications(self):
         state={'enabled':True,'observations':history()};s=sec();s['reject']='mint_authority_active'
@@ -49,7 +54,7 @@ class Pipeline(unittest.TestCase):
         state=state_store.migrate({'enabled':True},NOW)
         def off(*_args,**_kwargs):state['enabled']=False
         with patch.object(scanner_v2,'checkpoint',side_effect=off),patch.object(bot,'tg') as tg:
-            self.assertFalse(scanner_v2.deliver(state,bot,123,pool(),{},sec(),social(),{},mint_age(),'EARLY WATCH'))
+            self.assertFalse(scanner_v2.deliver(state,bot,123,approved(pool()),{},sec(),social(),{},mint_age(),'EARLY WATCH'))
         tg.assert_not_called()
     def test_observations_include_24h_pools_and_exclude_older(self):
         state={};scanner_v2.observe(state,[pool(86400)],NOW)

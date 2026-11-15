@@ -526,7 +526,7 @@ def main():
         # Telegram control latency must not consume the market-evidence budget.
         import sys
         from scanner_v2 import run
-        REQUEST_DEADLINE=time.monotonic()+100
+        REQUEST_DEADLINE=time.monotonic()+200
         run(state,chat,sys.modules[__name__])
     else: print('SCREENING_OFF')
 

@@ -70,6 +70,9 @@ def merge(remote, local, now):
     out['offset'] = max(ro, lo)
     out['enabled'] = local.get('enabled', False) if lo > ro else remote.get('enabled', local.get('enabled', False))
     out['initialized'] = bool(local.get('initialized') or remote.get('initialized'))
+    for key in ('narrative_feed_v3', 'narrative_ai_v3'):
+        a=remote.get(key,{}); b=local.get(key,{})
+        out[key]=copy.deepcopy(b if b.get('at',0)>=a.get('at',0) else a)
     out['last_scan'] = local.get('last_scan', remote.get('last_scan'))
     return migrate(out, now)
 
