@@ -220,7 +220,9 @@ def run(state, chat, api):
               'trigger':os.environ.get('GITHUB_EVENT_NAME','local'), 'run_id':os.environ.get('GITHUB_RUN_ID'),
               'capabilities': {'x_bearer_configured': bool(os.environ.get('X_BEARER_TOKEN')), 'x_reads_enabled': os.environ.get('X_READS_ENABLED') == '1'}}
     gecko = market_data.GeckoClient(api, state)
-    narrative_feed = narrative_v3.collect(api, state, now)
+    narrative_feed = dict(narrative_v3.collect(api, state, now))
+    # Build topic evidence once per scan, not once per candidate pool.
+    narrative_feed['_prepared_trends'] = narrative_v3.trends(narrative_feed,now)
     report['narrative'] = {'engine':narrative_feed['engine'],'llm_used':narrative_feed['llm_used'], 'sources':narrative_feed['sources'], 'trends':narrative_v3.trends(narrative_feed,now), 'social_coverage':narrative_feed['social_coverage'], 'ai':narrative_feed.get('ai',{})}
     pools, discovery = discover(api, gecko); report['discovery'] = discovery
     narrative_pools = narrative_v3.search_pools(api,narrative_feed,time.time())

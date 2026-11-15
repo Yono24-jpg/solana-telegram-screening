@@ -108,6 +108,7 @@ def collect(api, state, now):
 
 
 def trends(feed, now):
+    if '_prepared_trends' in feed: return feed['_prepared_trends']
     articles = [a for a in feed.get('articles', []) if number(a.get('published_at')) and 0 <= now-a['published_at'] <= 172800]
     aliases = dict(ALIASES)
     # Expand new film/game/people names from repeated proper-name phrases in headlines.

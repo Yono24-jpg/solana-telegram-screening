@@ -35,6 +35,14 @@ def report():
 
 
 class Narrative(unittest.TestCase):
+    def test_prepared_topics_reused_without_changing_matches(self):
+        f={'articles':articles()};p=pool();p['baseToken']['name']='GTA VI'
+        expected=n.match(p,f,NOW)
+        f['_prepared_trends']=n.trends(f,NOW)
+        with patch.object(n,'normalize',wraps=n.normalize) as normalized:
+            self.assertEqual(n.match(p,f,NOW),expected)
+            self.assertLess(normalized.call_count,100)
+
     def test_market_boundaries_and_missing_fields(self):
         p=approved(pool())
         for cap in (20000,500000):
