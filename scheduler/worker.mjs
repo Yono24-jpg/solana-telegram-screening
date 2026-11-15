@@ -184,6 +184,7 @@ function decode64(value) {
 
 export async function githubIdentity(request, now = Date.now() / 1000, fetcher = fetch) {
   const deny = reason => { console.log('NARRATIVE_AUTH_REJECT', reason); return false; };
+  let stage = 'decode';
   try {
     const auth = request.headers.get('Authorization') || '';
     if (!auth.startsWith('Bearer ') || auth.length > 16000) return deny('header');
@@ -199,15 +200,19 @@ export async function githubIdentity(request, now = Date.now() / 1000, fetcher =
     }
     if (![claims.exp, claims.iat, claims.nbf].every(Number.isFinite) || claims.exp <= now ||
         claims.iat > now + 30 || now - claims.iat > 600 || claims.nbf > now + 30 || claims.exp > now + 900) return deny('time_bounds');
+    stage = 'jwks_fetch';
     const response = await fetcher(`${ISSUER}/.well-known/jwks`, { headers: { 'User-Agent': 'MAIL-Narrative-Hunter/3.0', Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
     if (!response.ok) return deny('jwks_http_' + response.status);
+    stage = 'jwks_parse';
     const jwks = JSON.parse(await boundedText(response, 65536));
     const jwk = jwks.keys?.find(k => k.kid === header.kid && k.kty === 'RSA' && (!k.alg || k.alg === 'RS256'));
     if (!jwk) return deny('signing_key_unknown');
+    stage = 'key_import';
     const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+    stage = 'verify';
     const verified = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decode64(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
     return verified || deny('signature_invalid');
-  } catch { return deny('identity_unavailable'); }
+  } catch (error) { return deny(stage + '_' + (['TypeError','SyntaxError','InvalidCharacterError','DataError','OperationError','AbortError','TimeoutError'].includes(error?.name) ? error.name : 'unavailable')); }
 }
 
 function validHeadlines(value) {

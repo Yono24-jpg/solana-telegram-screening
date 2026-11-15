@@ -83,7 +83,13 @@ def parse_feed(xml, category, now, fallback=None):
 def collect(api, state, now):
     old = state.get('narrative_feed_v3', {})
     # Cache retrieval, never renew article timestamps. Failures cannot resurrect old news.
-    if old.get('value',{}).get('revision')=='oidc-3' and number(old.get('at')) and 0 <= now-old['at'] < 600: return old['value']
+    if old.get('value',{}).get('revision')=='oidc-3' and number(old.get('at')) and 0 <= now-old['at'] < 600:
+        value=old['value']
+        if os.environ.get('ACTIONS_ID_TOKEN_REQUEST_TOKEN') and value.get('ai',{}).get('status')!='ok':
+            value=dict(value,ai=extract_ai(api,state,value.get('articles',[]),now))
+            value['llm_used']=value['ai'].get('status')=='ok'
+            old['value']=value
+        return value
     def read(item):
         category, query = item
         url = 'https://news.google.com/rss/search?'+urlencode({'q':query+' when:2d','hl':'en-US','gl':'US','ceid':'US:en'})
