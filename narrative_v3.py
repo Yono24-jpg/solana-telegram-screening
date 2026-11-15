@@ -83,7 +83,7 @@ def parse_feed(xml, category, now, fallback=None):
 def collect(api, state, now):
     old = state.get('narrative_feed_v3', {})
     # Cache retrieval, never renew article timestamps. Failures cannot resurrect old news.
-    if number(old.get('at')) and 0 <= now-old['at'] < 600: return old['value']
+    if old.get('value',{}).get('revision')=='oidc-2' and number(old.get('at')) and 0 <= now-old['at'] < 600: return old['value']
     def read(item):
         category, query = item
         url = 'https://news.google.com/rss/search?'+urlencode({'q':query+' when:2d','hl':'en-US','gl':'US','ceid':'US:en'})
@@ -101,7 +101,7 @@ def collect(api, state, now):
         for category, articles, result in executor.map(read, TOPICS.items()):
             rows.extend(articles); status[category] = result
     ai = extract_ai(api,state,rows,now)
-    value = {'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
+    value = {'revision':'oidc-2', 'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
              'social_coverage':'public_news_about_social_trends; no direct X/TikTok firehose'}
     state['narrative_feed_v3'] = {'at':now, 'value':value}
     return value
@@ -217,7 +217,9 @@ def extract_ai(api, state, articles, now):
         if oidc:
             remote = worker_ai(headlines,min(25,remaining))
             if remote.get('status')!='ok':
-                value['status'] = remote.get('status','provider_unavailable'); return value
+                value['status'] = remote.get('status','provider_unavailable')
+                if remote.get('edge_diagnosis'): value['edge_diagnosis']=remote['edge_diagnosis']
+                return value
             value.update(status='ok',entities=validate_entities(remote,articles),model_used=remote.get('model_used'),via='workers_ai_binding')
             return value
         payload = {'messages':[
@@ -258,11 +260,15 @@ def worker_ai(headlines, timeout):
     identity=json.loads(raw).get('value')
     if not isinstance(identity,str) or len(identity)>16000: raise ValueError('invalid_identity')
     req=urllib.request.Request('https://mail-solana-scheduler.yono24-mail-29ee31.workers.dev/ai/entities',
-          data=json.dumps({'headlines':headlines}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+identity})
+          data=json.dumps({'headlines':headlines}).encode(),headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'MAIL-Narrative-Hunter/3.0','Authorization':'Bearer '+identity})
     try:
         with opener.open(req,timeout=timeout) as response:
             raw=response.read(50001)
             if len(raw)>50000: raise ValueError('ai_response_too_large')
     except urllib.error.HTTPError as error:
-        return {'status':'worker_http_'+str(error.code),'entities':[],'model_used':None}
+        raw=error.read(4096).decode('utf-8','replace')
+        title=re.search(r'<title>([^<]{1,100})</title>',raw,re.I)
+        code=re.search(r'error code\s*:\s*(\d{3,6})',raw,re.I)
+        diagnosis='code_'+code.group(1) if code else ('title_'+re.sub(r'[^a-z0-9]+','_',title.group(1).lower())[:80] if title else 'edge_denied')
+        return {'status':'worker_http_'+str(error.code),'edge_diagnosis':diagnosis,'entities':[],'model_used':None}
     return json.loads(raw)
