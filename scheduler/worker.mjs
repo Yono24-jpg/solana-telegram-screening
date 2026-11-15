@@ -182,7 +182,7 @@ function decode64(value) {
   return Uint8Array.from(atob(normalized + '='.repeat((4 - normalized.length % 4) % 4)), c => c.charCodeAt(0));
 }
 
-export async function githubIdentity(request, now = Date.now() / 1000, fetcher = fetch) {
+export async function githubIdentity(request, now = Date.now() / 1000, fetcher = (input, init) => fetch(input, init)) {
   const deny = reason => { console.log('NARRATIVE_AUTH_REJECT', reason); return false; };
   let stage = 'decode';
   try {
@@ -201,7 +201,7 @@ export async function githubIdentity(request, now = Date.now() / 1000, fetcher =
     if (![claims.exp, claims.iat, claims.nbf].every(Number.isFinite) || claims.exp <= now ||
         claims.iat > now + 30 || now - claims.iat > 600 || claims.nbf > now + 30 || claims.exp > now + 900) return deny('time_bounds');
     stage = 'jwks_fetch';
-    const response = await fetcher(`${ISSUER}/.well-known/jwks`, { headers: { 'User-Agent': 'MAIL-Narrative-Hunter/3.0', Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
+    const response = await fetcher(`${ISSUER}/.well-known/jwks`, { headers: { 'User-Agent': 'MAIL-Narrative-Hunter/3.0', Accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(5000) });
     if (!response.ok) return deny('jwks_http_' + response.status);
     stage = 'jwks_parse';
     const jwks = JSON.parse(await boundedText(response, 65536));

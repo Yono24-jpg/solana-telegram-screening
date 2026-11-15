@@ -83,7 +83,7 @@ def parse_feed(xml, category, now, fallback=None):
 def collect(api, state, now):
     old = state.get('narrative_feed_v3', {})
     # Cache retrieval, never renew article timestamps. Failures cannot resurrect old news.
-    if old.get('value',{}).get('revision')=='oidc-3' and number(old.get('at')) and 0 <= now-old['at'] < 600:
+    if old.get('value',{}).get('revision')=='oidc-4' and number(old.get('at')) and 0 <= now-old['at'] < 600:
         value=old['value']
         if os.environ.get('ACTIONS_ID_TOKEN_REQUEST_TOKEN') and value.get('ai',{}).get('status')!='ok':
             value=dict(value,ai=extract_ai(api,state,value.get('articles',[]),now))
@@ -107,7 +107,7 @@ def collect(api, state, now):
         for category, articles, result in executor.map(read, TOPICS.items()):
             rows.extend(articles); status[category] = result
     ai = extract_ai(api,state,rows,now)
-    value = {'revision':'oidc-3', 'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
+    value = {'revision':'oidc-4', 'ai':ai, 'articles':rows, 'sources':status, 'engine':'evidence_rules_v3', 'llm_used':ai.get('status')=='ok',
              'social_coverage':'public_news_about_social_trends; no direct X/TikTok firehose'}
     state['narrative_feed_v3'] = {'at':now, 'value':value}
     return value

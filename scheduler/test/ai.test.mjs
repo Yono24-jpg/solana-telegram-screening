@@ -60,3 +60,21 @@ test('provider failure consumes a reservation and never leaks provider text', as
   assert.equal(result.status, 'provider_unavailable'); assert.equal((await storage.get('narrative_ai')).calls, 1);
   assert.equal(JSON.stringify(result).includes('sensitive'), false);
 });
+
+test('real workerd verifies the signed workflow before routing to the durable AI budget', { timeout: 30000 }, async () => {
+  const { Miniflare, convertV4MiniflareOptions } = await import('miniflare');
+  const { fileURLToPath } = await import('node:url');
+  const mf = new Miniflare(convertV4MiniflareOptions({
+    name: 'mail-solana-scheduler', modules: true, scriptPath: fileURLToPath(new URL('../worker.mjs', import.meta.url)),
+    compatibilityDate: '2026-11-08',
+    bindings: { SCHEDULER_ENABLED: 'true' },
+    durableObjects: { SCHEDULER_LOCK: { className: 'SchedulerCoordinator', useSQLite: true } },
+    outboundService: async req => { assert.equal(req.url, 'https://token.actions.githubusercontent.com/.well-known/jwks'); return Response.json({ keys: [jwk] }); },
+  }));
+  try {
+    const req = request();
+    const response = await mf.dispatchFetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify({ headlines: [{ title: 'GTA VI news' }] }) });
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.equal((await response.json()).status, 'provider_unavailable');
+  } finally { await mf.dispose(); }
+});
