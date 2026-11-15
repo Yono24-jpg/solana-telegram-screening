@@ -248,15 +248,21 @@ def worker_ai(headlines, timeout):
         raise ValueError('invalid_identity_endpoint')
     url += ('&' if '?' in url else '?')+urlencode({'audience':'mail-narrative-ai'})
     opener = urllib.request.build_opener(evidence.NoRedirect)
-    req = urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']})
-    with opener.open(req,timeout=min(8,timeout)) as response:
-        raw=response.read(20001)
-        if len(raw)>20000: raise ValueError('identity_response_too_large')
+    req = urllib.request.Request(url,headers={'Authorization':'bearer '+os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN'],'Accept':'application/json','User-Agent':'MAIL-Narrative-Hunter/3.0'})
+    try:
+        with opener.open(req,timeout=min(8,timeout)) as response:
+            raw=response.read(20001)
+            if len(raw)>20000: raise ValueError('identity_response_too_large')
+    except urllib.error.HTTPError as error:
+        return {'status':'identity_http_'+str(error.code),'entities':[],'model_used':None}
     identity=json.loads(raw).get('value')
     if not isinstance(identity,str) or len(identity)>16000: raise ValueError('invalid_identity')
     req=urllib.request.Request('https://mail-solana-scheduler.yono24-mail-29ee31.workers.dev/ai/entities',
           data=json.dumps({'headlines':headlines}).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+identity})
-    with opener.open(req,timeout=timeout) as response:
-        raw=response.read(50001)
-        if len(raw)>50000: raise ValueError('ai_response_too_large')
+    try:
+        with opener.open(req,timeout=timeout) as response:
+            raw=response.read(50001)
+            if len(raw)>50000: raise ValueError('ai_response_too_large')
+    except urllib.error.HTTPError as error:
+        return {'status':'worker_http_'+str(error.code),'entities':[],'model_used':None}
     return json.loads(raw)

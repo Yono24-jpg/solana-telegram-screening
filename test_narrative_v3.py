@@ -35,6 +35,10 @@ def report():
 
 
 class Narrative(unittest.TestCase):
+    def setUp(self):
+        environment=patch.dict(os.environ,{'ACTIONS_ID_TOKEN_REQUEST_URL':'','ACTIONS_ID_TOKEN_REQUEST_TOKEN':'','CLOUDFLARE_API_TOKEN':''})
+        environment.start();self.addCleanup(environment.stop)
+
     def test_prepared_topics_reused_without_changing_matches(self):
         f={'articles':articles()};p=pool();p['baseToken']['name']='GTA VI'
         expected=n.match(p,f,NOW)

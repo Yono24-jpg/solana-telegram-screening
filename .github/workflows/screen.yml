@@ -20,6 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify original and upgraded filters
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ''
         run: python3 -m unittest -vb
       - name: Refresh durable state
         run: |
