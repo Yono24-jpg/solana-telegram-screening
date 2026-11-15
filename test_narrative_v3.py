@@ -1,6 +1,8 @@
 """Adversarial, offline v3 gates and pipeline integration tests."""
 import copy
 import json
+import hashlib
+import vault_checks
 import os
 import unittest
 from unittest.mock import patch, Mock
@@ -79,6 +81,22 @@ class Narrative(unittest.TestCase):
             result=n.extract_ai(bot,state,articles(),NOW)
         self.assertEqual(result['status'],'unavailable');self.assertEqual(state['narrative_ai_v3']['calls'],1)
         self.assertNotIn('secret',json.dumps(result))
+    def test_oidc_transport_and_model_output_are_validated(self):
+        env={'ACTIONS_ID_TOKEN_REQUEST_URL':'https://fixture.actions.githubusercontent.com/token','ACTIONS_ID_TOKEN_REQUEST_TOKEN':'fixture'}
+        old={'narrative_ai_v3':{'at':NOW-60,'value':{'status':'unauthorized'},'day':int(NOW//86400),'calls':1}}
+        with patch.dict(os.environ,env),patch.object(n,'worker_ai',return_value={'status':'ok','entities':['GTA VI','Invented Moon'],'model_used':'actual-provider-model'}) as call:
+            value=n.extract_ai(bot,old,articles(),NOW)
+        call.assert_called_once();self.assertEqual(value['entities'],['GTA VI']);self.assertEqual(value['model_used'],'actual-provider-model')
+        self.assertEqual(value['via'],'workers_ai_binding')
+    def test_oidc_failure_never_uses_a_model_claim(self):
+        env={'ACTIONS_ID_TOKEN_REQUEST_URL':'https://fixture.actions.githubusercontent.com/token','ACTIONS_ID_TOKEN_REQUEST_TOKEN':'fixture'}
+        with patch.dict(os.environ,env),patch.object(n,'worker_ai',return_value={'status':'provider_unavailable'}):
+            value=n.extract_ai(bot,{},articles(),NOW)
+        self.assertEqual(value['status'],'provider_unavailable');self.assertIsNone(value['model_used'])
+    def test_oidc_endpoint_cannot_be_redirected_by_news(self):
+        with patch.dict(os.environ,{'ACTIONS_ID_TOKEN_REQUEST_URL':'https://evil.example/token'}):
+            with self.assertRaises(ValueError):n.worker_ai([],5)
+
     def test_narrative_discovery_filters_other_chains(self):
         with patch.object(bot,'request',return_value={'pairs':[pool(),dict(pool(),chainId='ethereum')]}):
             self.assertEqual(len(n.search_pools(bot,{'articles':articles()},NOW)),1)
@@ -122,7 +140,7 @@ class Security(unittest.TestCase):
             rows.append({'wallet':wallet,'signature':sig,'kind':'sell' if sell else 'buy'})
             pre=[{'mint':MINT,'owner':wallet,'uiTokenAmount':{'amount':'100' if sell else '0'}}]
             post=[{'mint':MINT,'owner':wallet,'uiTokenAmount':{'amount':'0' if sell else '100'}}]
-            txs[sig]={'blockTime':NOW-10,'slot':100+i,'meta':{'err':None,'preTokenBalances':pre,'postTokenBalances':post,'preBalances':[100,0],'postBalances':[200 if sell else 90,0],'fee':1},'transaction':{'message':{'accountKeys':[{'pubkey':wallet,'signer':True},{'pubkey':PAIR,'signer':False}]}}}
+            txs[sig]={'blockTime':NOW-10,'slot':100+i,'meta':{'err':None,'preTokenBalances':pre,'postTokenBalances':post,'preBalances':[100,0],'postBalances':[200 if sell else 90,0],'fee':1},'transaction':{'message':{'instructions':[{'programId':vault_checks.PUMP,'accounts':[wallet,PAIR],'data':vault_checks.b58encode(hashlib.sha256(b'global:sell' if sell else b'global:buy').digest()[:8]+bytes(24))}], 'accountKeys':[{'pubkey':wallet,'signer':True},{'pubkey':PAIR,'signer':False}]}}}
         return {'transactions':rows},txs
     def test_sell_and_buy_sample_success(self):
         buyers,txs=self.sample()
@@ -130,12 +148,13 @@ class Security(unittest.TestCase):
             result=s.transaction_sample(pool(),buyers,bot,NOW)
         self.assertIsNone(result['reject']);self.assertEqual(result['finalized_sells'],3)
     def test_sell_rejects_failed_wrong_pool_or_no_proceeds(self):
-        for mutation in ('failed','pool','proceeds','stale','signer'):
+        for mutation in ('failed','pool','proceeds','stale','signer','fake_swap'):
             buyers,txs=self.sample();tx=next(iter(txs.values()))
             if mutation=='failed':tx['meta']['err']={}
             if mutation=='pool':tx['transaction']['message']['accountKeys'][1]['pubkey']='C'*32
             if mutation=='proceeds':tx['meta']['postBalances'][0]=90
             if mutation=='stale':tx['blockTime']=NOW-301
+            if mutation=='fake_swap':tx['transaction']['message']['instructions']=[]
             if mutation=='signer':tx['transaction']['message']['accountKeys'][0]['signer']=False
             with self.subTest(mutation=mutation),patch.object(evidence,'rpc',side_effect=lambda _api,_method,args:txs[args[0]]):
                 with self.assertRaises(ValueError):s.transaction_sample(pool(),buyers,bot,NOW)

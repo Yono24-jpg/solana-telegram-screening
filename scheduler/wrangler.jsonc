@@ -5,6 +5,7 @@
   "compatibility_date": "2026-11-08",
   "workers_dev": true,
   "preview_urls": false,
+  "ai": { "binding": "AI" },
   "vars": { "SCHEDULER_ENABLED": "true" },
   "triggers": { "crons": ["*/5 * * * *"] },
   "durable_objects": {
