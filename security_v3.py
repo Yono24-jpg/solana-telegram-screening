@@ -166,6 +166,51 @@ def transaction_sample(pool, buyers, api, now):
             'caveat':'Sampel transaksi, bukan pemetaan semua insider; jual setiap wallet tidak dijamin.'}
 
 
+def funding_check(report,buyers,api,now):
+    """Bounded finalized direct funding graph; never substitutes for provider coverage."""
+    wallets=list(dict.fromkeys(r.get('wallet') for r in buyers.get('transactions',[]) if r.get('kind')=='buy'))[:4]
+    if len(wallets)<4 or not all(address(w) for w in wallets):raise EvidenceMissing('funding_wallet_sample_incomplete')
+    creator=report['creator'];edges=[]
+    def read(wallet):
+        rows=evidence.rpc(api,'getSignaturesForAddress',[wallet,{'limit':5,'commitment':'finalized'}])
+        if not isinstance(rows,list) or not rows:raise EvidenceMissing('funding_history_unavailable')
+        observed=0;sources=set()
+        for row in rows[:5]:
+            when=row.get('blockTime')
+            if not number(when) or when>now:raise EvidenceMissing('funding_history_incomplete')
+            if row.get('err') is not None or now-when>86400:continue
+            if observed>=2:break
+            tx=evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
+            if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict) or tx['meta'].get('err') is not None:
+                raise EvidenceMissing('funding_transaction_unavailable')
+            if not number(tx.get('blockTime')) or tx['blockTime']!=when:raise EvidenceMissing('funding_transaction_time_mismatch')
+            keys=tx.get('transaction',{}).get('message',{}).get('accountKeys',[])
+            if not any(k.get('pubkey')==wallet for k in keys if isinstance(k,dict)):raise EvidenceMissing('funding_wallet_mismatch')
+            signers={k.get('pubkey') for k in keys if isinstance(k,dict) and k.get('signer') is True}
+            instructions=list(tx['transaction']['message'].get('instructions',[]))
+            for group in tx['meta'].get('innerInstructions') or []:instructions.extend(group.get('instructions',[]))
+            for ix in instructions:
+                if ix.get('programId')!='11111111111111111111111111111111':continue
+                parsed=ix.get('parsed') or {};info=parsed.get('info') or {}
+                source=info.get('source');lamports=info.get('lamports')
+                if parsed.get('type')=='transfer' and info.get('destination')==wallet and address(source) and source in signers and number(lamports) and lamports>0:
+                    sources.add(source)
+            observed+=1
+        if not observed:raise EvidenceMissing('funding_recent_sample_unavailable')
+        return wallet,sources,observed
+    checked=0;shared=defaultdict(set)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for wallet,sources,count in executor.map(read,wallets):
+            checked+=count
+            if wallet==creator or creator in sources:return {'reject':'developer_linked_buyer','wallets_checked':len(wallets)}
+            for source in sources:
+                shared[source].add(wallet);edges.append({'source':source,'destination':wallet})
+    if any(len(v)>=2 for v in shared.values()):return {'reject':'shared_direct_funder_pattern','edges':edges}
+    return {'reject':None,'wallets_checked':len(wallets),'transactions_checked':checked,'edges':edges,
+            'scope':'latest 5 signatures, up to 2 finalized transactions/wallet; missing earlier history is unknown, not cleared',
+            'complete_graph':False}
+
+
 def inspect(pool, sec, buyers, api, now, extension_proof=None):
     out = {'complete':False,'score':None,'reject':None,'checks':{},'risks':[
         'Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.',
@@ -193,6 +238,8 @@ def inspect(pool, sec, buyers, api, now, extension_proof=None):
         if developer.get('reject'): raise EvidenceMissing(developer['reject'])
         trades = transaction_sample(pool,buyers,api,time.time()); out['checks']['transactions'] = trades
         if trades.get('reject'): raise EvidenceMissing(trades['reject'])
+        funding=funding_check(report,buyers,api,time.time());out['checks']['funding']=funding
+        if funding.get('reject'):raise EvidenceMissing(funding['reject'])
         out.update(complete=True,score=100)
     except Exception as error:
         # Only internal fixed codes; never expose HTTP URLs or exception text from providers.
