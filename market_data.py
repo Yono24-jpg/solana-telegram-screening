@@ -90,11 +90,16 @@ def select_pool(dex, gecko):
     if amount(prepared.get('pairCreatedAt')) is None and number(gecko.get('pairCreatedAt')):
         prepared['pairCreatedAt'] = gecko['pairCreatedAt']; prepared['ageSource'] = 'geckoterminal'
     # Never blend liquidity, volume and transaction counts from different snapshots.
-    result = prepared if not missing_fields(prepared) or missing_fields(gecko) else copy.deepcopy(gecko)
+    # Prefer the snapshot with the fewest missing mandatory values; never blend metrics.
+    quality=lambda p:(len(v3_missing_fields(p)),len(missing_fields(p)))
+    result = copy.deepcopy(gecko) if quality(gecko)<quality(prepared) else prepared
     result.setdefault('dataSource', 'dexscreener')
     da = amount(dex.get('pairCreatedAt')); ga = amount(gecko.get('pairCreatedAt'))
     if da is not None and ga is not None and abs(da-ga) > 120000:
         result['ageConflict'] = True
+    description=get(dex,'info.description')
+    if isinstance(description,str) and description.strip():
+        result.setdefault('info',{})['description']=description[:1200]
     socials = get(dex, 'info.socials')
     if isinstance(socials, list):
         result.setdefault('info', {})['socials'] = copy.deepcopy(socials)
@@ -109,7 +114,7 @@ def refresh_pool(pair, mint, api, gecko):
             if isinstance(row, dict) and row.get('chainId') == 'solana' and row.get('pairAddress') == pair and get(row, 'baseToken.address') == mint:
                 dex = row; break
     except Exception: pass
-    if dex is not None and not missing_fields(dex): return select_pool(dex, None)
+    if dex is not None and not v3_missing_fields(dex): return select_pool(dex, None)
     try:
         rows = gecko_pools(gecko.request(GECKO+'/networks/solana/pools/'+pair+'?include=base_token,quote_token,dex'))
         for row in rows:
@@ -145,7 +150,7 @@ def refresh_watchlist(pools, state, api, gecko, now):
         try:
             response = api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(batch))
             for p in response.get('pairs') or []:
-                if isinstance(p,dict) and p.get('chainId') == 'solana' and p.get('pairAddress') in batch and get(p,'baseToken.address') == batch[p['pairAddress']]['mint'] and not missing_fields(p):
+                if isinstance(p,dict) and p.get('chainId') == 'solana' and p.get('pairAddress') in batch and get(p,'baseToken.address') == batch[p['pairAddress']]['mint'] and not v3_missing_fields(p):
                     refreshed.append(select_pool(p,None)); matched.add(p['pairAddress'])
         except Exception: pass
     # One bounded Gecko batch covers pools not yet indexed by DexScreener.
@@ -161,3 +166,74 @@ def refresh_watchlist(pools, state, api, gecko, now):
     for pair,_ in pending: state['pool_watchlist'][pair]['last_checked'] = now
     retain_watchlist(state, refreshed, now)
     return pools+refreshed
+
+
+def v3_missing_fields(pool):
+    """Required actual values for v3. FDV never substitutes for circulating market cap."""
+    paths = CORE + ('volume.h1','marketCap')
+    return [path for path in paths if amount(get(pool,path)) is None]
+
+
+def merge_pools(pools):
+    """A later search result cannot overwrite a better market snapshot."""
+    result={}
+    for pool in pools:
+        if not isinstance(pool,dict) or not address(pool.get('pairAddress')): continue
+        pair=pool['pairAddress']
+        result[pair]=select_pool(result.get(pair),pool) if pair in result else copy.deepcopy(pool)
+    return list(result.values())
+
+
+def hydrate_incomplete(pools, api, gecko, now, limit=40):
+    """Retry incomplete *present* pools as well as the existing absent-pool watchlist.
+
+    Bounded pair batches, matched mint+pool identities, one coherent winning snapshot.
+    Provider failures preserve missing values and never create passing market evidence.
+    """
+    pools=merge_pools(pools);positions={p['pairAddress']:i for i,p in enumerate(pools)}
+    def priority(p):
+        created=amount(p.get('pairCreatedAt')); age=now-created/1000 if created is not None else 86401
+        lp=amount(get(p,'liquidity.usd')) or 0
+        return (not 60<=age<=3600,not 60<=age<=86400,lp<10000,-lp)
+    pending=sorted([p for p in pools if v3_missing_fields(p)],key=priority)[:limit]
+    stats={'incomplete_before':sum(bool(v3_missing_fields(p)) for p in pools),'requested':len(pending),'dex_batches':0,'gecko_batches':0,'recovered':0}
+    def merge_rows(rows, expected):
+        for row in rows:
+            if not isinstance(row,dict) or row.get('chainId')!='solana': continue
+            pair=row.get('pairAddress')
+            if pair not in expected or get(row,'baseToken.address')!=expected[pair]: continue
+            index=positions[pair];pools[index]=select_pool(pools[index],row)
+    for start in range(0,len(pending),20):
+        batch=pending[start:start+20];expected={p['pairAddress']:get(p,'baseToken.address') for p in batch}
+        try:
+            stats['dex_batches']+=1
+            data=api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(expected))
+            merge_rows(data.get('pairs') or [],expected)
+        except Exception:pass
+        expected={pair:mint for pair,mint in expected.items() if v3_missing_fields(pools[positions[pair]])}
+        if not expected:continue
+        try:
+            stats['gecko_batches']+=1
+            rows=gecko_pools(gecko.request(GECKO+'/networks/solana/pools/multi/'+','.join(expected)+'?include=base_token,quote_token,dex'))
+            merge_rows(rows,expected)
+        except Exception:pass
+    stats['incomplete_after']=sum(bool(v3_missing_fields(p)) for p in pools)
+    stats['recovered']=stats['incomplete_before']-stats['incomplete_after']
+    return pools,stats
+
+
+def configured_mints(path, now):
+    """An explicit, expiring CA watchlist is retrieval only, never a security allowlist."""
+    if not path:return []
+    try:
+        import json
+        from pathlib import Path
+        config=json.loads(Path(path).read_text())
+        result=[]
+        for row in config.get('tokens',[])[:20]:
+            if not isinstance(row,dict) or not address(row.get('mint')):continue
+            expires=row.get('expires_at');added=row.get('added_at')
+            if not number(expires) or not number(added) or not added<=now<expires or expires-added>86400:continue
+            if row['mint'] not in result:result.append(row['mint'])
+        return result
+    except Exception:return []

@@ -1,0 +1,33 @@
+{
+  "purpose": "User-requested real-token checks. Retrieval only; every normal market, narrative and security gate still applies. Entries expire at pool age 24h.",
+  "tokens": [
+    {
+      "name": "Anthropic Inu",
+      "mint": "GgDHtSGcXn5YrADnpsQSVHFAa5xLwVEuD7FWeRgvpump",
+      "added_at": 1794804733.9736407,
+      "expires_at": 1794870612.0,
+      "source": "https://dexscreener.com/solana/96RoBEefW9fgNRfjbd7LnFnNGxmpvDh1wkpKhFbX4QwT"
+    },
+    {
+      "name": "GRAND THEFT CRYPTO (FiveM)",
+      "mint": "2YxbK7V6ZTKSxcavk3V4kFzdtZ4uywhhoyuSxapjpump",
+      "added_at": 1794804733.9736407,
+      "expires_at": 1794875102.0,
+      "source": "https://dexscreener.com/solana/6nwmQSgHWtRfXw9xqQM3hseyKzWrQq2gzamoSbjKqs32"
+    },
+    {
+      "name": "Cyber Dacity Coin",
+      "mint": "C5X8tVbt8cGw7iaaEuAVGTxFVZ4uSjscmiUbVpVwpump",
+      "added_at": 1794804733.9736407,
+      "expires_at": 1794871794.0,
+      "source": "https://dexscreener.com/solana/9iqd6n93rWEvk8KmWWw2fPBonSvfpkGHvDgpchVzSGXk"
+    },
+    {
+      "name": "rockstar",
+      "mint": "9HFUEab7sompLDPTAaTGkryMNGbtBaFMhHMVpJEBpump",
+      "added_at": 1794804733.9736407,
+      "expires_at": 1794826817.0,
+      "source": "https://dexscreener.com/solana/5PYNPPTNpdG5REsu3VqeJKqHePiJ1uwP5L7A2CcHMxdY"
+    }
+  ]
+}

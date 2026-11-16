@@ -1,0 +1,33 @@
+name: Read-only Real Token Audit
+on:
+  push:
+    branches: ['upgrade/real-token-audit-20261116']
+    paths: ['token_audit.py', '.github/workflows/real-token-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: read-only-real-token-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refresh public scanner state
+        run: |
+          git fetch origin main
+          git show origin/main:state.json > state.json
+      - name: Audit real tokens without Telegram credentials or signing keys
+        env:
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          SCANNER_WATCHLIST_FILE: discovery_watchlist.json
+          PYTHONUNBUFFERED: '1'
+        run: python3 token_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-token-audit-${{ github.run_id }}
+          path: reports/real-token-audit.json
+          retention-days: 14
