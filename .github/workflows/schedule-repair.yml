@@ -64,7 +64,7 @@ jobs:
           PY
       - name: Save schedule repair evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scanner-schedule-repair-${{ github.run_id }}
           path: reports/schedule-repair.json

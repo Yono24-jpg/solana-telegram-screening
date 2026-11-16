@@ -2,6 +2,7 @@
 import copy
 import threading
 import time
+from collections import Counter
 from screening_rules import address, amount, number, timestamp
 
 GECKO = 'https://api.geckoterminal.com/api/v2'
@@ -84,6 +85,8 @@ def select_pool(dex, gecko):
     if gecko is None:
         result = copy.deepcopy(dex); result.setdefault('dataSource', 'dexscreener'); return result
     same = dex.get('pairAddress') == gecko.get('pairAddress') and get(dex, 'baseToken.address') == get(gecko, 'baseToken.address')
+    dq=get(dex,'quoteToken.address');gq=get(gecko,'quoteToken.address')
+    if dq and gq and dq!=gq:same=False
     if not same:
         result = copy.deepcopy(dex); result['identityConflict'] = True; return result
     prepared = copy.deepcopy(dex)
@@ -93,6 +96,8 @@ def select_pool(dex, gecko):
     # Prefer the snapshot with the fewest missing mandatory values; never blend metrics.
     quality=lambda p:(len(v3_missing_fields(p)),len(missing_fields(p)))
     result = copy.deepcopy(gecko) if quality(gecko)<quality(prepared) else prepared
+    for flag in ('identityConflict','ageConflict'):
+        if dex.get(flag) or gecko.get(flag):result[flag]=True
     result.setdefault('dataSource', 'dexscreener')
     da = amount(dex.get('pairCreatedAt')); ga = amount(gecko.get('pairCreatedAt'))
     if da is not None and ga is not None and abs(da-ga) > 120000:
@@ -119,9 +124,10 @@ def refresh_pool(pair, mint, api, gecko):
         rows = gecko_pools(gecko.request(GECKO+'/networks/solana/pools/'+pair+'?include=base_token,quote_token,dex'))
         for row in rows:
             if row['pairAddress'] == pair and row['baseToken']['address'] == mint:
-                return select_pool(dex, row)
+                result=select_pool(dex,row)
+                return cap_refresh(result,api)
     except Exception: pass
-    if dex is not None: return select_pool(dex, None)
+    if dex is not None:return cap_refresh(select_pool(dex,None),api)
     raise ValueError('refresh_unavailable_or_identity_mismatch')
 
 
@@ -196,30 +202,90 @@ def hydrate_incomplete(pools, api, gecko, now, limit=40):
         lp=amount(get(p,'liquidity.usd')) or 0
         return (not 60<=age<=3600,not 60<=age<=86400,lp<10000,-lp)
     pending=sorted([p for p in pools if v3_missing_fields(p)],key=priority)[:limit]
-    stats={'incomplete_before':sum(bool(v3_missing_fields(p)) for p in pools),'requested':len(pending),'dex_batches':0,'gecko_batches':0,'recovered':0}
+    fields=lambda:dict(Counter(k for p in pools for k in v3_missing_fields(p)))
+    stats={'incomplete_before':sum(bool(v3_missing_fields(p)) for p in pools),'requested':len(pending),'dex_batches':0,'gecko_batches':0,'recovered':0,
+           'missing_before':fields(),'sources':{},'identity_rejections':0,'partial_improvements':0}
+    def status(source, **values): stats['sources'].setdefault(source,{}).update(values)
+    def failure(source,error):
+        code=getattr(error,'code',None)
+        status(source,status='http_'+str(code) if isinstance(code,int) else ('rate_budget' if str(error)=='gecko_free_budget' else type(error).__name__))
     def merge_rows(rows, expected):
+        if not isinstance(rows,list):raise ValueError('response_shape')
         for row in rows:
             if not isinstance(row,dict) or row.get('chainId')!='solana': continue
             pair=row.get('pairAddress')
-            if pair not in expected or get(row,'baseToken.address')!=expected[pair]: continue
-            index=positions[pair];pools[index]=select_pool(pools[index],row)
+            if pair not in expected or get(row,'baseToken.address')!=expected[pair]:
+                stats['identity_rejections']+=1;continue
+            index=positions[pair];before=len(v3_missing_fields(pools[index]));pools[index]=select_pool(pools[index],row)
+            stats['partial_improvements']+=int(len(v3_missing_fields(pools[index]))<before)
     for start in range(0,len(pending),20):
         batch=pending[start:start+20];expected={p['pairAddress']:get(p,'baseToken.address') for p in batch}
         try:
             stats['dex_batches']+=1
             data=api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(expected))
+            if not isinstance(data,dict):raise ValueError('response_shape')
             merge_rows(data.get('pairs') or [],expected)
-        except Exception:pass
+            status('dex_pairs',status='ok',rows=len(data.get('pairs') or []))
+        except Exception as error:failure('dex_pairs',error)
         expected={pair:mint for pair,mint in expected.items() if v3_missing_fields(pools[positions[pair]])}
         if not expected:continue
         try:
             stats['gecko_batches']+=1
             rows=gecko_pools(gecko.request(GECKO+'/networks/solana/pools/multi/'+','.join(expected)+'?include=base_token,quote_token,dex'))
             merge_rows(rows,expected)
-        except Exception:pass
+            status('gecko_pools',status='ok',rows=len(rows))
+        except Exception as error:failure('gecko_pools',error)
+    # A mint endpoint is distinct from the pair endpoint; never treat the CA as a pool.
+    unresolved=[p for p in pending if v3_missing_fields(pools[positions[p['pairAddress']]])]
+    for start in range(0,len(unresolved),30):
+        batch=unresolved[start:start+30];expected={p['pairAddress']:get(p,'baseToken.address') for p in batch}
+        try:
+            rows=api.request(api.DEX+'/tokens/v1/solana/'+','.join(dict.fromkeys(expected.values())))
+            merge_rows(rows,expected);status('dex_tokens',status='ok',rows=len(rows))
+        except Exception as error:failure('dex_tokens',error)
+    # Independently supplied circulating valuation; do not synthesize cap from mint supply/FDV.
+    # At most two lookups per cycle, only for otherwise useful, cap-missing snapshots.
+    eligible=[pools[positions[p['pairAddress']]] for p in pending]
+    eligible=[p for p in eligible if v3_missing_fields(p)==['marketCap'] and (amount(get(p,'liquidity.usd')) or 0)>=10000
+              and (amount(get(p,'volume.h1')) or 0)>=5000]
+    for p in eligible[:2]:
+        mint=get(p,'baseToken.address')
+        try:
+            url='https://api.coingecko.com/api/v3/coins/solana/contract/'+mint
+            raw=api.request(url); proof=verified_cap(raw,mint,p,now)
+            if proof:
+                p['marketCap']=proof['usd'];p['marketCapEvidence']=dict(proof,url=url)
+                status('coingecko_contract',status='verified')
+            else:status('coingecko_contract',status='identity_freshness_or_supply_unverified')
+        except Exception as error:failure('coingecko_contract',error)
     stats['incomplete_after']=sum(bool(v3_missing_fields(p)) for p in pools)
+    stats['missing_after']=fields()
     stats['recovered']=stats['incomplete_before']-stats['incomplete_after']
     return pools,stats
+
+
+def verified_cap(raw,mint,pool,now):
+    """Bind CoinGecko cap to exact Solana CA, recent price and circulating supply."""
+    if not isinstance(raw,dict) or get(raw,'platforms.solana')!=mint:return None
+    updated=timestamp(raw.get('last_updated'));data=raw.get('market_data') or {}
+    cap=amount(get(data,'market_cap.usd'));price=amount(get(data,'current_price.usd'));supply=amount(data.get('circulating_supply'))
+    pair_price=amount(pool.get('priceUsd'))
+    if updated is None or not 0<=now-updated<=240:return None
+    if any(x is None or x<=0 for x in (cap,price,supply,pair_price)):return None
+    if abs(cap-price*supply)/cap>0.02 or abs(price-pair_price)/pair_price>0.1:return None
+    return {'usd':cap,'provider':'coingecko_contract','mint':mint,'updated_at':updated,'observed_at':now,
+            'circulating_supply':supply,'valuation_price_usd':price}
+
+
+def cap_refresh(pool,api):
+    """Final refresh must reverify an alternate valuation, never reuse stale cap."""
+    if v3_missing_fields(pool)!=['marketCap']:return pool
+    mint=get(pool,'baseToken.address');url='https://api.coingecko.com/api/v3/coins/solana/contract/'+mint
+    try:
+        raw=api.request(url);proof=verified_cap(raw,mint,pool,time.time())
+        if proof:pool['marketCap']=proof['usd'];pool['marketCapEvidence']=dict(proof,url=url)
+    except Exception:pass
+    return pool
 
 
 def configured_mints(path, now):

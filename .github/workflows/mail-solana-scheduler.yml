@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: '24'
       - name: Install pinned local verification tools
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Audit stored access or deploy the separate scheduler
         env:
           SCHEDULER_OPERATION: ${{ inputs.operation }}
@@ -57,7 +57,7 @@ jobs:
           python3 scheduler/deploy.py "$SCHEDULER_OPERATION"
       - name: Save safe deployment evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mail-scheduler-${{ github.run_id }}
           path: scheduler/reports/*.json

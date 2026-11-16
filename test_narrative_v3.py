@@ -191,7 +191,10 @@ class Security(unittest.TestCase):
         buyers,txs=self.sample();buyers.update(strong=True,risks=[])
         def rpc(_api,method,args):
             if method=='getTokenAccountsByOwner':return {'value':[]}
-            if method=='getSignaturesForAddress':return [{'signature':'old','blockTime':NOW-7200,'err':None}]
+            if method=='getSignaturesForAddress':
+                if args[0]==CREATOR:return [{'signature':'old','blockTime':NOW-7200,'err':None}]
+                sig=next(k for k,v in txs.items() if v['transaction']['message']['accountKeys'][0]['pubkey']==args[0])
+                return [{'signature':sig,'blockTime':NOW-10,'err':None}]
             return txs[args[0]]
         with patch.object(bot,'request',return_value=report()),patch.object(evidence,'rpc',side_effect=rpc),patch.object(s.time,'time',return_value=NOW):
             result=s.inspect(pool(),security,buyers,bot,NOW)

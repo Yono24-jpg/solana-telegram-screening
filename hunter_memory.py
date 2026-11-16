@@ -43,7 +43,16 @@ def followup(state, pools, api, gecko, deadline):
         price=price_of(p)
         sample_performance(r,price,now)
         if price is None and is_due(r,now): pending.append(r)
-    pending.sort(key=lambda r:(r.get('last_quote_attempt_at',0),r['at']))
+    # Protect the nearest expiring short horizon before long-horizon backlog.
+    def urgency(r):
+        expiries=[r['at']+h+(600 if h<86400 else 10800) for h in HORIZONS
+                  if str(h) not in r.get('samples',{}) and r['at']+h<=now]
+        return (min(expiries,default=float('inf')),r.get('last_quote_attempt_at',0))
+    pending.sort(key=urgency)
+    # Several 6h cohorts can refer to one pool: fetch each identity once per cycle.
+    grouped={}
+    for r in pending:grouped.setdefault((r['pair'],r['mint']),[]).append(r)
+    pending=[rows[0] for rows in grouped.values()]
     attempted=0; recovered=0
     for start in range(0,min(len(pending),60),20):
         if deadline and time.monotonic()>=deadline-1: break
@@ -54,7 +63,7 @@ def followup(state, pools, api, gecko, deadline):
             raw=api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(wanted))
             for p in raw.get('pairs') or []:
                 pair=p.get('pairAddress');mint=(p.get('baseToken') or {}).get('address')
-                if p.get('chainId')=='solana' and pair in wanted and mint==wanted[pair]: quotes[(pair,mint)]=p
+                if p.get('chainId')=='solana' and not p.get('identityConflict') and pair in wanted and mint==wanted[pair]: quotes[(pair,mint)]=p
         except Exception: pass
         missing=[pair for pair,mint in wanted.items() if price_of(quotes.get((pair,mint))) is None]
         if missing and gecko is not None and (not deadline or time.monotonic()<deadline-1):
@@ -65,11 +74,12 @@ def followup(state, pools, api, gecko, deadline):
                     if pair in wanted and mint==wanted[pair]:quotes[(pair,mint)]=p
             except Exception: pass
         observed_at=time.time()
-        for r in batch:
-            r['last_quote_attempt_at']=observed_at;attempted+=1
-            price=price_of(quotes.get((r['pair'],r['mint'])))
+        for representative in batch:
+            key=(representative['pair'],representative['mint']);price=price_of(quotes.get(key));attempted+=1
             if price is not None and price>0:recovered+=1
-            sample_performance(r,price,observed_at)
+            for r in grouped[key]:
+                r['last_quote_attempt_at']=observed_at
+                sample_performance(r,price,observed_at)
     return {'due_records':len(due),'quote_attempts':attempted,'quotes_recovered':recovered,
             'note':'Actual observation times only; old missed windows are not reconstructed.'}
 

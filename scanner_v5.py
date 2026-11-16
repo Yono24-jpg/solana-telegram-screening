@@ -86,9 +86,15 @@ def run(state,chat,api,dry_run=False):
                 'memory':'bounded 1500 decisions / 90 days, artifact retention 14 days', 'historical_profit_backtest':'unvalidated'}}
     if state.get('enabled') is False:
         report.update(health='paused'); report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report); write_report(state,api,report); return report
+    # Due price windows run before news/social retrieval can consume the scan budget.
+    gecko=market_data.GeckoClient(api,state)
+    original_deadline=api.REQUEST_DEADLINE
+    early_deadline=min(original_deadline or float('inf'),time.monotonic()+20)
+    api.REQUEST_DEADLINE=early_deadline
+    try:report['evaluation_early']=hunter_memory.followup(state,[],api,None,early_deadline)
+    finally:api.REQUEST_DEADLINE=original_deadline
     feed=intelligence.collect(api,state,now)
     report['narrative']={k:v for k,v in feed.items() if k!='articles'}
-    gecko=market_data.GeckoClient(api,state)
     pools,report['discovery']=legacy.discover(api,gecko)
     found=intelligence.search_pools(api,feed,time.time()); report['discovery']['dynamic_search_pools']=len(found)
     social_pools,report['social_discovery']=social_intelligence.discover_contracts(api,feed,time.time())
@@ -166,6 +172,8 @@ def run(state,chat,api,dry_run=False):
     report['memory_records']=len(state.get('memory_v5',{}))
     report['evaluations']={str(h):sum(str(h) in r.get('samples',{}) for r in state.get('memory_v5',{}).values()) for h in (300,900,3600,86400)}
     report['evaluation_status']={str(h):{status:sum(r.get('samples',{}).get(str(h),{}).get('status')==status for r in state.get('memory_v5',{}).values()) for status in ('observed','missed')} for h in (300,900,3600,86400)}
+    recent=[r for r in state.get('memory_v5',{}).values() if 0<=time.time()-r['at']<=3600]
+    report['recent_evaluation_status']={str(h):{status:sum(r.get('samples',{}).get(str(h),{}).get('status')==status for r in recent) for status in ('observed','missed')} for h in (300,900)}
     report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/point-in-time-v5.json').write_text(json.dumps(archives,ensure_ascii=False,indent=2))

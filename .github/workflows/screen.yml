@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Verify original and upgraded filters
         env:
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: ''
@@ -46,7 +46,7 @@ jobs:
         run: python3 persist_state.py
       - name: Save observed scan and performance reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scanner-v5-report-${{ github.run_id }}
           path: reports/*.json
