@@ -525,10 +525,15 @@ def main():
         # Keep the original scan() for rollback and its regression tests.
         # Telegram control latency must not consume the market-evidence budget.
         import sys
-        from scanner_v2 import run
+        from scanner_v5 import run
         REQUEST_DEADLINE=time.monotonic()+200
         run(state,chat,sys.modules[__name__])
-    else: print('SCREENING_OFF')
+    else:
+        import sys
+        from scanner_v5 import run
+        REQUEST_DEADLINE=time.monotonic()+30
+        run(state,chat,sys.modules[__name__])
+        print('SCREENING_OFF')
 
 if __name__=='__main__':
     try: main()

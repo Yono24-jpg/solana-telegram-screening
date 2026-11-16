@@ -18,10 +18,12 @@ def migrate(state, now):
                                    and number(r.get('at')) and 0<=now-r['at']<=7*86400],key=lambda r:r['at'])[-100:]
     state['gecko_requests'] = sorted(set(t for t in state.get('gecko_requests',[]) if number(t) and 0 <= now-t <= 120))[-100:]
     state['pool_watchlist'] = {k:v for k,v in state['pool_watchlist'].items() if address(k) and isinstance(v,dict)
-                              and address(v.get('mint')) and number(v.get('created_at')) and 0 <= now-v['created_at'] <= 86400
+                              and address(v.get('mint')) and number(v.get('created_at')) and 0 <= now-v['created_at'] <= 90*86400
                               and number(v.get('last_seen')) and number(v.get('last_checked'))}
     state['pool_watchlist'] = dict(sorted(state['pool_watchlist'].items(),key=lambda x:(now-x[1]['created_at']<=3600,x[1]['last_seen']),reverse=True)[:200])
     state['schema_version'] = 2
+    for key,ttl,limit in [('memory_v5',90*86400,1500),('social_v5',86400,200)]:
+        state[key]=dict(sorted(((k,v) for k,v in state.get(key,{}).items() if isinstance(v,dict) and number(v.get('at')) and 0<=now-v['at']<=ttl),key=lambda x:-x[1]['at'])[:limit])
     state['delivery'] = {k:v for k,v in state['delivery'].items() if isinstance(v, dict)
                          and isinstance(v.get('at'), (int, float)) and 0 <= now-v['at'] <= RETENTION}
     state['performance'] = {k:v for k,v in state['performance'].items() if isinstance(v, dict)
@@ -45,13 +47,13 @@ def already_delivered(state, mint, tier, now):
 
 def merge(remote, local, now):
     out = dict(remote)
-    for key in ('delivery', 'performance', 'evidence_cache'):
+    for key in ('delivery', 'performance', 'evidence_cache', 'memory_v5', 'social_v5'):
         records = copy.deepcopy(remote.get(key, {}))
         for k, item in local.get(key, {}).items():
             old = records.get(k)
             if key == 'delivery' and old and old.get('reservation') != item.get('reservation'):
                 continue  # First persisted reservation owns the right to send.
-            if key == 'performance' and old:
+            if key in ('performance','memory_v5') and old:
                 item = dict(item, samples={**old.get('samples', {}), **item.get('samples', {})})
             if not old or item.get('updated', item.get('at', 0)) >= old.get('updated', old.get('at', 0)):
                 records[k] = item
@@ -70,7 +72,7 @@ def merge(remote, local, now):
     out['offset'] = max(ro, lo)
     out['enabled'] = local.get('enabled', False) if lo > ro else remote.get('enabled', local.get('enabled', False))
     out['initialized'] = bool(local.get('initialized') or remote.get('initialized'))
-    for key in ('narrative_feed_v3', 'narrative_ai_v3'):
+    for key in ('narrative_feed_v3', 'narrative_ai_v3', 'global_feed_v5', 'global_ai_v5'):
         a=remote.get(key,{}); b=local.get(key,{})
         out[key]=copy.deepcopy(b if b.get('at',0)>=a.get('at',0) else a)
     out['last_scan'] = local.get('last_scan', remote.get('last_scan'))

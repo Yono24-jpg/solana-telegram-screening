@@ -125,13 +125,13 @@ def refresh_pool(pair, mint, api, gecko):
     raise ValueError('refresh_unavailable_or_identity_mismatch')
 
 
-def retain_watchlist(state, pools, now):
+def retain_watchlist(state, pools, now, max_age=86400):
     watched = {k:v for k,v in state.get('pool_watchlist', {}).items() if isinstance(v, dict)
-               and number(v.get('created_at')) and 0 <= now-v['created_at'] <= 86400}
+               and number(v.get('created_at')) and 0 <= now-v['created_at'] <= max_age}
     for p in pools:
         created = amount(p.get('pairCreatedAt')); pair = p.get('pairAddress'); mint = get(p, 'baseToken.address')
         lp = amount(get(p, 'liquidity.usd')); volume = amount(get(p, 'volume.m5'))
-        if not address(pair) or not address(mint) or created is None or not 0 <= now-created/1000 <= 86400: continue
+        if not address(pair) or not address(mint) or created is None or not 0 <= now-created/1000 <= max_age: continue
         if lp is None or lp < 5000 or volume is None or volume < 500: continue
         old = watched.get(pair, {})
         watched[pair] = {'mint':mint, 'created_at':created/1000, 'last_seen':now,
@@ -140,8 +140,8 @@ def retain_watchlist(state, pools, now):
     state['pool_watchlist'] = dict(sorted(watched.items(), key=lambda x:(now-x[1]['created_at'] <= 3600, x[1]['last_seen']), reverse=True)[:200])
 
 
-def refresh_watchlist(pools, state, api, gecko, now):
-    retain_watchlist(state, pools, now)
+def refresh_watchlist(pools, state, api, gecko, now, max_age=86400):
+    retain_watchlist(state, pools, now, max_age)
     present = {p.get('pairAddress') for p in pools}
     pending = sorted(((pair,r) for pair,r in state['pool_watchlist'].items() if pair not in present), key=lambda v:v[1].get('last_checked',0))[:40]
     refreshed = []; matched = set()
@@ -164,7 +164,7 @@ def refresh_watchlist(pools, state, api, gecko, now):
                     refreshed.append(p)
         except Exception: pass
     for pair,_ in pending: state['pool_watchlist'][pair]['last_checked'] = now
-    retain_watchlist(state, refreshed, now)
+    retain_watchlist(state, refreshed, now, max_age)
     return pools+refreshed
 
 

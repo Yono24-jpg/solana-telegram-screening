@@ -190,7 +190,7 @@ def render(pool, m, sec, social, buyers, mint_age, tier):
             + '\nALERT ONLY • Tidak ada transaksi otomatis. Skor bukan probabilitas profit.')
 
 
-def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
+def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier, renderer=None):
     # Defense in depth: legacy EARLY WATCH cannot bypass v3's mandatory evidence.
     if not pool.get('_security_v3',{}).get('complete') or pool.get('_narrative_v3',{}).get('reject',True) is not None: return False
     now = time.time(); mint = pool['baseToken']['address']; key = mint+':'+tier
@@ -201,7 +201,7 @@ def deliver(state, api, chat, pool, m, sec, social, buyers, mint_age, tier):
     checkpoint(state, api, durable=True)
     if state['delivery'].get(key, {}).get('reservation') != reservation or state.get('enabled') is False: return False
     try:
-        result = api.tg('sendMessage', chat_id=chat, text=render(pool, m, sec, social, buyers, mint_age, tier),
+        result = api.tg('sendMessage', chat_id=chat, text=(renderer or render)(pool, m, sec, social, buyers, mint_age, tier),
                         parse_mode='HTML', disable_web_page_preview=True, reply_markup=api.KEYBOARD)
         if not isinstance(result.get('message_id'), int) or result.get('chat', {}).get('id') != chat:
             raise ValueError('delivery_not_verified')
