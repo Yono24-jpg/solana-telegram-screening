@@ -1,4 +1,5 @@
 """Official read-only providers, bounded usage and explicit partial coverage. No trading."""
+import copy
 import json
 import os
 import threading
@@ -21,6 +22,7 @@ class Client:
     def __init__(self,api,state):
         self.api=api;self.state=state;self.lock=threading.Lock();self.counts={};self.status={}
         self.tokens_by_mint={}
+        self.rpc_cache={};self.rpc_metrics={};self.helius_pace=threading.Lock()
         for name,key in [('helius','HELIUS_API_KEY'),('birdeye','BIRDEYE_API_KEY')]:
             configured=bool(os.environ.get(key)) or (name=='helius' and urlsplit(os.environ.get('SOLANA_RPC_URL','')).hostname=='mainnet.helius-rpc.com')
             if not configured:self.status[name]={'status':'not_configured'}
@@ -41,25 +43,37 @@ class Client:
         configured=os.environ.get('SOLANA_RPC_URL')
         if urlsplit(url).scheme!='https' or (host not in official.get(provider,set()) and not (provider=='configured_rpc' and url==configured)):
             raise Unavailable('provider_url_not_allowed')
+        if provider=='helius':
+            # Serialize starts at <=2 requests/sec, comfortably below free 10RPS.
+            with self.helius_pace:
+                wait=max(0,getattr(self,'helius_next',0)-time.monotonic())
+                if wait:time.sleep(wait)
+                self.helius_next=time.monotonic()+.5
         now=time.time();day=int(now//86400);max_run=80 if 'rpc' in provider or provider=='helius' else (4 if provider=='jupiter' else 12)
         with self.lock:
             record=self.state.setdefault('provider_state_v5',{}).setdefault(provider,{})
             if record.get('day')!=day:record.update(day=day,requests=0)
+            if provider=='helius':
+                ledger={k:v for k,v in record.get('credit_days',{}).items() if k.isdigit() and day-30<=int(k)<=day and isinstance(v,int) and v>=0}
+                ledger[str(day)]=max(ledger.get(str(day),0),record.get('requests',0))
+                record['credit_days']=ledger
             reason=None
             if now<record.get('retry_after',0):reason='backoff'
-            elif self.counts.get(provider,0)>=max_run or record.get('requests',0)>=(5000 if max_run==80 else 1000):reason='local_quota'
+            elif provider=='helius' and (sum(ledger.values())>=600000 or record.get('requests',0)>=20000):reason='local_credit_budget'
+            elif self.counts.get(provider,0)>=max_run or record.get('requests',0)>=(20000 if provider=='helius' else 5000 if max_run==80 else 1000):reason='local_quota'
             elif provider=='jupiter' and now-record.get('last_request_at',0)<2.1:reason='local_spacing'
             if reason:
                 self.status[provider]={'status':reason,'at':now};raise Unavailable(reason)
             record.update(at=now,last_request_at=now,requests=record.get('requests',0)+1)
             self.counts[provider]=self.counts.get(provider,0)+1
+            if provider=='helius':ledger[str(day)]=ledger.get(str(day),0)+1
         try:
             if headers:
                 remaining=(self.api.REQUEST_DEADLINE-time.monotonic()) if self.api.REQUEST_DEADLINE else 8
                 if remaining<=0:raise TimeoutError()
                 import evidence
                 req=urllib.request.Request(url,data=None if data is None else json.dumps(data).encode(),
-                    headers={'Accept':'application/json','Content-Type':'application/json','User-Agent':'MAILHunter/5.0',**headers})
+                    headers={'Accept':'application/json','Content-Type':'application/json','User-Agent':'MAILHunter/5.0',**(headers or {})})
                 with urllib.request.build_opener(evidence.NoRedirect).open(req,timeout=min(8,remaining)) as response:
                     raw=response.read(1000001)
                 if len(raw)>1000000:raise ValueError()
@@ -80,9 +94,14 @@ class Client:
             raise Unavailable(status) from None
     def rpc(self,method,params):
         if method not in READ_METHODS:raise Unavailable('rpc_method_not_read_only')
+        cache_key=json.dumps([method,params],sort_keys=True)
+        cached=self.rpc_cache.get(cache_key)
+        if method=='getTransaction' and cached and isinstance(params[-1],dict) and params[-1].get('commitment')=='finalized':
+            self.rpc_metrics['cache_hits']=self.rpc_metrics.get('cache_hits',0)+1
+            return copy.deepcopy(cached)
         routes=[];key=os.environ.get('HELIUS_API_KEY');configured=os.environ.get('SOLANA_RPC_URL')
         if key:routes.append(('helius','https://mainnet.helius-rpc.com/?'+urlencode({'api-key':key})))
-        if configured and urlsplit(configured).scheme=='https':routes.append(('configured_rpc',configured))
+        if configured and urlsplit(configured).scheme=='https':routes.append(('helius' if urlsplit(configured).hostname=='mainnet.helius-rpc.com' else 'configured_rpc',configured))
         routes.append(('solana_rpc','https://api.mainnet-beta.solana.com'))
         tried=set()
         for provider,url in routes:
@@ -106,9 +125,18 @@ class Client:
                     self.status[provider]={'status':'rpc_value_missing','at':time.time()};continue
                 if method=='getMultipleAccounts' and isinstance(payload,dict) and isinstance(payload.get('value'),list) and any(v is None for v in payload['value']):
                     self.status[provider]={'status':'rpc_accounts_incomplete','at':time.time()};continue
+                metrics=self.rpc_metrics.setdefault(provider,{})
+                metrics[method]=metrics.get(method,0)+1
+                if method=='getTransaction' and isinstance(params[-1],dict) and params[-1].get('commitment')=='finalized':self.rpc_cache[cache_key]=copy.deepcopy(payload)
                 return payload
             except Unavailable:continue
         raise Unavailable('all_rpc_sources_unavailable')
+    def usage(self):
+        record=self.state.get('provider_state_v5',{}).get('helius',{})
+        return {'successful_rpc_by_method':copy.deepcopy(self.rpc_metrics),'helius_attempts_this_cycle':self.counts.get('helius',0),
+                'helius_estimated_credits_today':record.get('requests',0),'helius_estimated_credits_31d':sum(record.get('credit_days',{}).values()),
+                'limits':{'per_cycle':80,'per_day':20000,'rolling_31d':600000,'requests_per_second':2},
+                'basis':'1 credit per allowed standard RPC attempt; conservative estimate, not Helius account billing; excludes other apps and read-only audit jobs'}
     def jupiter(self,path):
         key=os.environ.get('JUPITER_API_KEY');return self.request('jupiter',JUP+path,headers={'x-api-key':key} if key else None)
     def token_rows(self,mints):

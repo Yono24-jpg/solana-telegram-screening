@@ -91,6 +91,13 @@ def run(state,chat,api,dry_run=False):
         report.update(health='paused'); report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report); write_report(state,api,report); return report
     providers=data_intelligence.Client(api,state);api.DATA_INTELLIGENCE=providers
     report['provider_access']=providers.credentials()
+    if report['provider_access']['helius']['configured']:
+        # Low-cost production evidence, also when no candidate reaches safety gates.
+        try:
+            slot=providers.rpc('getSlot',[{'commitment':'finalized'}])
+            report['helius_probe']={'valid_finalized_slot':isinstance(slot,int) and not isinstance(slot,bool) and slot>0,
+                'helius_used':providers.rpc_metrics.get('helius',{}).get('getSlot',0)>0,'slot':slot if isinstance(slot,int) else None}
+        except Exception:report['helius_probe']={'valid_finalized_slot':False,'helius_used':False}
     # Due price windows run before news/social retrieval can consume the scan budget.
     gecko=market_data.GeckoClient(api,state)
     original_deadline=api.REQUEST_DEADLINE
@@ -183,6 +190,7 @@ def run(state,chat,api,dry_run=False):
         if not dry_run and legacy.deliver(state,api,chat,fresh,m,sec,social,buyers,{},'GLOBAL SIGNAL',renderer=render):
             report['sent']+=1; hunter_memory.record(state,fresh,n2,'accepted',time.time(),safety)
     report['provider_status']=providers.status
+    report['rpc_usage']=providers.usage()
     failures=data_intelligence.source_failures(report,feed)
     report['health']='degraded' if not pools or failures else 'ok'
     report['source_failures']=failures
