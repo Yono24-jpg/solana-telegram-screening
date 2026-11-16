@@ -2,7 +2,7 @@ name: Solana Telegram Screening
 on:
   push:
     branches: [main]
-    paths: ['scanner_v5.py', 'data_intelligence.py', 'global_intelligence.py', 'social_intelligence.py', 'hunter_modes.py', 'hunter_memory.py', 'token_extensions.py', 'discovery_watchlist.json', 'narrative_v3.py', 'security_v3.py', 'bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
+    paths: ['scanner_v5.py', 'data_intelligence.py', 'birdeye_standard.py', 'global_intelligence.py', 'social_intelligence.py', 'hunter_modes.py', 'hunter_memory.py', 'token_extensions.py', 'discovery_watchlist.json', 'narrative_v3.py', 'security_v3.py', 'bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
     # Explicit five-minute slots away from the beginning of each hour (UTC).

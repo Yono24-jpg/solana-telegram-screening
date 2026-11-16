@@ -91,6 +91,7 @@ def run(state,chat,api,dry_run=False):
         report.update(health='paused'); report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report); write_report(state,api,report); return report
     providers=data_intelligence.Client(api,state);api.DATA_INTELLIGENCE=providers
     report['provider_access']=providers.credentials()
+    if report['provider_access']['birdeye']['configured']:report['birdeye_probe']=providers.bird.probe()
     if report['provider_access']['helius']['configured']:
         # Low-cost production evidence, also when no candidate reaches safety gates.
         try:
@@ -191,6 +192,7 @@ def run(state,chat,api,dry_run=False):
             report['sent']+=1; hunter_memory.record(state,fresh,n2,'accepted',time.time(),safety)
     report['provider_status']=providers.status
     report['rpc_usage']=providers.usage()
+    report['birdeye_usage']=providers.bird.report()
     failures=data_intelligence.source_failures(report,feed)
     report['health']='degraded' if not pools or failures else 'ok'
     report['source_failures']=failures

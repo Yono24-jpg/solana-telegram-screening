@@ -1,7 +1,7 @@
 name: Global v5 read-only integration
 on:
   push:
-    branches: ['upgrade/global-intelligence-v5-20261116', 'upgrade/v5-followup-20261116', 'upgrade/v5-repair-20261116', 'upgrade/v5-data-intelligence-20261116', 'upgrade/helius-quota-20261116']
+    branches: ['upgrade/global-intelligence-v5-20261116', 'upgrade/v5-followup-20261116', 'upgrade/v5-repair-20261116', 'upgrade/v5-data-intelligence-20261116', 'upgrade/helius-quota-20261116', 'upgrade/birdeye-standard-20261116']
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,7 +33,7 @@ jobs:
         env:
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
           HELIUS_API_KEY: ${{ secrets.HELIUS_API_KEY }}
-          BIRDEYE_API_KEY: ${{ secrets.BIRDEYE_API_KEY }}
+          BIRDEYE_NETWORK_ENABLED: '0'
           JUPITER_API_KEY: ${{ secrets.JUPITER_API_KEY }}
           RUGCHECK_BEARER_TOKEN: ${{ secrets.RUGCHECK_BEARER_TOKEN }}
           SCANNER_WATCHLIST_FILE: /tmp/no-manual-token-seeds.json

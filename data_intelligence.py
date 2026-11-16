@@ -23,6 +23,8 @@ class Client:
         self.api=api;self.state=state;self.lock=threading.Lock();self.counts={};self.status={}
         self.tokens_by_mint={}
         self.rpc_cache={};self.rpc_metrics={};self.helius_pace=threading.Lock()
+        import birdeye_standard
+        self.bird=birdeye_standard.Standard(self)
         for name,key in [('helius','HELIUS_API_KEY'),('birdeye','BIRDEYE_API_KEY')]:
             configured=bool(os.environ.get(key)) or (name=='helius' and urlsplit(os.environ.get('SOLANA_RPC_URL','')).hostname=='mainnet.helius-rpc.com')
             if not configured:self.status[name]={'status':'not_configured'}
@@ -36,6 +38,7 @@ class Client:
                 'x':{'configured':bool(os.environ.get('X_BEARER_TOKEN')),'reads_enabled':os.environ.get('X_READS_ENABLED')=='1',
                      'requirement':'owner-enabled official X API bearer token with read entitlement; no paid access enabled'}}
     def request(self,provider,url,data=None,headers=None):
+        if provider=='birdeye':raise Unavailable('birdeye_requires_metered_standard_client')
         # Only internally constructed official URLs; credentials never enter status records.
         host=urlsplit(url).hostname
         official={'jupiter':{'api.jup.ag'},'birdeye':{'public-api.birdeye.so'},'rugcheck':{'api.rugcheck.xyz'},
@@ -159,14 +162,7 @@ class Client:
             return rows
         except Unavailable:return []
     def birdeye(self,mint):
-        key=os.environ.get('BIRDEYE_API_KEY')
-        if not key:self.status['birdeye']={'status':'not_configured'};return None
-        try:
-            raw=self.request('birdeye',BIRD+'/defi/token_overview?'+urlencode({'address':mint}),headers={'X-API-KEY':key,'x-chain':'solana'})
-            data=raw.get('data') if isinstance(raw,dict) and raw.get('success') is True else None
-            if not isinstance(data,dict) or data.get('address')!=mint:raise Unavailable('birdeye_identity_unverified')
-            return data
-        except Unavailable:return None
+        return self.bird.read(mint)
     def rugcheck(self,mint,summary=False):
         if not address(mint):raise Unavailable('invalid_mint')
         key=os.environ.get('RUGCHECK_BEARER_TOKEN')
@@ -184,16 +180,9 @@ class Client:
             proof=cap_proof(row,mint,pool,time.time());cap=amount(pool.get('marketCap'))
             if proof and cap is not None and cap>0 and abs(cap-proof['usd'])/proof['usd']>.2:
                 pool['valuationConflict']=True;pool['valuationConflictEvidence']={'primary_cap':cap,'reference':proof};conflicts+=1
-        # Birdeye is optional authenticated corroboration. It cannot replace pool metrics.
-        birdeye_reads=0
-        if os.environ.get('BIRDEYE_API_KEY'):
-            for pool in pending[:2]:
-                mint=pool['baseToken']['address'];data=self.birdeye(mint);birdeye_reads+=1
-                if data:
-                    pool['_birdeye_evidence']={'mint':mint,'observed_at':time.time(),'price':data.get('price'),
-                        'market_cap':data.get('mc'),'scope':'token overview; not a pool or safety clearance'}
+        bird=self.bird.enrich(pools)
         return {'requested_mints':len(set(p['baseToken']['address'] for p in pending[:30])),'cap_recovered':recovered,
-                'birdeye_reads':birdeye_reads,
+                'birdeye_reads':bird['requests'],'birdeye':bird,
                 'cap_conflicts':conflicts,
                 'scope':'token circulating cap only; no aggregate volumes/transactions substituted for pool metrics'}
 
