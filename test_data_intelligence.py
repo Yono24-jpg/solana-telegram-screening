@@ -52,6 +52,11 @@ class Providers(unittest.TestCase):
         api=self.api()
         with self.assertRaises(di.Unavailable):di.Client(api,{}).rpc('sendTransaction',['data'])
         api.request.assert_not_called()
+    def test_null_account_value_tries_another_rpc(self):
+        api=self.api();api.request.side_effect=[{'result':{'value':None}},{'result':{'value':{'owner':'verified'}}}]
+        client=di.Client(api,{})
+        with patch.dict(os.environ,{'HELIUS_API_KEY':'test','SOLANA_RPC_URL':''}):
+            self.assertEqual(client.rpc('getAccountInfo',[MINT]),{'value':{'owner':'verified'}})
     def test_unapproved_host_and_http_blocked(self):
         for url in ('https://example.org','http://api.jup.ag/tokens/v2/search'):
             with self.assertRaises(di.Unavailable):di.Client(self.api(),{}).request('jupiter',url)

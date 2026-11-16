@@ -91,7 +91,10 @@ class Client:
                 result=self.request(provider,url,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
                 if not isinstance(result,dict) or 'error' in result or result.get('result') is None:
                     self.status[provider]={'status':'rpc_error_or_empty','at':time.time()};continue
-                return result['result']
+                payload=result['result']
+                if isinstance(payload,dict) and 'value' in payload and payload['value'] is None:
+                    self.status[provider]={'status':'rpc_value_missing','at':time.time()};continue
+                return payload
             except Unavailable:continue
         raise Unavailable('all_rpc_sources_unavailable')
     def jupiter(self,path):
