@@ -1,0 +1,1015 @@
+{
+  "mode": "READ ONLY / NO TELEGRAM / NO TRANSACTIONS",
+  "run_id": "43806788814",
+  "tested_commit": "6dcf60e7aebe00ae66ad0fc9871c495070d5828d",
+  "started_at": 1794804828.8088968,
+  "discovery": {
+    "sources": {
+      "dex_profiles": "ok",
+      "dex_latest_boosts": "ok",
+      "dex_top_boosts": "ok",
+      "dex_takeovers": "ok",
+      "dex_ads": "ok",
+      "gecko_trending_1": "ok",
+      "gecko_trending_2": "ok",
+      "gecko_1": "ok",
+      "gecko_2": "ok",
+      "gecko_3": "ok"
+    },
+    "configured_ca_watchlist_count": 4,
+    "token_addresses": 77,
+    "new_pool_addresses": 85,
+    "gecko_native_pools": 85,
+    "gecko_independent_pools": 43,
+    "dex_pool_count": 156,
+    "batch_failures": 0
+  },
+  "hydration": {
+    "incomplete_before": 282,
+    "requested": 40,
+    "dex_batches": 2,
+    "gecko_batches": 2,
+    "recovered": 0,
+    "incomplete_after": 282
+  },
+  "tokens": [
+    {
+      "name": "Anthropic Inu",
+      "mint": "GgDHtSGcXn5YrADnpsQSVHFAa5xLwVEuD7FWeRgvpump",
+      "pair": "96RoBEefW9fgNRfjbd7LnFnNGxmpvDh1wkpKhFbX4QwT",
+      "at": 1794804830.9485452,
+      "in_original_discovery": true,
+      "configured_ca_lookup": true,
+      "market": {
+        "age_seconds": {
+          "value": 20618.948545217514,
+          "status": "pass"
+        },
+        "market_cap": {
+          "value": null,
+          "status": "missing"
+        },
+        "liquidity": {
+          "value": 1462.8954,
+          "status": "reject"
+        },
+        "volume_h1": {
+          "value": 0.1639477504,
+          "status": "reject"
+        },
+        "buy_sell_ratio_m5": {
+          "value": 0.0,
+          "status": "reject"
+        },
+        "buys_m5": 0.0,
+        "sells_m5": 0.0,
+        "priority_1_60m": false,
+        "price_change": {
+          "m5": 0.0,
+          "m15": 0.0,
+          "m30": 0.0,
+          "h1": 0.0,
+          "h6": -98.685,
+          "h24": -98.685
+        },
+        "fdv": 1374.9279050235,
+        "anti_chase": {
+          "m5_0_to_25": {
+            "value": 0.0,
+            "status": "pass"
+          },
+          "h1_minus15_to80": {
+            "value": 0.0,
+            "status": "pass"
+          },
+          "h24_at_most_200": {
+            "value": -98.685,
+            "status": "pass"
+          }
+        }
+      },
+      "market_gate": "v3_market_missing",
+      "momentum": {
+        "reject": "liquidity"
+      },
+      "narrative": {
+        "label": "Anthropic",
+        "aliases": [
+          "anthropic",
+          "claude"
+        ],
+        "score": 95,
+        "publisher_count": 5,
+        "sources": [
+          {
+            "category": "ai",
+            "published_at": 1794802002.0,
+            "publisher": "Crypto Briefing",
+            "publisher_host": "cryptobriefing.com",
+            "title": "Amazon, Microsoft, OpenAI, Anthropic to be named AI \u2018national champions\u2019: WSJ - Crypto Briefing",
+            "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxOemJiejJ6X1h6blBrVnJsX0t2ZnlCblk0VEVaV19rWW1mMndaQjVHeVg4UkxFNUFtUUp6ZFJxX0otWEZxTFdmU3dzUUY2RGJDb2V1VmtvTHYxWU9ZVVFpUkRmUUUxQ1VlVmZMNl91cVZuZ0VPWGhMOHFXUGlIN3QtR29xTW1ZRVBwTjlTVGJ0UWctTmJtelFFZ3NBbW9GTWhR?oc=5"
+          },
+          {
+            "category": "ai",
+            "published_at": 1794796691.0,
+            "publisher": "Crypto Briefing",
+            "publisher_host": "cryptobriefing.com",
+            "title": "Alibaba unveils Qwen3.8-Max AI model, challenging US rivals Anthropic, OpenAI - Crypto Briefing",
+            "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPZFdKOG5tbVJQbG43cVFoU24zS2JzMF9hVlh6MFBRZDJ1bzQ4QnAtdFVlQ0pZNHVIOVdPaXUxaUVQeDltTEU4QnNLcGpLdmNhdkR6R3A4a0xRaFBUYU05NTlMUjVtMnJqdU5qS2NzcUlQZGViSVZDZExyUE91YTJEVHB2b3dtWGhiWmN2VFBzV3ZEUm5QcjdqTFpkdDZfTXhQaWpoYg?oc=5"
+          },
+          {
+            "category": "ai",
+            "published_at": 1794793042.0,
+            "publisher": "France 24",
+            "publisher_host": "france24.com",
+            "title": "Five things to know about Anthropic - France 24",
+            "url": "https://news.google.com/rss/articles/CBMiigFBVV95cUxQQjU0ejRtN3QwUkRoUW1CV1NqUHBsMjh5NnkyUkMtNFpvbkI5bkw3Yk5LZFFQdzloZXFkSW45ZC10bUxKaW9wR1RNSGZHSlhuYVIzZ1Q1bUZxSjdMSzVscGl0MTJiN3FKRDc3Wkc2QXZsRHczT1hKbXU3SmFoVDduZVM3ampzeWlJOXc?oc=5"
+          },
+          {
+            "category": "ai",
+            "published_at": 1794758410.0,
+            "publisher": "Android Police",
+            "publisher_host": "androidpolice.com",
+            "title": "I asked Gemini, ChatGPT, and Claude to spot Amazon scams; only one could tell a real email from a fake - Android Police",
+            "url": "https://news.google.com/rss/articles/CBMihgFBVV95cUxOX1ZYd1ltTDlDaDNpSlh4UW5NczZ1Mk1fS0FKQ0gtUHllTXR1bFIzTkFrd1kyUjhIeHFxREVKTGhaOV92Sk1BZmtxdEotNmRwemVlYk81MnVxbFZBUmk5MFd5cG81RjAyYzdLNlBTalQyb2dsTnJHSGVtYzA3YTNWdUQ0NGMyZw?oc=5"
+          }
+        ],
+        "matched_aliases": [
+          "anthropic"
+        ],
+        "reason": "Nama/simbol cocok dengan Anthropic yang diberitakan oleh 5 penerbit; hubungan resmi tidak terbukti.",
+        "reject": null
+      },
+      "onchain_mint": {
+        "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_authority_revoked": true,
+        "freeze_authority_revoked": true,
+        "supply_raw": 988398902604528,
+        "decimals": 6,
+        "mint_initialized": true,
+        "legacy_security_reason": null
+      },
+      "holders": {
+        "status": "observed",
+        "value": {
+          "raw_top10_pct": 99.92390896691,
+          "top10_accounts_pct": 0.6155941611746713,
+          "excluded_vaults": [
+            {
+              "address": "GVUsWbcWwEcB24cMQKWsNLWRCPhmYUa87H5VZfK6yMs3",
+              "protocol": "PumpSwap",
+              "pool": "96RoBEefW9fgNRfjbd7LnFnNGxmpvDh1wkpKhFbX4QwT"
+            }
+          ],
+          "excluded_pct": 99.31778944059937,
+          "verified": true,
+          "vault_status": "onchain_verified",
+          "top1_observed_owner_pct": 0.2450396681524912,
+          "reject": null,
+          "context_slot": 470004838,
+          "proof_context_slot": 470004838,
+          "balances_changed_during_proof": false
+        }
+      },
+      "developer": {
+        "status": "observed",
+        "value": {
+          "reject": null,
+          "holding_pct": 0.0,
+          "recent_transactions_checked": 0,
+          "history_limit": 5
+        }
+      },
+      "trade_feed": {
+        "status": "observed",
+        "count": 300,
+        "attribute_keys": [
+          "block_number",
+          "block_timestamp",
+          "tx_hash",
+          "tx_from_address",
+          "kind",
+          "from_token_address",
+          "to_token_address",
+          "from_token_amount",
+          "to_token_amount",
+          "price_from_in_usd",
+          "price_to_in_usd",
+          "price_from_in_currency_token",
+          "price_to_in_currency_token",
+          "volume_in_usd",
+          "is_anomalous"
+        ]
+      },
+      "sell_bundle_sample": {
+        "status": "unavailable",
+        "reason": "insufficient_sell_or_buyer_sample"
+      },
+      "full_report_gate": "v3_token_program_unsupported",
+      "v3_security": {
+        "complete": false,
+        "score": null,
+        "reject": "base_security_incomplete",
+        "checks": {},
+        "risks": [
+          "Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.",
+          "LP lock berdasarkan laporan pool RugCheck; status dapat berubah.",
+          "Bukti jual adalah transaksi historis terbaru, bukan jaminan semua wallet bisa menjual."
+        ]
+      },
+      "buyers": {
+        "status": "unavailable",
+        "unique_buyers": null,
+        "strong": false,
+        "risks": []
+      },
+      "risk_report": {
+        "mint": "GgDHtSGcXn5YrADnpsQSVHFAa5xLwVEuD7FWeRgvpump",
+        "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "creator": "vU1yvKQ9viwLdzeRnCy6iTav1fWXhXm8TH9uKxBCmaW",
+        "creatorBalance": 0,
+        "token": {
+          "mintAuthority": null,
+          "supply": 988398902604528,
+          "decimals": 6,
+          "isInitialized": true,
+          "freezeAuthority": null
+        },
+        "mintAuthority": null,
+        "freezeAuthority": null,
+        "risks": [
+          {
+            "name": "Low Liquidity",
+            "value": "$110.55",
+            "description": "Low amount of liquidity in the token pool",
+            "score": 2889,
+            "level": "danger"
+          }
+        ],
+        "score_normalised": 33,
+        "insiderNetworks": null,
+        "graphInsidersDetected": 0,
+        "detectedAt": "2026-11-15T23:10:13.106183619Z",
+        "rugged": false,
+        "lockerScanStatus": "none"
+      },
+      "candidate_pool_lp_report": {
+        "baseMint": "GgDHtSGcXn5YrADnpsQSVHFAa5xLwVEuD7FWeRgvpump",
+        "quoteMint": "So11111111111111111111111111111111111111112",
+        "lpMint": "GAVZ8NZ51qS9DASAFXE7WUNEk7bajrdaWsWufuX6cfeE",
+        "quotePrice": 71.49369498086759,
+        "basePrice": 1.3883467876235428e-06,
+        "base": 981655940.92196,
+        "quote": 1.546273729,
+        "reserveSupply": 4193388282605,
+        "currentSupply": 0,
+        "quoteUSD": 110.5488223380547,
+        "baseUSD": 1362.8788721305696,
+        "pctReserve": 0,
+        "pctSupply": 0,
+        "holders": null,
+        "totalTokensUnlocked": 0,
+        "tokenSupply": 0,
+        "lpLocked": 4193388282605,
+        "lpUnlocked": 0,
+        "lpLockedPct": 100,
+        "lpLockedUSD": 1473.4276944686242,
+        "lpMaxSupply": 0,
+        "lpCurrentSupply": 0,
+        "lpTotalSupply": 4193388282605
+      }
+    },
+    {
+      "name": "GRAND THEFT CRYPTO (FiveM)",
+      "mint": "2YxbK7V6ZTKSxcavk3V4kFzdtZ4uywhhoyuSxapjpump",
+      "pair": "6nwmQSgHWtRfXw9xqQM3hseyKzWrQq2gzamoSbjKqs32",
+      "at": 1794804893.301284,
+      "in_original_discovery": true,
+      "configured_ca_lookup": true,
+      "market": {
+        "age_seconds": {
+          "value": 16191.301284074783,
+          "status": "pass"
+        },
+        "market_cap": {
+          "value": 423530,
+          "status": "pass"
+        },
+        "liquidity": {
+          "value": 46762.05,
+          "status": "pass"
+        },
+        "volume_h1": {
+          "value": 61128.23,
+          "status": "pass"
+        },
+        "buy_sell_ratio_m5": {
+          "value": 1.4805825242718447,
+          "status": "reject"
+        },
+        "buys_m5": 305,
+        "sells_m5": 206,
+        "priority_1_60m": false,
+        "price_change": {
+          "m5": 12.99,
+          "h1": 23.35,
+          "h6": 1036,
+          "h24": 1036
+        },
+        "fdv": 423530,
+        "anti_chase": {
+          "m5_0_to_25": {
+            "value": 12.99,
+            "status": "pass"
+          },
+          "h1_minus15_to80": {
+            "value": 23.35,
+            "status": "pass"
+          },
+          "h24_at_most_200": {
+            "value": 1036,
+            "status": "reject"
+          }
+        }
+      },
+      "market_gate": "v3_buy_sell",
+      "momentum": {
+        "reject": "weak_activity"
+      },
+      "narrative": {
+        "label": "GTA",
+        "aliases": [
+          "gta",
+          "gta6",
+          "gta 6",
+          "gta vi",
+          "grand theft auto",
+          "rockstar",
+          "fivem"
+        ],
+        "score": 100,
+        "publisher_count": 40,
+        "sources": [
+          {
+            "category": "game",
+            "published_at": 1794801011.0,
+            "publisher": "GameGPU",
+            "publisher_host": "en.gamegpu.com",
+            "title": "Rockstar Games is actively adapting the GTA 6 engine to the Switch 2 hardware. - GameGPU",
+            "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOVi05VHhqUkhzTm96b0ZKV295aFFJbUZfMmNELWtuakZqTWNfVU8zVU05bFhBbjFrSHB1T1U5VHg3ZW1FWmRfRm83dm5QZ28tY0tzXzNJb3k0dlJCOFNkRWdjWERuckxqandxdE1mR3hoTXFPT1JRSkZrS2tsMS1DLUpNQ2pFVjBDZVJ2UUFnLS1nTUZIbTBza2E3QWpSZFZObU9YN1pGWUVoVlhlbkE?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794800234.0,
+            "publisher": "TweakTown",
+            "publisher_host": "tweaktown.com",
+            "title": "GTA 6 reportedly has a 50-hour story, matching Red Dead Redemption 2 despite its much larger map - TweakTown",
+            "url": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxPQ0ZaYnhNY0FJY1k4aXEzaEgtM3hjbjBjUmR6eXUyRnRFS1h0UndCV0JwUzF0MzRVbm9lX0RNcE5hQnRNazVfZ0lyXzFDczI5cXhEaDY5bnFFbXRISXkyd2pZd2hwR0tKcFN4bmYwVTl5cWdtZ1dPaXM5bktvVmU3UVdtaTBzdHg5Q01QdEZpN3BTX3FLaEU3REhOb0MxZVpOeVk1R3IwdEh0cW9XRHZjLTlxQjJGVUwtMzNHNmQtMmNHUlF6N1p1M29Ed2h5ZllydDVwWUxvMEhUcmVC?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794800160.0,
+            "publisher": "Parade Magazine",
+            "publisher_host": "parade.com",
+            "title": "Costco Is Now Taking Preorders for GTA 6\u2014Here\u2019s What You Need to Know - Parade Magazine",
+            "url": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5pc3RNcGs2QTg3WU5hYXVnbHFVVjdjdkc3bG50XzEtbW41bkNNNW1LTjM5aFdKQW02anY0RzBPa3h2UFJIcjd2X1NseV9SeFRWUFFUNWxqV0JObjRuUmc?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794799320.0,
+            "publisher": "Yahoo Tech",
+            "publisher_host": "tech.yahoo.com",
+            "title": "'GTA 6' Is the Most Preordered Game in Both Sony and Xbox Histories - Yahoo Tech",
+            "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxQUWM2NUlLRE84Y1dudmxFX01tazRnTmFaSFRHbU0tMmxvRkx5Wm04ZHNsTDhhQXZRMUZJcjFidTlZMGpXYWkyOU5oY3BiRTVhUDd4SHZsTy1qU1FJaGJkaVFKTldhVDNtcEljNVpCSjNJZDBiWnNkbTdmdHdoNEtxTDNmWkRvWTQ?oc=5"
+          }
+        ],
+        "matched_aliases": [
+          "fivem"
+        ],
+        "reason": "Nama/simbol cocok dengan GTA yang diberitakan oleh 40 penerbit; hubungan resmi tidak terbukti.",
+        "reject": null
+      },
+      "onchain_mint": {
+        "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_authority_revoked": true,
+        "freeze_authority_revoked": true,
+        "supply_raw": 979786890809171,
+        "decimals": 6,
+        "mint_initialized": true,
+        "legacy_security_reason": null
+      },
+      "holders": {
+        "status": "observed",
+        "value": {
+          "raw_top10_pct": 7.986221717900901,
+          "top10_accounts_pct": 2.462386057317432,
+          "excluded_vaults": [
+            {
+              "address": "Ax6yj1khFBjwzL7JHS6GK7znypPKV4vh2Vk7i3M1yRB8",
+              "protocol": "PumpSwap",
+              "pool": "6nwmQSgHWtRfXw9xqQM3hseyKzWrQq2gzamoSbjKqs32"
+            }
+          ],
+          "excluded_pct": 5.76515564622946,
+          "verified": true,
+          "vault_status": "onchain_verified",
+          "top1_observed_owner_pct": 0.2509981607268695,
+          "reject": null,
+          "context_slot": 470004854,
+          "proof_context_slot": 470004854,
+          "balances_changed_during_proof": false
+        }
+      },
+      "developer": {
+        "status": "observed",
+        "value": {
+          "reject": null,
+          "holding_pct": 0.10805486388847797,
+          "recent_transactions_checked": 0,
+          "history_limit": 5
+        }
+      },
+      "trade_feed": {
+        "status": "observed",
+        "count": 300,
+        "attribute_keys": [
+          "block_number",
+          "block_timestamp",
+          "tx_hash",
+          "tx_from_address",
+          "kind",
+          "from_token_address",
+          "to_token_address",
+          "from_token_amount",
+          "to_token_amount",
+          "price_from_in_usd",
+          "price_to_in_usd",
+          "price_from_in_currency_token",
+          "price_to_in_currency_token",
+          "volume_in_usd",
+          "is_anomalous"
+        ]
+      },
+      "sell_bundle_sample": {
+        "status": "observed",
+        "value": {
+          "reject": null,
+          "finalized_sells": 3,
+          "finalized_buys": 12,
+          "sample_limit": 15,
+          "caveat": "Sampel transaksi, bukan pemetaan semua insider; jual setiap wallet tidak dijamin."
+        }
+      },
+      "full_report_gate": "v3_token_program_unsupported",
+      "v3_security": {
+        "complete": false,
+        "score": null,
+        "reject": "wash_sample_risky_or_incomplete",
+        "checks": {},
+        "risks": [
+          "Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.",
+          "LP lock berdasarkan laporan pool RugCheck; status dapat berubah.",
+          "Bukti jual adalah transaksi historis terbaru, bukan jaminan semua wallet bisa menjual."
+        ]
+      },
+      "buyers": {
+        "status": "observed_sample",
+        "unique_buyers": 92,
+        "strong": false,
+        "risks": [
+          "banyak_alamat_beli_dan_jual"
+        ],
+        "buy_transactions": 176,
+        "top_buyer_share": 15.2,
+        "roundtrip_share": 76.1,
+        "caveat": "Sampel alamat unik; bukan bukti manusia atau bebas wash trading."
+      },
+      "risk_report": {
+        "mint": "2YxbK7V6ZTKSxcavk3V4kFzdtZ4uywhhoyuSxapjpump",
+        "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "creator": "98YugNxVQp984ZmVhuuwn3Sca44fFEHMXMXViBRSzP7H",
+        "creatorBalance": 0,
+        "token": {
+          "mintAuthority": null,
+          "supply": 979786890809171,
+          "decimals": 6,
+          "isInitialized": true,
+          "freezeAuthority": null
+        },
+        "mintAuthority": null,
+        "freezeAuthority": null,
+        "risks": [],
+        "score_normalised": 1,
+        "insiderNetworks": null,
+        "graphInsidersDetected": 0,
+        "detectedAt": "2026-11-16T00:25:04.794418848Z",
+        "rugged": false,
+        "lockerScanStatus": "none"
+      },
+      "candidate_pool_lp_report": {
+        "baseMint": "2YxbK7V6ZTKSxcavk3V4kFzdtZ4uywhhoyuSxapjpump",
+        "quoteMint": "So11111111111111111111111111111111111111112",
+        "lpMint": "7ETbsWW5oTxoVkHE7W7Brk42Zi785Yyph6VrJ6nxWXcs",
+        "quotePrice": 71.49416618639778,
+        "basePrice": 0.0004072480574235377,
+        "base": 56479673.660689,
+        "quote": 312.768568703,
+        "reserveSupply": 4193388282605,
+        "currentSupply": 0,
+        "quoteUSD": 22361.128028734056,
+        "baseUSD": 23001.237382230942,
+        "pctReserve": 0,
+        "pctSupply": 0,
+        "holders": null,
+        "totalTokensUnlocked": 0,
+        "tokenSupply": 0,
+        "lpLocked": 4193388282605,
+        "lpUnlocked": 0,
+        "lpLockedPct": 100,
+        "lpLockedUSD": 45362.365410964994,
+        "lpMaxSupply": 0,
+        "lpCurrentSupply": 0,
+        "lpTotalSupply": 4193388282605
+      }
+    },
+    {
+      "name": "Cyber Dacity Coin",
+      "mint": "C5X8tVbt8cGw7iaaEuAVGTxFVZ4uSjscmiUbVpVwpump",
+      "pair": "9iqd6n93rWEvk8KmWWw2fPBonSvfpkGHvDgpchVzSGXk",
+      "at": 1794804897.143063,
+      "in_original_discovery": true,
+      "configured_ca_lookup": true,
+      "market": {
+        "age_seconds": {
+          "value": 19503.14306306839,
+          "status": "pass"
+        },
+        "market_cap": {
+          "value": 239071,
+          "status": "pass"
+        },
+        "liquidity": {
+          "value": 34734.1,
+          "status": "pass"
+        },
+        "volume_h1": {
+          "value": 45823.04,
+          "status": "pass"
+        },
+        "buy_sell_ratio_m5": {
+          "value": 3.6666666666666665,
+          "status": "pass"
+        },
+        "buys_m5": 99,
+        "sells_m5": 27,
+        "priority_1_60m": false,
+        "price_change": {
+          "m5": -6.12,
+          "h1": -1.79,
+          "h6": 583,
+          "h24": 583
+        },
+        "fdv": 239071,
+        "anti_chase": {
+          "m5_0_to_25": {
+            "value": -6.12,
+            "status": "reject"
+          },
+          "h1_minus15_to80": {
+            "value": -1.79,
+            "status": "pass"
+          },
+          "h24_at_most_200": {
+            "value": 583,
+            "status": "reject"
+          }
+        }
+      },
+      "market_gate": null,
+      "momentum": {
+        "reject": "late_or_falling_price"
+      },
+      "narrative": {
+        "score": 0,
+        "reject": "narrative_unverified",
+        "sources": []
+      },
+      "onchain_mint": {
+        "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_authority_revoked": true,
+        "freeze_authority_revoked": true,
+        "supply_raw": 988765370125759,
+        "decimals": 6,
+        "mint_initialized": true,
+        "legacy_security_reason": null
+      },
+      "holders": {
+        "status": "observed",
+        "value": {
+          "raw_top10_pct": 9.128255142586497,
+          "top10_accounts_pct": 1.8378232268201071,
+          "excluded_vaults": [
+            {
+              "address": "FhV3L9j6rynFunEfUNeSmv3scAARmgap7yixYh2wmsf2",
+              "protocol": "PumpSwap",
+              "pool": "9iqd6n93rWEvk8KmWWw2fPBonSvfpkGHvDgpchVzSGXk"
+            }
+          ],
+          "excluded_pct": 7.471394013099695,
+          "verified": true,
+          "vault_status": "onchain_verified",
+          "top1_observed_owner_pct": 0.18942221925923483,
+          "reject": null,
+          "context_slot": 470004872,
+          "proof_context_slot": 470004872,
+          "balances_changed_during_proof": false
+        }
+      },
+      "developer": {
+        "status": "observed",
+        "value": {
+          "reject": null,
+          "holding_pct": 0.0,
+          "recent_transactions_checked": 0,
+          "history_limit": 5
+        }
+      },
+      "trade_feed": {
+        "status": "unavailable",
+        "count": 0,
+        "attribute_keys": []
+      },
+      "sell_bundle_sample": {
+        "status": "unavailable",
+        "reason": "insufficient_sell_or_buyer_sample"
+      },
+      "full_report_gate": "v3_token_program_unsupported",
+      "v3_security": {
+        "complete": false,
+        "score": null,
+        "reject": "wash_sample_risky_or_incomplete",
+        "checks": {},
+        "risks": [
+          "Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.",
+          "LP lock berdasarkan laporan pool RugCheck; status dapat berubah.",
+          "Bukti jual adalah transaksi historis terbaru, bukan jaminan semua wallet bisa menjual."
+        ]
+      },
+      "buyers": {
+        "status": "unavailable",
+        "unique_buyers": null,
+        "strong": false,
+        "risks": []
+      },
+      "risk_report": {
+        "mint": "C5X8tVbt8cGw7iaaEuAVGTxFVZ4uSjscmiUbVpVwpump",
+        "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "creator": "HY84cAPz9qynbwKiMmA1bMV1k4P35RQJSkyNiwA6ivb4",
+        "creatorBalance": 0,
+        "token": {
+          "mintAuthority": null,
+          "supply": 988765370125759,
+          "decimals": 6,
+          "isInitialized": true,
+          "freezeAuthority": null
+        },
+        "mintAuthority": null,
+        "freezeAuthority": null,
+        "risks": [],
+        "score_normalised": 1,
+        "insiderNetworks": null,
+        "graphInsidersDetected": 0,
+        "detectedAt": "2026-11-15T23:29:54.810854201Z",
+        "rugged": false,
+        "lockerScanStatus": "none"
+      },
+      "candidate_pool_lp_report": {
+        "baseMint": "C5X8tVbt8cGw7iaaEuAVGTxFVZ4uSjscmiUbVpVwpump",
+        "quoteMint": "So11111111111111111111111111111111111111112",
+        "lpMint": "3te6r2ki95WbQoLVmzYoRqrkSKtJT11uJbxGRkCdDeow",
+        "quotePrice": 71.52862960752967,
+        "basePrice": 0.0002453285334375516,
+        "base": 73870416.329107,
+        "quote": 236.073797413,
+        "reserveSupply": 4193388282605,
+        "currentSupply": 0,
+        "quoteUSD": 16886.035215197473,
+        "baseUSD": 18122.520902441185,
+        "pctReserve": 0,
+        "pctSupply": 0,
+        "holders": null,
+        "totalTokensUnlocked": 0,
+        "tokenSupply": 0,
+        "lpLocked": 4193388282605,
+        "lpUnlocked": 0,
+        "lpLockedPct": 100,
+        "lpLockedUSD": 35008.556117638655,
+        "lpMaxSupply": 0,
+        "lpCurrentSupply": 0,
+        "lpTotalSupply": 4193388282605
+      }
+    },
+    {
+      "name": "rockstar",
+      "mint": "9HFUEab7sompLDPTAaTGkryMNGbtBaFMhHMVpJEBpump",
+      "pair": "5PYNPPTNpdG5REsu3VqeJKqHePiJ1uwP5L7A2CcHMxdY",
+      "at": 1794804899.11326,
+      "in_original_discovery": true,
+      "configured_ca_lookup": true,
+      "market": {
+        "age_seconds": {
+          "value": 64482.11326003075,
+          "status": "pass"
+        },
+        "market_cap": {
+          "value": 529719,
+          "status": "reject"
+        },
+        "liquidity": {
+          "value": 72335.46,
+          "status": "pass"
+        },
+        "volume_h1": {
+          "value": 108740.15,
+          "status": "pass"
+        },
+        "buy_sell_ratio_m5": {
+          "value": 1.0606060606060606,
+          "status": "reject"
+        },
+        "buys_m5": 35,
+        "sells_m5": 33,
+        "priority_1_60m": false,
+        "price_change": {
+          "m5": -4.41,
+          "h1": -2.09,
+          "h6": 6.47,
+          "h24": 1124
+        },
+        "fdv": 529719,
+        "anti_chase": {
+          "m5_0_to_25": {
+            "value": -4.41,
+            "status": "reject"
+          },
+          "h1_minus15_to80": {
+            "value": -2.09,
+            "status": "pass"
+          },
+          "h24_at_most_200": {
+            "value": 1124,
+            "status": "reject"
+          }
+        }
+      },
+      "market_gate": "v3_market_cap",
+      "momentum": {
+        "reject": "weak_activity"
+      },
+      "narrative": {
+        "label": "GTA",
+        "aliases": [
+          "gta",
+          "gta6",
+          "gta 6",
+          "gta vi",
+          "grand theft auto",
+          "rockstar",
+          "fivem"
+        ],
+        "score": 100,
+        "publisher_count": 40,
+        "sources": [
+          {
+            "category": "game",
+            "published_at": 1794801011.0,
+            "publisher": "GameGPU",
+            "publisher_host": "en.gamegpu.com",
+            "title": "Rockstar Games is actively adapting the GTA 6 engine to the Switch 2 hardware. - GameGPU",
+            "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxOVi05VHhqUkhzTm96b0ZKV295aFFJbUZfMmNELWtuakZqTWNfVU8zVU05bFhBbjFrSHB1T1U5VHg3ZW1FWmRfRm83dm5QZ28tY0tzXzNJb3k0dlJCOFNkRWdjWERuckxqandxdE1mR3hoTXFPT1JRSkZrS2tsMS1DLUpNQ2pFVjBDZVJ2UUFnLS1nTUZIbTBza2E3QWpSZFZObU9YN1pGWUVoVlhlbkE?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794800234.0,
+            "publisher": "TweakTown",
+            "publisher_host": "tweaktown.com",
+            "title": "GTA 6 reportedly has a 50-hour story, matching Red Dead Redemption 2 despite its much larger map - TweakTown",
+            "url": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxPQ0ZaYnhNY0FJY1k4aXEzaEgtM3hjbjBjUmR6eXUyRnRFS1h0UndCV0JwUzF0MzRVbm9lX0RNcE5hQnRNazVfZ0lyXzFDczI5cXhEaDY5bnFFbXRISXkyd2pZd2hwR0tKcFN4bmYwVTl5cWdtZ1dPaXM5bktvVmU3UVdtaTBzdHg5Q01QdEZpN3BTX3FLaEU3REhOb0MxZVpOeVk1R3IwdEh0cW9XRHZjLTlxQjJGVUwtMzNHNmQtMmNHUlF6N1p1M29Ed2h5ZllydDVwWUxvMEhUcmVC?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794800160.0,
+            "publisher": "Parade Magazine",
+            "publisher_host": "parade.com",
+            "title": "Costco Is Now Taking Preorders for GTA 6\u2014Here\u2019s What You Need to Know - Parade Magazine",
+            "url": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE5pc3RNcGs2QTg3WU5hYXVnbHFVVjdjdkc3bG50XzEtbW41bkNNNW1LTjM5aFdKQW02anY0RzBPa3h2UFJIcjd2X1NseV9SeFRWUFFUNWxqV0JObjRuUmc?oc=5"
+          },
+          {
+            "category": "game",
+            "published_at": 1794799320.0,
+            "publisher": "Yahoo Tech",
+            "publisher_host": "tech.yahoo.com",
+            "title": "'GTA 6' Is the Most Preordered Game in Both Sony and Xbox Histories - Yahoo Tech",
+            "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxQUWM2NUlLRE84Y1dudmxFX01tazRnTmFaSFRHbU0tMmxvRkx5Wm04ZHNsTDhhQXZRMUZJcjFidTlZMGpXYWkyOU5oY3BiRTVhUDd4SHZsTy1qU1FJaGJkaVFKTldhVDNtcEljNVpCSjNJZDBiWnNkbTdmdHdoNEtxTDNmWkRvWTQ?oc=5"
+          }
+        ],
+        "matched_aliases": [
+          "rockstar"
+        ],
+        "reason": "Nama/simbol cocok dengan GTA yang diberitakan oleh 40 penerbit; hubungan resmi tidak terbukti.",
+        "reject": null
+      },
+      "onchain_mint": {
+        "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "mint_authority_revoked": true,
+        "freeze_authority_revoked": true,
+        "supply_raw": 951338914455767,
+        "decimals": 6,
+        "mint_initialized": true,
+        "legacy_security_reason": null
+      },
+      "holders": {
+        "status": "observed",
+        "value": {
+          "raw_top10_pct": 30.64699868566925,
+          "top10_accounts_pct": 24.88549092118733,
+          "excluded_vaults": [
+            {
+              "address": "5uec8ZCDSga1m7wiGmL1ax34XofswWGvNyAdNpNQApuA",
+              "protocol": "PumpSwap",
+              "pool": "5PYNPPTNpdG5REsu3VqeJKqHePiJ1uwP5L7A2CcHMxdY"
+            }
+          ],
+          "excluded_pct": 7.053898550225042,
+          "verified": true,
+          "vault_status": "onchain_verified",
+          "top1_observed_owner_pct": 4.046813353279582,
+          "reject": null,
+          "context_slot": 470004880,
+          "proof_context_slot": 470004880,
+          "balances_changed_during_proof": false
+        }
+      },
+      "developer": {
+        "status": "observed",
+        "value": {
+          "reject": null,
+          "holding_pct": 0.0,
+          "recent_transactions_checked": 5,
+          "history_limit": 5
+        }
+      },
+      "trade_feed": {
+        "status": "observed",
+        "count": 300,
+        "attribute_keys": [
+          "block_number",
+          "block_timestamp",
+          "tx_hash",
+          "tx_from_address",
+          "kind",
+          "from_token_address",
+          "to_token_address",
+          "from_token_amount",
+          "to_token_amount",
+          "price_from_in_usd",
+          "price_to_in_usd",
+          "price_from_in_currency_token",
+          "price_to_in_currency_token",
+          "volume_in_usd",
+          "is_anomalous"
+        ]
+      },
+      "sell_bundle_sample": {
+        "status": "unavailable",
+        "reason": "supported_pool_swap_unverified"
+      },
+      "full_report_gate": "v3_token_program_unsupported",
+      "v3_security": {
+        "complete": false,
+        "score": null,
+        "reject": "v3_token_program_unsupported",
+        "checks": {},
+        "risks": [
+          "Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.",
+          "LP lock berdasarkan laporan pool RugCheck; status dapat berubah.",
+          "Bukti jual adalah transaksi historis terbaru, bukan jaminan semua wallet bisa menjual."
+        ]
+      },
+      "buyers": {
+        "status": "observed_sample",
+        "unique_buyers": 34,
+        "strong": true,
+        "risks": [],
+        "buy_transactions": 36,
+        "top_buyer_share": 13.2,
+        "roundtrip_share": 14.7,
+        "caveat": "Sampel alamat unik; bukan bukti manusia atau bebas wash trading."
+      },
+      "risk_report": {
+        "mint": "9HFUEab7sompLDPTAaTGkryMNGbtBaFMhHMVpJEBpump",
+        "tokenProgram": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+        "creator": "FjEw4XJ5LVeA4fC3x5kNCBZkxm68dGDQXFLufgoNq8sW",
+        "creatorBalance": 0,
+        "token": {
+          "mintAuthority": null,
+          "supply": 951338914455767,
+          "decimals": 6,
+          "isInitialized": true,
+          "freezeAuthority": null
+        },
+        "mintAuthority": null,
+        "freezeAuthority": null,
+        "risks": [],
+        "score_normalised": 1,
+        "insiderNetworks": [
+          {
+            "id": "clean-fawn-ibis",
+            "size": 69,
+            "type": "transfer",
+            "tokenAmount": 21958712358089,
+            "currentHolding": 21958712358089,
+            "activeAccounts": 69
+          },
+          {
+            "id": "dirty-ruby-lizard",
+            "size": 26,
+            "type": "transfer",
+            "tokenAmount": 14881364892494,
+            "currentHolding": 14881364892494,
+            "activeAccounts": 26
+          },
+          {
+            "id": "intense-carmine-newt",
+            "size": 42,
+            "type": "transfer",
+            "tokenAmount": 14342052437865,
+            "currentHolding": 14342052437865,
+            "activeAccounts": 42
+          },
+          {
+            "id": "neat-ochre-ibis",
+            "size": 69,
+            "type": "transfer",
+            "tokenAmount": 14196779769115,
+            "currentHolding": 14148245125325,
+            "activeAccounts": 69
+          },
+          {
+            "id": "vast-pink-pheasant",
+            "size": 42,
+            "type": "transfer",
+            "tokenAmount": 13177017057024,
+            "currentHolding": 13170441943146,
+            "activeAccounts": 42
+          },
+          {
+            "id": "salty-wisteria-snake",
+            "size": 64,
+            "type": "transfer",
+            "tokenAmount": 11423686594366,
+            "currentHolding": 11423686594366,
+            "activeAccounts": 64
+          },
+          {
+            "id": "smart-tan-reindeer",
+            "size": 8,
+            "type": "transfer",
+            "tokenAmount": 3050223474942,
+            "currentHolding": 12393410855,
+            "activeAccounts": 8
+          }
+        ],
+        "graphInsidersDetected": 320,
+        "detectedAt": "2026-11-15T10:44:26.649666114Z",
+        "rugged": false,
+        "lockerScanStatus": "none"
+      },
+      "candidate_pool_lp_report": {
+        "baseMint": "9HFUEab7sompLDPTAaTGkryMNGbtBaFMhHMVpJEBpump",
+        "quoteMint": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+        "lpMint": "7122n8eVH3XFG7uYjChVaB52ZviAB5SfjskDzBvLBrh1",
+        "quotePrice": 232.05301373458138,
+        "basePrice": 0.0005578221088735214,
+        "base": 66904995.677481,
+        "quote": 151.029844,
+        "reserveSupply": 91393599916,
+        "currentSupply": 0,
+        "quoteUSD": 35046.930464063684,
+        "baseUSD": 37321.08578298629,
+        "pctReserve": 0,
+        "pctSupply": 0,
+        "holders": null,
+        "totalTokensUnlocked": 0,
+        "tokenSupply": 0,
+        "lpLocked": 91393599916,
+        "lpUnlocked": 0,
+        "lpLockedPct": 100,
+        "lpLockedUSD": 72368.01624704996,
+        "lpMaxSupply": 0,
+        "lpCurrentSupply": 0,
+        "lpTotalSupply": 91393599916
+      }
+    }
+  ]
+}
