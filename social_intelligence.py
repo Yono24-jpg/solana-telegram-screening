@@ -72,12 +72,17 @@ def observe(state, mint, social, public, pool, now):
         growth=len(recent)/baseline if baseline>0 else None
     changes=[did for did,url in current['avatars'].items() if did in previous.get('avatars',{}) and previous['avatars'][did]!=url]
     before=previous.get('members'); members=current['members']
+    x=social.get('x') or {};x_url=x.get('profile_image_url') if x.get('status')=='observed' else None
+    old_x=previous.get('x_profile_image_url');x_changed=bool(old_x and x_url and old_x!=x_url and previous.get('x_user_id')==x.get('user_id'))
     community_growth=members-before if number(before) and number(members) and 300<=now-previous.get('at',0)<=3600 else None
     # URL changes are evidence of a URL change, not visual analysis of its contents.
     out={'public_status':public['status'],'mention_acceleration':growth,'avatar_url_changes':changes,
          'image_contents':'not_analyzed','members_change_observed':community_growth,
          'organic_status':'unknown', 'paid_boost_observed':bool((pool.get('boosts') or {}).get('active',0)),
          'virality_score':None, 'contract_mentions':public.get('contract_mentions')}
+    out['x_profile_image_url_changed']=x_changed
+    out['x_contract_post_ids']=x.get('contract_post_ids',[])
+    current.update(x_profile_image_url=x_url or old_x,x_user_id=x.get('user_id') or previous.get('x_user_id'))
     if growth is not None and current['unique_recent']>=3 and public.get('interactions') is not None:
         out['virality_score']=round(min(100,20*min(3,growth)+5*min(8,current['unique_recent'])))
     current['public_status']=public['status'];current['scope']=public.get('scope'); state['social_v5'][mint]=current

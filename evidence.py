@@ -49,6 +49,9 @@ def public_read(url, api, bearer=None, as_text=False):
 
 
 def rpc(api, method, params):
+    from data_intelligence import client
+    providers=client(api)
+    if providers:return providers.rpc(method,params)
     result = api.request(os.environ.get('SOLANA_RPC_URL') or 'https://api.mainnet-beta.solana.com',
                          {'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': params})
     if not isinstance(result, dict) or 'error' in result or 'result' not in result:
@@ -127,7 +130,9 @@ def security(mint, api, now, pool=None, mint_validator=None):
         out['score'] += 30
     except Exception: out['risks'].append('Distribusi token belum terverifikasi')
     try:
-        report = api.request('https://api.rugcheck.xyz/v1/tokens/' + mint + '/report/summary')
+        from data_intelligence import client
+        providers=client(api)
+        report = providers.rugcheck(mint,summary=True) if providers else api.request('https://api.rugcheck.xyz/v1/tokens/' + mint + '/report/summary')
         reason = api.rugcheck_risk_reason(report)
         if reason in ('danger_risk_flag', 'high_risk_score'):
             out['reject'] = reason; return out
@@ -144,7 +149,7 @@ def x_analysis(handle, mint, api, now):
     # Reading X may incur charges; it is disabled unless explicitly configured by the owner.
     if not token or os.environ.get('X_READS_ENABLED', '0') != '1': return result
     try:
-        query = urlencode({'user.fields': 'created_at,description,public_metrics,protected,username'})
+        query = urlencode({'user.fields': 'created_at,description,public_metrics,protected,username,profile_image_url'})
         user = public_read('https://api.x.com/2/users/by/username/' + handle + '?' + query, api, bearer=token)['data']
         if user.get('username', '').lower() != handle.lower() or user.get('protected'): raise ValueError('identity_or_private')
         result['verified_link'] = True
@@ -169,7 +174,9 @@ def x_analysis(handle, mint, api, now):
         if created is not None and 0 <= now-created < 86400: result['risks'].append('Akun X berumur kurang dari 1 hari')
         score = (40 if identity else 0) + min(25, len(recent)*5) + (min(25, interactions) if interactions is not None else 0) + (10 if repeat <= .3 else 0)
         result.update(status='observed', score=round(score), complete=identity and complete_metrics and len(recent) >= 5 and not result['risks'],
-                      posts_7d=len(recent), interactions=interactions, repeated_fraction=round(repeat, 2), identity_consistent=identity)
+                      posts_7d=len(recent), interactions=interactions, repeated_fraction=round(repeat, 2), identity_consistent=identity,
+                      user_id=uid,profile_image_url=user.get('profile_image_url'),
+                      contract_post_ids=[p.get('id') for p in recent if mint in p.get('text','')][:20])
     except Exception: result['status'] = 'api_unavailable'
     return result
 

@@ -24,7 +24,7 @@ def migrate(state, now):
                               and number(v.get('last_seen')) and number(v.get('last_checked'))}
     state['pool_watchlist'] = dict(sorted(state['pool_watchlist'].items(),key=lambda x:(now-x[1]['created_at']<=3600,x[1]['last_seen']),reverse=True)[:200])
     state['schema_version'] = 2
-    for key,ttl,limit in [('memory_v5',90*86400,1500),('social_v5',86400,200)]:
+    for key,ttl,limit in [('memory_v5',90*86400,1500),('social_v5',86400,200),('provider_state_v5',2*86400,10),('narrative_watch_v5',7*86400,300)]:
         state[key]=dict(sorted(((k,v) for k,v in state.get(key,{}).items() if isinstance(v,dict) and number(v.get('at')) and 0<=now-v['at']<=ttl),key=lambda x:-x[1]['at'])[:limit])
     state['delivery'] = {k:v for k,v in state['delivery'].items() if isinstance(v, dict)
                          and isinstance(v.get('at'), (int, float)) and 0 <= now-v['at'] <= RETENTION}
@@ -49,7 +49,7 @@ def already_delivered(state, mint, tier, now):
 
 def merge(remote, local, now):
     out = dict(remote)
-    for key in ('delivery', 'performance', 'evidence_cache', 'memory_v5', 'social_v5'):
+    for key in ('delivery', 'performance', 'evidence_cache', 'memory_v5', 'social_v5','provider_state_v5','narrative_watch_v5'):
         records = copy.deepcopy(remote.get(key, {}))
         for k, item in local.get(key, {}).items():
             old = records.get(k)

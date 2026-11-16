@@ -135,7 +135,7 @@ def transaction_sample(pool, buyers, api, now):
             tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
             return row, tx
         except Exception: return row, None
-    slots = defaultdict(set); cosigners = defaultdict(set); sellers = set()
+    slots = defaultdict(set); cosigners = defaultdict(set); sellers = set();large=[]
     with ThreadPoolExecutor(max_workers=4) as executor:
         for row, tx in executor.map(read,picks):
             if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict): raise EvidenceMissing('trade_transaction_missing')
@@ -160,9 +160,12 @@ def transaction_sample(pool, buyers, api, now):
                 slots[slot].add(wallet)
                 for k in keys:
                     if k.get('signer') is True and k.get('pubkey')!=wallet: cosigners[k['pubkey']].add(wallet)
+            if number(row.get('usd')) and row['usd']>=10000:
+                large.append({'signature':row['signature'],'wallet':wallet,'kind':row['kind'],'provider_usd':row['usd'],
+                              'transaction_finalized':True,'usd_value_independently_verified':False})
     if max((len(v) for v in slots.values()),default=0)>=4 or max((len(v) for v in cosigners.values()),default=0)>=4:
         return {'reject':'bundled_slot_or_shared_signer_pattern'}
-    return {'reject':None,'finalized_sells':len(sellers),'finalized_buys':12,'sample_limit':15,
+    return {'reject':None,'finalized_sells':len(sellers),'finalized_buys':12,'sample_limit':15,'large_trades':large[:10],
             'caveat':'Sampel transaksi, bukan pemetaan semua insider; jual setiap wallet tidak dijamin.'}
 
 
@@ -187,6 +190,7 @@ def funding_check(report,buyers,api,now):
             keys=tx.get('transaction',{}).get('message',{}).get('accountKeys',[])
             if not any(k.get('pubkey')==wallet for k in keys if isinstance(k,dict)):raise EvidenceMissing('funding_wallet_mismatch')
             signers={k.get('pubkey') for k in keys if isinstance(k,dict) and k.get('signer') is True}
+            if creator in signers and wallet!=creator:sources.add(creator)
             instructions=list(tx['transaction']['message'].get('instructions',[]))
             for group in tx['meta'].get('innerInstructions') or []:instructions.extend(group.get('instructions',[]))
             for ix in instructions:
@@ -222,7 +226,9 @@ def inspect(pool, sec, buyers, api, now, extension_proof=None):
         distribution = sec.get('distribution') or {}
         if not distribution.get('verified') or not number(distribution.get('top1_observed_owner_pct')): raise EvidenceMissing('holder_owner_coverage_incomplete')
         if buyers.get('risks') or not buyers.get('strong'): raise EvidenceMissing('wash_sample_risky_or_incomplete')
-        report = api.request('https://api.rugcheck.xyz/v1/tokens/'+pool['baseToken']['address']+'/report')
+        from data_intelligence import client
+        providers=client(api)
+        report = providers.rugcheck(pool['baseToken']['address']) if providers else api.request('https://api.rugcheck.xyz/v1/tokens/'+pool['baseToken']['address']+'/report')
         if sec.get('token_program') != report.get('tokenProgram') or sec.get('mint_supply') != (report.get('token') or {}).get('supply'):
             raise EvidenceMissing('provider_onchain_mint_mismatch')
         allowed = None

@@ -19,7 +19,10 @@ def record(state, pool, narrative, decision, now, safety=None):
     old=records.get(key)
     if not old or decision=='accepted':
         records[key]={'at':now,'updated':now,'mint':mint,'pair':pair,'price':price,'samples':{},
-                      'decision':decision,'narrative':narrative.get('label'), 'safety_complete':bool((safety or {}).get('complete'))}
+                      'decision':decision,'narrative':narrative.get('label'), 'safety_complete':bool((safety or {}).get('complete')),
+                      'initial_safety_complete':bool((safety or {}).get('complete')),
+                      'market_cap_at_observation':amount(pool.get('marketCap')),
+                      'pool_age_at_observation':now-pool['pairCreatedAt']/1000 if amount(pool.get('pairCreatedAt')) is not None else None}
     elif old:
         old.update(decision=decision,updated=now,safety_complete=bool((safety or {}).get('complete')))
     state['memory_v5']=dict(sorted(((k,v) for k,v in records.items() if 0<=now-v['at']<=RETENTION),key=lambda x:-x[1]['at'])[:CAPACITY])
