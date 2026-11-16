@@ -39,7 +39,7 @@ jobs:
           JUPITER_API_KEY: ${{ secrets.JUPITER_API_KEY }}
           RUGCHECK_BEARER_TOKEN: ${{ secrets.RUGCHECK_BEARER_TOKEN }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-          X_READS_ENABLED: ${{ vars.X_READS_ENABLED }}
+          X_READS_ENABLED: '0'
           SCANNER_WATCHLIST_FILE: /tmp/no-manual-token-seeds.json
           PYTHONUNBUFFERED: '1'
         run: |

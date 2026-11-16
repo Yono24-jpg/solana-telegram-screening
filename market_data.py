@@ -90,6 +90,22 @@ def gecko_pools(payload):
     return pools
 
 
+def retain_cap_proof(result, donor, now):
+    """Carry only independently verified circulating cap, never mixed pool metrics."""
+    proof=donor.get('marketCapEvidence') or {};mint=get(result,'baseToken.address')
+    if proof.get('provider') not in ('jupiter_tokens_v2','birdeye_standard','coingecko_contract') or proof.get('mint')!=mint:return
+    updated=proof.get('updated_at');observed=proof.get('observed_at');cap=amount(proof.get('usd'))
+    price=amount(proof.get('price_usd',proof.get('valuation_price_usd')));supply=amount(proof.get('circulating_supply'));quote=amount(result.get('priceUsd'))
+    ttl=240 if proof.get('provider')=='coingecko_contract' else 120
+    if not number(updated) or not number(observed) or not 0<=now-updated<=ttl or not 0<=now-observed<=ttl:return
+    if any(v is None or v<=0 for v in (cap,price,supply,quote)) or cap!=amount(donor.get('marketCap')):return
+    if abs(cap-price*supply)/cap>.02 or abs(price-quote)/quote>.1:return
+    current=amount(result.get('marketCap'))
+    if current is None:
+        result.update(marketCap=cap,marketCapEvidence=copy.deepcopy(proof),_cap_evidence_preserved=True)
+    elif current>0 and abs(current-cap)/cap>.2:result['valuationConflict']=True
+
+
 def select_pool(dex, gecko):
     """Use one coherent market snapshot; only add matched identity/metadata/creation time."""
     if dex is None: return copy.deepcopy(gecko)
@@ -105,10 +121,14 @@ def select_pool(dex, gecko):
         prepared['pairCreatedAt'] = gecko['pairCreatedAt']; prepared['ageSource'] = 'geckoterminal'
     # Never blend liquidity, volume and transaction counts from different snapshots.
     # Prefer the snapshot with the fewest missing mandatory values; never blend metrics.
+    alternate=copy.deepcopy(gecko)
+    for donor in (dex,gecko):
+        retain_cap_proof(prepared,donor,time.time());retain_cap_proof(alternate,donor,time.time())
     quality=lambda p:(len(v3_missing_fields(p)),len(missing_fields(p)))
-    result = copy.deepcopy(gecko) if quality(gecko)<quality(prepared) else prepared
-    for flag in ('identityConflict','ageConflict'):
+    result = alternate if quality(alternate)<quality(prepared) else prepared
+    for flag in ('identityConflict','ageConflict','valuationConflict'):
         if dex.get(flag) or gecko.get(flag):result[flag]=True
+    for donor in (dex,gecko):retain_cap_proof(result,donor,time.time())
     result.setdefault('dataSource', 'dexscreener')
     da = amount(dex.get('pairCreatedAt')); ga = amount(gecko.get('pairCreatedAt'))
     if da is not None and ga is not None and abs(da-ga) > 120000:
@@ -208,11 +228,15 @@ def hydrate_incomplete(pools, api, gecko, now, limit=40):
     Provider failures preserve missing values and never create passing market evidence.
     """
     pools=merge_pools(pools);positions={p['pairAddress']:i for i,p in enumerate(pools)}
+    record=getattr(gecko,'state',{}).setdefault('provider_state_v5',{}).setdefault('hydration',{'at':now,'attempts':{}})
+    attempts=record.setdefault('attempts',{})
     def priority(p):
         created=amount(p.get('pairCreatedAt')); age=now-created/1000 if created is not None else 86401
         lp=amount(get(p,'liquidity.usd')) or 0
-        return (not 60<=age<=3600,not 60<=age<=86400,lp<10000,-lp)
+        return (not 60<=age<=3600,not 60<=age<=86400,lp<10000,attempts.get(p['pairAddress'],0),len(v3_missing_fields(p)),-lp)
     pending=sorted([p for p in pools if v3_missing_fields(p)],key=priority)[:limit]
+    for p in pending:attempts[p['pairAddress']]=now
+    record.update(at=now,attempts=dict(sorted(attempts.items(),key=lambda r:-r[1])[:300]))
     fields=lambda:dict(Counter(k for p in pools for k in v3_missing_fields(p)))
     stats={'incomplete_before':sum(bool(v3_missing_fields(p)) for p in pools),'requested':len(pending),'dex_batches':0,'gecko_batches':0,'recovered':0,
            'missing_before':fields(),'sources':{},'identity_rejections':0,'partial_improvements':0}
@@ -272,6 +296,7 @@ def hydrate_incomplete(pools, api, gecko, now, limit=40):
         except Exception as error:failure('coingecko_contract',error)
     stats['incomplete_after']=sum(bool(v3_missing_fields(p)) for p in pools)
     stats['missing_after']=fields()
+    stats['preserved_cap_proofs']=sum(bool(p.get('_cap_evidence_preserved')) for p in pools)
     stats['recovered']=stats['incomplete_before']-stats['incomplete_after']
     return pools,stats
 

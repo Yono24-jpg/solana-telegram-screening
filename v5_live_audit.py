@@ -22,7 +22,7 @@ if __name__=='__main__':
     state=json.loads(Path('state.json').read_text()) if Path('state.json').exists() else {}
     state['enabled']=True
     report=scanner_v5.run(state,None,api,dry_run=True)
-    assert report['sent']==0 and report['version']=='5.0'
+    assert report['sent']==0 and report['version']=='5.1'
     assert report['health_notification']['status']=='read_only'
     Path('reports/live-v5.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     print('LIVE_V5_AUDIT_OK '+json.dumps({'seen':report['seen'],'sent':report['sent'],'health':report['health'],
