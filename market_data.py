@@ -28,9 +28,24 @@ def missing_fields(pool):
 
 class GeckoClient:
     """Nine requests per rolling minute, including failed requests and previous runs."""
-    def __init__(self, api, state):
+    def __init__(self, api, state, paced=False):
         self.api = api; self.state = state; self.lock = threading.Lock(); self.limited = 0
+        self.paced=paced;self.pace=threading.Lock()
     def request(self, url):
+        if self.paced:
+            # Below even the conservative approximate ten/minute public limit.
+            # Hold through response completion so concurrent source tasks cannot burst.
+            with self.pace:
+                if time.time()<self.state.get('gecko_retry_after',0):return self._request(url)
+                delay=max(0,self.state.get('gecko_last_completed',0)+6.2-time.time())
+                if delay:
+                    deadline=getattr(self.api,'REQUEST_DEADLINE',None)
+                    if isinstance(deadline,(int,float)) and time.monotonic()+delay+8>=deadline:raise RuntimeError('gecko_free_budget')
+                    time.sleep(delay)
+                try:return self._request(url)
+                finally:self.state['gecko_last_completed']=time.time()
+        return self._request(url)
+    def _request(self, url):
         if not url.startswith(GECKO + '/'):
             raise ValueError('unsupported_gecko_url')
         with self.lock:

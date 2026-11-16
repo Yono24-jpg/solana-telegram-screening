@@ -101,7 +101,7 @@ def run(state,chat,api,dry_run=False):
                 'helius_used':providers.rpc_metrics.get('helius',{}).get('getSlot',0)>0,'slot':slot if isinstance(slot,int) else None}
         except Exception:report['helius_probe']={'valid_finalized_slot':False,'helius_used':False}
     # Due price windows run before news/social retrieval can consume the scan budget.
-    gecko=market_data.GeckoClient(api,state)
+    gecko=market_data.GeckoClient(api,state,paced=True)
     discovery_started=time.monotonic()
     pools,report['discovery']=legacy.discover(api,gecko)
     report['discovery_timing']={'seconds_to_initial_pools':round(time.monotonic()-discovery_started,3),
