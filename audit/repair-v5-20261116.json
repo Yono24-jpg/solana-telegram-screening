@@ -1,0 +1,184 @@
+{
+  "verified_at_wit": "2026-11-16T16:30:00+09:00",
+  "repository": "Yono24-jpg/solana-telegram-screening",
+  "pull_requests": [
+    14,
+    15
+  ],
+  "production_merge": "b992b5f69cdf6a031d98f70527b7029e4aadf8e6",
+  "production_run": 43824252988,
+  "read_only_integration_run": 43824155622,
+  "tests": {
+    "python": 230,
+    "scheduler_workers": 30,
+    "legacy_web": 28,
+    "total": 288,
+    "failed": 0
+  },
+  "baseline": {
+    "run": 43821990591,
+    "pools": 272,
+    "hydration": {
+      "incomplete_before": 171,
+      "incomplete_after": 171,
+      "targeted_pools": 40,
+      "recovered": 0
+    },
+    "social": "unavailable",
+    "x_enabled": false,
+    "signals": 0,
+    "evaluations": {
+      "300": {
+        "observed": 29,
+        "missed": 131
+      },
+      "900": {
+        "observed": 34,
+        "missed": 113
+      }
+    }
+  },
+  "after": {
+    "pools": 322,
+    "hydration": {
+      "dex_batches": 2,
+      "gecko_batches": 2,
+      "identity_rejections": 0,
+      "incomplete_after": 202,
+      "incomplete_before": 203,
+      "missing_after": {
+        "liquidity.usd": 66,
+        "marketCap": 47,
+        "pairCreatedAt": 5,
+        "priceChange.m5": 156,
+        "priceUsd": 10
+      },
+      "missing_before": {
+        "liquidity.usd": 66,
+        "marketCap": 48,
+        "pairCreatedAt": 5,
+        "priceChange.m5": 156,
+        "priceUsd": 10
+      },
+      "partial_improvements": 1,
+      "recovered": 1,
+      "requested": 40,
+      "sources": {
+        "dex_pairs": {
+          "rows": 20,
+          "status": "ok"
+        },
+        "dex_tokens": {
+          "rows": 9,
+          "status": "ok"
+        },
+        "gecko_pools": {
+          "status": "provider_backoff"
+        }
+      }
+    },
+    "social": {
+      "contracts": 0,
+      "details": {
+        "Binance": {
+          "author_feeds_read": 2,
+          "contract_mentions": 0,
+          "scope": "up to 2 query-matched public author feeds; selection biased",
+          "search_status": "authentication_required_or_forbidden",
+          "unique_authors": 0
+        },
+        "Dua Lipa": {
+          "author_feeds_read": 2,
+          "contract_mentions": 0,
+          "scope": "up to 2 query-matched public author feeds; selection biased",
+          "search_status": "authentication_required_or_forbidden",
+          "unique_authors": 0
+        },
+        "Timeline": {
+          "author_feeds_read": 2,
+          "contract_mentions": 0,
+          "scope": "up to 2 query-matched public author feeds; selection biased",
+          "search_status": "authentication_required_or_forbidden",
+          "unique_authors": 0
+        }
+      },
+      "pools": 0,
+      "sources": {
+        "Binance": "observed",
+        "Dua Lipa": "observed",
+        "Timeline": "observed"
+      },
+      "status": "sampled",
+      "trust": "unverified leads only"
+    },
+    "health": "degraded",
+    "signals": 0,
+    "evaluation_early": {
+      "due_records": 32,
+      "note": "Actual observation times only; old missed windows are not reconstructed.",
+      "quote_attempts": 32,
+      "quotes_recovered": 30
+    },
+    "evaluation_status": {
+      "300": {
+        "missed": 133,
+        "observed": 49
+      },
+      "900": {
+        "missed": 113,
+        "observed": 59
+      },
+      "3600": {
+        "missed": 0,
+        "observed": 104
+      },
+      "86400": {
+        "missed": 0,
+        "observed": 0
+      }
+    },
+    "health_notification": {
+      "status": "not_due"
+    },
+    "rejected": {
+      "late_or_falling_price": 2,
+      "liquidity": 5,
+      "narrative_unverified": 1,
+      "v5_market_cap": 136,
+      "v5_market_missing": 52,
+      "v5_pool_age": 51,
+      "v5_volume_h1": 56,
+      "weak_activity": 19
+    }
+  },
+  "cloudflare": {
+    "worker": "mail-solana-scheduler",
+    "cron": "*/5 * * * *",
+    "unchanged_deployment": "0468af17-1ae3-4e7b-9453-e3baf4fa63c9",
+    "version": "aff5f5f0-79e3-480f-86fb-06e66928dd0c",
+    "traffic_percent": 100
+  },
+  "telegram": {
+    "verified_bot": "@SolHawkHunter917Bot",
+    "destination_verified": true,
+    "controls_preserved": true,
+    "enabled": true,
+    "no_artificial_candidate_sent": true
+  },
+  "limitations": [
+    "Different live pool populations; comparisons do not isolate causality.",
+    "Still degraded. Gecko HTTP429/backoff, unlisted CoinGecko404 and genuinely missing fields remain.",
+    "Public actor feeds work, but no relevant CA/posts in final sample; broad post search denied, X not configured.",
+    "Historic missed windows retained; two more 5m misses since baseline,15m missed unchanged. Not exact-time or executed returns.",
+    "No final live candidate reached safety graph gates; additional funding checks proved by adversarial fixtures, not live clearance.",
+    "Legacy Cloudflare diagnostic/deploy CI token returned403; Node-only edits no longer auto-trigger those separate operations. Connected scheduler reads succeed; CI token not repaired."
+  ],
+  "model": {
+    "entities": [],
+    "model_used": "@cf/meta/llama-3.3-70b-instruct-sd",
+    "requested_model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "status": "ok",
+    "via": "workers_ai_binding"
+  },
+  "auto_trading": false
+}
