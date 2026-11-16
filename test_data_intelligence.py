@@ -87,6 +87,10 @@ class Providers(unittest.TestCase):
 
 
 class ResearchTiers(unittest.TestCase):
+    def test_health_cannot_hide_hydration_429_behind_successful_discovery(self):
+        report={'discovery':{'sources':{'dex':'ok'}},'market_hydration':{'sources':{'gecko':{'status':'http_429'}}}}
+        result=di.source_failures(report,{'sources':{'news':'no_recent_articles'}})
+        self.assertEqual(result,{'hydration:gecko':'http_429'})
     def test_internal_watch_never_implies_security_or_delivery(self):
         state={};n={'label':'NebulaFox','reject':None,'sources':[{'url':'https://example.org'}]}
         di.watch(state,fixtures.market_pool(),n,'insider_coverage_unavailable',NOW)

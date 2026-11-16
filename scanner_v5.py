@@ -182,12 +182,11 @@ def run(state,chat,api,dry_run=False):
                          'security_observed_at':safety['observed_at'],'security':safety,'decision':'gates_passed'})
         if not dry_run and legacy.deliver(state,api,chat,fresh,m,sec,social,buyers,{},'GLOBAL SIGNAL',renderer=render):
             report['sent']+=1; hunter_memory.record(state,fresh,n2,'accepted',time.time(),safety)
-    failures={**{k:v for k,v in report['discovery']['sources'].items() if v!='ok'},
-              **{k:v for k,v in feed['sources'].items() if v not in ('ok','no_recent_articles')}}
+    report['provider_status']=providers.status
+    failures=data_intelligence.source_failures(report,feed)
     report['health']='degraded' if not pools or failures else 'ok'
     report['source_failures']=failures
     report['pipeline_status']='operational' if pools else 'no_market_data'
-    report['provider_status']=providers.status
     report['provider_coverage']='partial' if failures or any(not v.get('configured') for k,v in report['provider_access'].items() if k in ('helius','birdeye','x')) else 'configured'
     report['research_tiers']={tier:sum(r['tier']==tier for r in state.get('narrative_watch_v5',{}).values()) for tier in ('NARRATIVE WATCH','VERIFIED ALERT')}
     report['filter_review']=data_intelligence.history_review(state,time.time())

@@ -196,3 +196,17 @@ def history_review(state,now):
             'original_cap_age_archived':sum(number(r.get('market_cap_at_observation')) and number(r.get('pool_age_at_observation')) for r in rows)}
     return {'at':now,'groups':groups,'filter_change':False,
         'conclusion':'Insufficient point-in-time safety/24h coverage to infer missed safe opportunities. Bounds unchanged; selection bias applies.'}
+
+
+def source_failures(report,feed):
+    """An empty valid news query is not an outage; failed hydration must stay visible."""
+    failures={**{k:v for k,v in report.get('discovery',{}).get('sources',{}).items() if v!='ok'},
+              **{k:v for k,v in feed.get('sources',{}).items() if v not in ('ok','no_recent_articles')}}
+    for name,row in report.get('market_hydration',{}).get('sources',{}).items():
+        status=row.get('status')
+        if status not in ('ok','verified','http_404','identity_freshness_or_supply_unverified'):
+            failures['hydration:'+name]=status
+    for name,row in report.get('provider_status',{}).items():
+        status=row.get('status')
+        if status not in ('ok','not_configured','local_spacing'):failures['provider:'+name]=status
+    return failures
