@@ -27,4 +27,4 @@ if __name__=='__main__':
     Path('reports/live-v5.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     print('LIVE_V5_AUDIT_OK '+json.dumps({'seen':report['seen'],'sent':report['sent'],'health':report['health'],
                                        'trends':len(report['narrative']['trends']),'rejected':report['rejected'],
-                                       'evaluations':report['evaluations'],'evaluation_fetch':report.get('evaluation_fetch')}))
+                                       'evaluations':report['evaluations'],'evaluation_status':report['evaluation_status'],'evaluation_fetch':report.get('evaluation_fetch')}))

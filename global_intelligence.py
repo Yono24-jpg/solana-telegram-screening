@@ -161,7 +161,7 @@ def match(pool, feed, now):
 
 
 def search_pools(api, feed, now, limit=12):
-    topics=feed.get('trends',[])
+    topics=[t for t in feed.get('trends',[]) if t.get('score',0)>=70]
     if not topics: return []
     start=int(now//300)%len(topics)
     queries=[]

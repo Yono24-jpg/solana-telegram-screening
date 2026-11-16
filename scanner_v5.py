@@ -165,6 +165,7 @@ def run(state,chat,api,dry_run=False):
     report['gecko_budget_limited']=gecko.limited
     report['memory_records']=len(state.get('memory_v5',{}))
     report['evaluations']={str(h):sum(str(h) in r.get('samples',{}) for r in state.get('memory_v5',{}).values()) for h in (300,900,3600,86400)}
+    report['evaluation_status']={str(h):{status:sum(r.get('samples',{}).get(str(h),{}).get('status')==status for r in state.get('memory_v5',{}).values()) for status in ('observed','missed')} for h in (300,900,3600,86400)}
     report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/point-in-time-v5.json').write_text(json.dumps(archives,ensure_ascii=False,indent=2))
