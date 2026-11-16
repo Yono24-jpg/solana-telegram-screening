@@ -33,6 +33,7 @@ def checkpoint(state, api, durable=False):
 def discover(api, gecko=None):
     gecko = gecko or market_data.GeckoClient(api, {})
     urls = [(api.DEX+p, label) for p, label in SOURCES]
+    urls += [(market_data.GECKO+'/networks/solana/trending_pools?include=base_token,quote_token,dex', 'gecko_trending')]
     urls += [(market_data.GECKO+'/networks/solana/new_pools?page='+str(p)+'&include=base_token,quote_token,dex', 'gecko_'+str(p)) for p in (1, 2, 3)]
     def read(item):
         url, label = item
@@ -40,7 +41,7 @@ def discover(api, gecko=None):
         except Exception: return label, None
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(read, urls))
-    tokens = []; pairs = []; metadata = {}; statuses = {}; native = {}
+    tokens = []; pairs = []; metadata = {}; descriptions = {}; statuses = {}; native = {}
     for label, data in results:
         valid = isinstance(data, dict) and isinstance(data.get('data'), list) if label.startswith('gecko') else isinstance(data, list)
         statuses[label] = 'ok' if valid else 'unavailable'
@@ -56,6 +57,7 @@ def discover(api, gecko=None):
                 if not address(mint): continue
                 if mint not in tokens: tokens.append(mint)
                 metadata.setdefault(mint, []).extend(row.get('links') or [])
+                if isinstance(row.get('description'),str): descriptions[mint]=row['description'][:1200]
     requests = [(api.DEX+'/tokens/v1/solana/'+','.join(tokens[i:i+30]), 'tokens') for i in range(0, min(240, len(tokens)), 30)]
     requests += [(api.DEX+'/latest/dex/pairs/solana/'+','.join(pairs[i:i+20]), 'pairs') for i in range(0, len(pairs), 20)]
     pools = {}; failures = 0
@@ -71,6 +73,7 @@ def discover(api, gecko=None):
                 if label == 'pairs' and pool['pairAddress'] not in pairs: continue
                 info = pool.setdefault('info', {})
                 if not isinstance(info, dict): pool['info'] = info = {}
+                if mint in descriptions: info['description']=descriptions[mint]
                 info['socials'] = (info.get('socials') if isinstance(info.get('socials'), list) else []) + [r for r in metadata.get(mint, []) if isinstance(r, dict)]
                 pools[pool['pairAddress']] = pool
     combined = {pair:market_data.select_pool(pools.get(pair), native.get(pair)) for pair in sorted(set(pools)|set(native))}
@@ -227,7 +230,8 @@ def run(state, chat, api):
     pools, discovery = discover(api, gecko); report['discovery'] = discovery
     narrative_pools = narrative_v3.search_pools(api,narrative_feed,time.time())
     report['discovery']['narrative_search_pools'] = len(narrative_pools)
-    pools = list({p.get('pairAddress'):p for p in pools+narrative_pools}.values())
+    pools = market_data.merge_pools(pools+narrative_pools)
+    pools, report['market_hydration'] = market_data.hydrate_incomplete(pools,api,gecko,time.time())
     pools = market_data.refresh_watchlist(pools, state, api, gecko, time.time())
     # Record eligible early observations even before safety data is available.
     observe(state, pools, time.time()); checkpoint(state, api)
@@ -244,7 +248,10 @@ def run(state, chat, api):
         v3_reason = narrative_v3.market_gate(pool,time.time())
         narrative = narrative_v3.match(pool,narrative_feed,time.time())
         if v3_reason or narrative.get('reject'):
-            reason = v3_reason or narrative['reject']; report['rejected'][reason] = report['rejected'].get(reason,0)+1; continue
+            reason = v3_reason or narrative['reject']; report['rejected'][reason] = report['rejected'].get(reason,0)+1
+            if reason=='v3_market_missing':
+                for field in market_data.v3_missing_fields(pool): report['missing_fields'][field]=report['missing_fields'].get(field,0)+1
+            continue
         pool['_narrative_v3'] = narrative
         if m.get('reject'):
             reason = m['reject']; report['rejected'][reason] = report['rejected'].get(reason, 0)+1
@@ -269,6 +276,8 @@ def run(state, chat, api):
                                          'vault_status':distribution.get('vault_status'),
                                          'verified_vault_count':len(distribution.get('excluded_vaults',[])),
                                          'top1_observed_owner_pct':distribution.get('top1_observed_owner_pct')})
+        if sec.get('token_program') and sec['token_program']!=api.PROGRAM:
+            report['rejected']['v3_token_program_unsupported']=report['rejected'].get('v3_token_program_unsupported',0)+1;continue
         if sec['reject']:
             reason = sec['reject']; report['rejected'][reason] = report['rejected'].get(reason, 0)+1; continue
         metadata_key = hashlib.sha256(json.dumps(social_links(pool), sort_keys=True).encode()).hexdigest()[:16]

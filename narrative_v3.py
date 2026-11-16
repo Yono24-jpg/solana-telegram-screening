@@ -17,7 +17,7 @@ from screening_rules import number
 TOPICS = {
     'game': '"GTA" OR "Rockstar" OR "video game" OR "Minecraft"',
     'film': '"film" OR "movie" OR "Marvel" OR "anime"',
-    'ai': '"artificial intelligence" OR "OpenAI" OR "DeepSeek" OR "Gemini"',
+    'ai': '"artificial intelligence" OR "OpenAI" OR "DeepSeek" OR "Gemini" OR "Anthropic" OR "Claude AI"',
     'public_figure': '"Elon Musk" OR "Donald Trump" OR "celebrity"',
     'social': '"viral meme" OR "TikTok trend" OR "YouTube viral"',
 }
@@ -29,7 +29,7 @@ FALLBACKS = {
     'social': ('https://feeds.bbci.co.uk/news/technology/rss.xml','BBC','https://www.bbc.com'),
 }
 ALIASES = {
-    'GTA': ('gta', 'gta6', 'gta 6', 'gta vi', 'grand theft auto', 'rockstar'),
+    'GTA': ('gta', 'gta6', 'gta 6', 'gta vi', 'grand theft auto', 'rockstar', 'fivem'),
     'Minecraft': ('minecraft',), 'Nintendo': ('nintendo', 'pokemon', 'pokémon'),
     'Fortnite': ('fortnite',), 'Roblox': ('roblox',),
     'OpenAI': ('openai', 'chatgpt', 'sora'), 'DeepSeek': ('deepseek',),
@@ -170,19 +170,43 @@ def market_gate(pool, now):
     except (KeyError,TypeError,ValueError,ZeroDivisionError): return 'v3_market_missing'
 
 
+def search_queries(feed, now, limit=12):
+    """Cover canonical narrative names and related aliases, not only five headlines."""
+    topics=trends(feed,now); by_name={t['label']:t for t in topics};queries=[];seen=set()
+    def add(value):
+        key=normalize(value)
+        if key and key not in seen and len(queries)<limit:seen.add(key);queries.append(value)
+    # First cover canonical topics whose independent news evidence was verified.
+    canonical=[name for name in ALIASES if name in by_name]
+    for name in canonical:add(name)
+    # Known franchise aliases are retrieval terms only; they never bypass narrative/security gates.
+    for name in canonical:
+        if name=='GTA':
+            add('Rockstar');add('FiveM')
+        if name=='Anthropic':add('Claude')
+    # Keep dynamic AI-extracted entities in rotation within the same bounded request budget.
+    dynamic=[t['label'] for t in topics if t['label'] not in ALIASES]
+    if dynamic:
+        offset=int(now//300)%len(dynamic)
+        for name in dynamic[offset:]+dynamic[:offset]:add(name)
+    return queries
+
+
 def search_pools(api, feed, now):
-    """Search actual narrative phrases in addition to the existing discovery feeds."""
-    topics = trends(feed,now)[:5]
-    def read(topic):
+    queries=search_queries(feed,now)
+    def read(query):
         try:
-            data = api.request(api.DEX+'/latest/dex/search?'+urlencode({'q':topic['label']}))
+            data = api.request(api.DEX+'/latest/dex/search?'+urlencode({'q':query}))
             return [p for p in data.get('pairs',[]) if isinstance(p,dict) and p.get('chainId')=='solana'][:30]
         except Exception: return []
     pools = {}
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        for rows in executor.map(read,topics):
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for rows in executor.map(read,queries):
             for pool in rows:
-                if isinstance(pool.get('pairAddress'),str): pools[pool['pairAddress']] = pool
+                if isinstance(pool.get('pairAddress'),str):
+                    pair=pool['pairAddress']
+                    import market_data
+                    pools[pair]=market_data.select_pool(pools.get(pair),pool) if pair in pools else pool
     return list(pools.values())
 
 
