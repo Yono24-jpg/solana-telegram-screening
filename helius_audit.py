@@ -32,12 +32,12 @@ def run():
                                   'scope':'large token account; owner may be a pool, exchange or wallet'} for r in largest]
             wallets=[];transactions=[]
             if address(creator):wallets.append(creator)
-            for r in largest[:2]:
+            for r in largest[:4]:
                 a=client.rpc('getAccountInfo',[r['address'],{'encoding':'jsonParsed','commitment':'finalized'}])['value']
                 owner=a['data']['parsed']['info']['owner']
                 if address(owner) and owner not in wallets:wallets.append(owner)
             buyers=[]
-            for wallet in wallets[:3]:
+            for wallet in wallets[:5]:
                 try:
                     signatures=client.rpc('getSignaturesForAddress',[wallet,{'limit':3,'commitment':'finalized'}])
                     for s in signatures[:2]:
@@ -47,7 +47,10 @@ def run():
                         signed=any(isinstance(k,dict) and k.get('pubkey')==wallet and k.get('signer') is True for k in keys)
                         delta=security.owner_balances(tx['meta'].get('postTokenBalances'),wallet,mint)-security.owner_balances(tx['meta'].get('preTokenBalances'),wallet,mint)
                         transactions.append({'signature':s['signature'],'wallet':wallet,'slot':tx.get('slot'),'block_time':tx.get('blockTime'),
-                            'finalized_rpc':True,'signer_verified':signed,'transaction_success':tx['meta'].get('err') is None,'raw_token_delta':delta})
+                            'finalized_rpc':True,'signer_verified':signed,'transaction_success':tx['meta'].get('err') is None,
+                            'age_seconds':time.time()-tx['blockTime'] if isinstance(tx.get('blockTime'),(int,float)) else None,
+                            'raw_token_delta':delta,'token_supply_delta_pct':100*delta/int(supply['amount']),
+                            'scope':'observed token movement, not necessarily a swap or a current whale purchase'})
                         if signed and delta>0 and tx['meta'].get('err') is None:buyers.append({'kind':'buy','wallet':wallet})
                 except Exception:transactions.append({'wallet':wallet,'status':'history_or_transaction_unavailable'})
             row['wallet_transactions']=transactions
