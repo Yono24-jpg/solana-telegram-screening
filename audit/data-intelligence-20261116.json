@@ -1,0 +1,1708 @@
+{
+  "verified_at_wit": "2026-11-16T17:01:06+09:00",
+  "repository": "Yono24-jpg/solana-telegram-screening",
+  "pull_requests": [
+    16,
+    17
+  ],
+  "merge_commits": [
+    "400ce097fa5bb554c88fbe1b07773cca0a6a8bc2",
+    "bc584f04af7304aa86e426c1379f664c196a4670"
+  ],
+  "production_run": 43827883091,
+  "full_integration_run": 43827705831,
+  "ci_access_audit_run": 43826836202,
+  "tests": {
+    "python": 252,
+    "scheduler_workers": 30,
+    "legacy_web": 28,
+    "total": 310,
+    "failed": 0
+  },
+  "baseline": {
+    "run_id": 43826700270,
+    "seen": 334,
+    "health": "degraded",
+    "signals": 0,
+    "hydration_recovered": 0,
+    "jupiter_cap_recovered": 0
+  },
+  "production": {
+    "at": 1794816058.9124618,
+    "run_id": "43827883091",
+    "version": "5.0",
+    "seen": 288,
+    "sent": 0,
+    "health": "degraded",
+    "pipeline_status": "operational",
+    "provider_coverage": "partial",
+    "source_failures": {
+      "hydration:gecko_pools": "provider_backoff"
+    },
+    "provider_access": {
+      "birdeye": {
+        "configured": false
+      },
+      "helius": {
+        "configured": false
+      },
+      "jupiter": {
+        "configured": false,
+        "keyless_supported": true
+      },
+      "rugcheck": {
+        "configured": false,
+        "public_read_supported": true
+      },
+      "solana_rpc": {
+        "configured": true,
+        "public_fallback": true
+      },
+      "x": {
+        "configured": false,
+        "reads_enabled": false,
+        "requirement": "owner-enabled official X API bearer token with read entitlement; no paid access enabled"
+      }
+    },
+    "provider_status": {
+      "birdeye": {
+        "status": "not_configured"
+      },
+      "helius": {
+        "status": "not_configured"
+      },
+      "jupiter": {
+        "at": 1794816062.8180234,
+        "status": "ok"
+      }
+    },
+    "provider_enrichment": {
+      "birdeye_reads": 0,
+      "cap_conflicts": 4,
+      "cap_recovered": 16,
+      "requested_mints": 30,
+      "scope": "token circulating cap only; no aggregate volumes/transactions substituted for pool metrics"
+    },
+    "market_hydration": {
+      "dex_batches": 2,
+      "gecko_batches": 2,
+      "identity_rejections": 1,
+      "incomplete_after": 158,
+      "incomplete_before": 160,
+      "missing_after": {
+        "liquidity.usd": 69,
+        "marketCap": 47,
+        "pairCreatedAt": 3,
+        "priceChange.m5": 121,
+        "priceUsd": 17
+      },
+      "missing_before": {
+        "liquidity.usd": 69,
+        "marketCap": 47,
+        "pairCreatedAt": 3,
+        "priceChange.m5": 123,
+        "priceUsd": 17
+      },
+      "partial_improvements": 2,
+      "recovered": 2,
+      "requested": 40,
+      "sources": {
+        "dex_pairs": {
+          "rows": 20,
+          "status": "ok"
+        },
+        "dex_tokens": {
+          "rows": 8,
+          "status": "ok"
+        },
+        "gecko_pools": {
+          "status": "provider_backoff"
+        }
+      }
+    },
+    "research_tiers": {
+      "NARRATIVE WATCH": 172,
+      "VERIFIED ALERT": 0
+    },
+    "security_checks": [],
+    "rejected": {
+      "late_or_falling_price": 3,
+      "liquidity": 4,
+      "market_score_below_60": 1,
+      "missing_market_data": 2,
+      "v5_market_cap": 115,
+      "v5_market_cap_conflict": 4,
+      "v5_market_missing": 50,
+      "v5_pool_age": 43,
+      "v5_volume_h1": 48,
+      "weak_activity": 18
+    },
+    "evaluation_status": {
+      "300": {
+        "missed": 135,
+        "observed": 104
+      },
+      "900": {
+        "missed": 116,
+        "observed": 97
+      },
+      "3600": {
+        "missed": 2,
+        "observed": 145
+      },
+      "86400": {
+        "missed": 0,
+        "observed": 0
+      }
+    },
+    "evaluation_early": {
+      "due_records": 26,
+      "note": "Actual observation times only; old missed windows are not reconstructed.",
+      "quote_attempts": 26,
+      "quotes_recovered": 25
+    },
+    "health_notification": {
+      "status": "not_due"
+    },
+    "filter_review": {
+      "at": 1794816064.2168717,
+      "conclusion": "Insufficient point-in-time safety/24h coverage to infer missed safe opportunities. Bounds unchanged; selection bias applies.",
+      "filter_change": false,
+      "groups": {
+        "v5_market_cap": {
+          "observed_24h": 0,
+          "original_cap_age_archived": 15,
+          "records": 83,
+          "security_complete_at_first_observation": 0
+        },
+        "v5_pool_age": {
+          "observed_24h": 0,
+          "original_cap_age_archived": 0,
+          "records": 9,
+          "security_complete_at_first_observation": 0
+        }
+      }
+    }
+  },
+  "real_token_audits": [
+    {
+      "at": 1794815410.0075047,
+      "mode": "READ ONLY; no delivery; no historical safety reconstruction",
+      "access": {
+        "helius": {
+          "configured": false
+        },
+        "birdeye": {
+          "configured": false
+        },
+        "jupiter": {
+          "configured": false,
+          "keyless_supported": true
+        },
+        "rugcheck": {
+          "configured": false,
+          "public_read_supported": true
+        },
+        "solana_rpc": {
+          "configured": true,
+          "public_fallback": true
+        },
+        "x": {
+          "configured": false,
+          "reads_enabled": false,
+          "requirement": "owner-enabled official X API bearer token with read entitlement; no paid access enabled"
+        }
+      },
+      "provider_status": {
+        "helius": {
+          "status": "not_configured"
+        },
+        "birdeye": {
+          "status": "not_configured"
+        },
+        "jupiter": {
+          "status": "ok",
+          "at": 1794815406.884258
+        },
+        "rugcheck": {
+          "status": "ok",
+          "at": 1794815409.9882677
+        },
+        "configured_rpc": {
+          "status": "ok",
+          "at": 1794815410.0074635
+        }
+      },
+      "trending_count": 30,
+      "tokens": [
+        {
+          "mint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+          "name": "Zcash",
+          "symbol": "ZEC",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 97591643.83119617,
+            "fdv": 97591643.83119617,
+            "circSupply": 108947.47159881,
+            "totalSupply": 108947.47159881,
+            "organicScore": 96.59488381470969,
+            "holderCount": 146241,
+            "updatedAt": "2026-11-16T07:49:32.22664807Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "2TAgfogn8JRwwTnsGKUa6WUT5Xdv1iMEzfEDMor68X9C",
+          "market_cap": 22074,
+          "liquidity": 3591775.65,
+          "pool_age_seconds": 33970991.96119189,
+          "market_rejection": "v5_pool_age",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 29,
+            "insiderNetworks": [
+              {
+                "id": "dark-magenta-quail",
+                "size": 5,
+                "type": "transfer",
+                "tokenAmount": 256461636742,
+                "currentHolding": 167026346602,
+                "activeAccounts": 5
+              },
+              {
+                "id": "peaceful-jasmine-puffin",
+                "size": 13,
+                "type": "trade",
+                "tokenAmount": 24746472929,
+                "currentHolding": 1872987057,
+                "activeAccounts": 13
+              },
+              {
+                "id": "tall-taupe-cat",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 23949849623,
+                "currentHolding": 7617767083,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 71
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          },
+          "reason": "v5_pool_age",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 4893782.912197221,
+            "fdv": 4893782.912197221,
+            "circSupply": 20856.556039,
+            "totalSupply": 20856.556039,
+            "organicScore": 95.37971350872641,
+            "holderCount": 151591,
+            "updatedAt": "2026-11-16T07:49:50.226657139Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "6PTm7MkUmtsLU7w6dWrMHJAt8PnzoCgcZdKyTKEhUAPL",
+          "market_cap": 100,
+          "liquidity": 548467.54,
+          "pool_age_seconds": 5939940.961191893,
+          "market_rejection": "v5_market_cap",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 11,
+            "insiderNetworks": [
+              {
+                "id": "vivid-blossom-tapir",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 48627063511,
+                "currentHolding": 7756668210,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 82
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "HkRQ6Qcadi5yuoNpZdA1Q7yVF3r7LdEmAw1aKkSxpump",
+          "name": "Marvin The Martian",
+          "symbol": "Marvin",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 494749.0271687669,
+            "fdv": 494749.0271687669,
+            "circSupply": 972736475.035506,
+            "totalSupply": 972736475.035506,
+            "organicScore": 75,
+            "holderCount": 3948,
+            "updatedAt": "2026-11-16T07:49:51.227060949Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "5dEBrzrm8F8aXNGkDR4qXEwXm11h62sJgPuPJMXHxCta",
+          "market_cap": 496111,
+          "liquidity": 67814.1,
+          "pool_age_seconds": 14822.961191892624,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 37,
+            "insiderNetworks": [
+              {
+                "id": "hungry-thistle-hippo",
+                "size": 7,
+                "type": "transfer",
+                "tokenAmount": 67435277255486,
+                "currentHolding": 67435277255486,
+                "activeAccounts": 7
+              },
+              {
+                "id": "zealous-navy-snake",
+                "size": 7,
+                "type": "transfer",
+                "tokenAmount": 14432670856798,
+                "currentHolding": 6666984030737,
+                "activeAccounts": 7
+              },
+              {
+                "id": "eager-tangerine-weevil",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 9371595183704,
+                "currentHolding": 9371595183704,
+                "activeAccounts": 4
+              },
+              {
+                "id": "intense-lime-ibis",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 5591867766179,
+                "currentHolding": 5591867766179,
+                "activeAccounts": 4
+              },
+              {
+                "id": "young-quartz-mole",
+                "size": 11,
+                "type": "transfer",
+                "tokenAmount": 2117555117733,
+                "currentHolding": 383523247233,
+                "activeAccounts": 11
+              },
+              {
+                "id": "puny-bronze-koala",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 1842508686326,
+                "currentHolding": 1183046530931,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "2kWx47CUrcXtzptFNnbSXKq3vo1ebqyLBhRytKRGpump",
+          "name": "Jiggly Wiggly Dog",
+          "symbol": "WIGGLES",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 362588.18480171054,
+            "fdv": 362588.18480171054,
+            "circSupply": 957154601.284618,
+            "totalSupply": 957154601.284618,
+            "organicScore": 69.44726545668934,
+            "holderCount": 2066,
+            "updatedAt": "2026-11-16T07:49:52.833853102Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "6Lk5AZYQ9TkvqMzAc6YQ2RwWSg46RzuN3enqu6g6xQAE",
+          "market_cap": 363650,
+          "liquidity": 47721.77,
+          "pool_age_seconds": 34570.961191892624,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 55,
+            "insiderNetworks": [
+              {
+                "id": "fluffy-chestnut-cat",
+                "size": 7,
+                "type": "transfer",
+                "tokenAmount": 18657022236101,
+                "currentHolding": 8267542274292,
+                "activeAccounts": 7
+              },
+              {
+                "id": "dazzling-jade-wasp",
+                "size": 16,
+                "type": "transfer",
+                "tokenAmount": 15948638574367,
+                "currentHolding": 15948638574367,
+                "activeAccounts": 16
+              },
+              {
+                "id": "tender-hazel-quokka",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 12172108680888,
+                "currentHolding": 12172108680888,
+                "activeAccounts": 4
+              },
+              {
+                "id": "puny-straw-spider",
+                "size": 6,
+                "type": "transfer",
+                "tokenAmount": 11524879125136,
+                "currentHolding": 3713519835841,
+                "activeAccounts": 6
+              },
+              {
+                "id": "zealous-brick-penguin",
+                "size": 9,
+                "type": "transfer",
+                "tokenAmount": 8074269227434,
+                "currentHolding": 8074269227434,
+                "activeAccounts": 9
+              },
+              {
+                "id": "humble-mint-fly",
+                "size": 9,
+                "type": "transfer",
+                "tokenAmount": 3659582674340,
+                "currentHolding": 3659582674340,
+                "activeAccounts": 9
+              },
+              {
+                "id": "tame-charcoal-camel",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 1667001862826,
+                "currentHolding": 1667001862826,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "NVDAVuiB7hwd3m5Wa1JuHNovPaPG6BH1QNztbKFxNjv",
+          "name": "Nvidia - Backpack Securities",
+          "symbol": "NVDA",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 2653969.269945812,
+            "fdv": 2653969.269945812,
+            "circSupply": 16367.210613,
+            "totalSupply": 16367.210613,
+            "organicScore": 77.53681821106797,
+            "holderCount": 17272,
+            "updatedAt": "2026-11-16T07:49:48.226458298Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "5B2egsXDewp7f132hs8A98zanisKV62nsdbyhZb9vS8y",
+          "market_cap": 653039,
+          "liquidity": 486.01,
+          "pool_age_seconds": 4603309.961191893,
+          "market_rejection": "v5_volume_h1",
+          "missing_fields": [
+            "priceChange.m5"
+          ],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 4,
+            "insiderNetworks": [
+              {
+                "id": "lively-flax-panther",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 780007420,
+                "currentHolding": 780007420,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 81
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_volume_h1",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij",
+          "name": "Coinbase Wrapped BTC",
+          "symbol": "cbBTC",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 204230682.88074926,
+            "fdv": 204230682.88074926,
+            "circSupply": 3141.34872914,
+            "totalSupply": 3141.34872914,
+            "organicScore": 95.23938174099652,
+            "holderCount": 76523,
+            "updatedAt": "2026-11-16T07:49:21.226933938Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "HxA6SKW5qA4o12fjVgTpXdq2YnZ5Zv1s7SB4FFomsyLM",
+          "market_cap": 179360676,
+          "liquidity": 4288451.11,
+          "pool_age_seconds": 63800566.96119189,
+          "market_rejection": "v5_pool_age",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 0,
+            "insiderNetworks": null,
+            "rugged": false,
+            "score_normalised": 76
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          },
+          "reason": "v5_pool_age",
+          "tier": "REJECTED"
+        }
+      ],
+      "historical_filter_review": {
+        "at": 1794815410.0075321,
+        "groups": {
+          "v5_market_cap": {
+            "records": 66,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 0
+          },
+          "v5_pool_age": {
+            "records": 9,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 0
+          }
+        },
+        "filter_change": false,
+        "conclusion": "Insufficient point-in-time safety/24h coverage to infer missed safe opportunities. Bounds unchanged; selection bias applies."
+      },
+      "thresholds_changed": false
+    },
+    {
+      "at": 1794815693.5548396,
+      "mode": "READ ONLY; no delivery; no historical safety reconstruction",
+      "access": {
+        "helius": {
+          "configured": false
+        },
+        "birdeye": {
+          "configured": false
+        },
+        "jupiter": {
+          "configured": false,
+          "keyless_supported": true
+        },
+        "rugcheck": {
+          "configured": false,
+          "public_read_supported": true
+        },
+        "solana_rpc": {
+          "configured": true,
+          "public_fallback": true
+        },
+        "x": {
+          "configured": false,
+          "reads_enabled": false,
+          "requirement": "owner-enabled official X API bearer token with read entitlement; no paid access enabled"
+        }
+      },
+      "provider_status": {
+        "helius": {
+          "status": "not_configured"
+        },
+        "birdeye": {
+          "status": "not_configured"
+        },
+        "jupiter": {
+          "status": "ok",
+          "at": 1794815688.6901975
+        },
+        "rugcheck": {
+          "status": "ok",
+          "at": 1794815693.4086423
+        },
+        "configured_rpc": {
+          "status": "ok",
+          "at": 1794815693.5548096
+        }
+      },
+      "trending_count": 30,
+      "tokens": [
+        {
+          "mint": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 4897805.862646451,
+            "fdv": 4897805.862646451,
+            "circSupply": 20856.555382,
+            "totalSupply": 20856.555382,
+            "organicScore": 95.37971350872641,
+            "holderCount": 151574,
+            "updatedAt": "2026-11-16T07:54:33.797429352Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "6PTm7MkUmtsLU7w6dWrMHJAt8PnzoCgcZdKyTKEhUAPL",
+          "market_cap": 100,
+          "liquidity": 558671.94,
+          "pool_age_seconds": 5940222.823317289,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 11,
+            "insiderNetworks": [
+              {
+                "id": "vivid-blossom-tapir",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 48627063511,
+                "currentHolding": 7756668210,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 82
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "NVDAVuiB7hwd3m5Wa1JuHNovPaPG6BH1QNztbKFxNjv",
+          "name": "Nvidia - Backpack Securities",
+          "symbol": "NVDA",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 2655581.073437169,
+            "fdv": 2655581.073437169,
+            "circSupply": 16352.127242,
+            "totalSupply": 16352.127242,
+            "organicScore": 77.53681821106797,
+            "holderCount": 17293,
+            "updatedAt": "2026-11-16T07:54:42.226715955Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "5B2egsXDewp7f132hs8A98zanisKV62nsdbyhZb9vS8y",
+          "market_cap": 653039,
+          "liquidity": 486.01,
+          "pool_age_seconds": 4603591.823317289,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [
+            "priceChange.m5"
+          ],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 4,
+            "insiderNetworks": [
+              {
+                "id": "lively-flax-panther",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 780007420,
+                "currentHolding": 780007420,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 81
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "HkRQ6Qcadi5yuoNpZdA1Q7yVF3r7LdEmAw1aKkSxpump",
+          "name": "Marvin The Martian",
+          "symbol": "Marvin",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 553199.513160061,
+            "fdv": 553199.513160061,
+            "circSupply": 972736475.035506,
+            "totalSupply": 972736475.035506,
+            "organicScore": 75,
+            "holderCount": 3995,
+            "updatedAt": "2026-11-16T07:54:43.739803045Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "5dEBrzrm8F8aXNGkDR4qXEwXm11h62sJgPuPJMXHxCta",
+          "market_cap": 523441,
+          "liquidity": 69905.95,
+          "pool_age_seconds": 15104.823317289352,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 37,
+            "insiderNetworks": [
+              {
+                "id": "hungry-thistle-hippo",
+                "size": 7,
+                "type": "transfer",
+                "tokenAmount": 67435277255486,
+                "currentHolding": 67435277255486,
+                "activeAccounts": 7
+              },
+              {
+                "id": "zealous-navy-snake",
+                "size": 7,
+                "type": "transfer",
+                "tokenAmount": 14432670856798,
+                "currentHolding": 6666984030737,
+                "activeAccounts": 7
+              },
+              {
+                "id": "eager-tangerine-weevil",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 9371595183704,
+                "currentHolding": 9371595183704,
+                "activeAccounts": 4
+              },
+              {
+                "id": "intense-lime-ibis",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 5591867766179,
+                "currentHolding": 5591867766179,
+                "activeAccounts": 4
+              },
+              {
+                "id": "young-quartz-mole",
+                "size": 11,
+                "type": "transfer",
+                "tokenAmount": 2117555117733,
+                "currentHolding": 383523247233,
+                "activeAccounts": 11
+              },
+              {
+                "id": "puny-bronze-koala",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 1842508686326,
+                "currentHolding": 1183046530931,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "9a13W5HdqE95g3YE8Dk9wCHPucrCH33h6BTfdFvRpump",
+          "name": "plumber",
+          "symbol": "plumber",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 364665.6422240462,
+            "fdv": 364665.6422240462,
+            "circSupply": 966906283.210694,
+            "totalSupply": 966906283.210694,
+            "organicScore": 63.40148645757674,
+            "holderCount": 1592,
+            "updatedAt": "2026-11-16T07:54:35.981461722Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "HqyxyL1kgKijYfswbKR8tnTd1GX1AZbHFwRf3KJaqEq9",
+          "market_cap": 358416,
+          "liquidity": 56866.28,
+          "pool_age_seconds": 294550.82331728935,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 81,
+            "insiderNetworks": [
+              {
+                "id": "jumpy-charcoal-hedgehog",
+                "size": 63,
+                "type": "transfer",
+                "tokenAmount": 97308049479227,
+                "currentHolding": 37852061204609,
+                "activeAccounts": 63
+              },
+              {
+                "id": "fast-blossom-penguin",
+                "size": 6,
+                "type": "transfer",
+                "tokenAmount": 21134367925033,
+                "currentHolding": 15047944226854,
+                "activeAccounts": 6
+              },
+              {
+                "id": "wild-quartz-impala",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 12079425038631,
+                "currentHolding": 12079425038631,
+                "activeAccounts": 4
+              },
+              {
+                "id": "shy-latte-lobster",
+                "size": 8,
+                "type": "transfer",
+                "tokenAmount": 1332099294697,
+                "currentHolding": 750556494031,
+                "activeAccounts": 8
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+          "name": "NVIDIA xStock",
+          "symbol": "NVDAx",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 72328360.23485905,
+            "fdv": 72328360.23485905,
+            "circSupply": 444612.67631698324,
+            "totalSupply": 444612.67631698324,
+            "organicScore": 94.18211554340611,
+            "holderCount": 215805,
+            "updatedAt": "2026-11-16T07:54:42.226601536Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "49iMatQtoyabsYAQc8GafVq6aeBFVDxSRH44oiatyyw6",
+          "market_cap": 95207131,
+          "liquidity": 2947447.36,
+          "pool_age_seconds": 43394905.82331729,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 67,
+            "insiderNetworks": [
+              {
+                "id": "ancient-crimson-moth",
+                "size": 56,
+                "type": "transfer",
+                "tokenAmount": 163945710466923,
+                "currentHolding": 163777310466923,
+                "activeAccounts": 56
+              },
+              {
+                "id": "fierce-taupe-crocodile",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 28743385938,
+                "currentHolding": 4055541764,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 81
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+          "name": "SP500 xStock",
+          "symbol": "SPYx",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 72073791.69919312,
+            "fdv": 72073791.69919312,
+            "circSupply": 95942.11154498864,
+            "totalSupply": 95942.11154498864,
+            "organicScore": 71.84451134019307,
+            "holderCount": 84769,
+            "updatedAt": "2026-11-16T07:53:37.563534074Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "4pCZCVEiYyT4efNdXUdL2tJF8VGMgiMXrZWq6FiNXhRw",
+          "market_cap": 63150630,
+          "liquidity": 350397.76,
+          "pool_age_seconds": 20970777.82331729,
+          "market_rejection": "v5_pool_age",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 40,
+            "insiderNetworks": [
+              {
+                "id": "wild-yellow-kangaroo",
+                "size": 40,
+                "type": "transfer",
+                "tokenAmount": 19603208593327,
+                "currentHolding": 19603208593327,
+                "activeAccounts": 40
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 81
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_pool_age",
+          "tier": "REJECTED"
+        }
+      ],
+      "historical_filter_review": {
+        "at": 1794815693.554871,
+        "groups": {
+          "v5_market_cap": {
+            "records": 68,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 0
+          },
+          "v5_pool_age": {
+            "records": 9,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 0
+          }
+        },
+        "filter_change": false,
+        "conclusion": "Insufficient point-in-time safety/24h coverage to infer missed safe opportunities. Bounds unchanged; selection bias applies."
+      },
+      "thresholds_changed": false
+    },
+    {
+      "at": 1794815992.0442784,
+      "mode": "READ ONLY; no delivery; no historical safety reconstruction",
+      "access": {
+        "helius": {
+          "configured": false
+        },
+        "birdeye": {
+          "configured": false
+        },
+        "jupiter": {
+          "configured": false,
+          "keyless_supported": true
+        },
+        "rugcheck": {
+          "configured": false,
+          "public_read_supported": true
+        },
+        "solana_rpc": {
+          "configured": true,
+          "public_fallback": true
+        },
+        "x": {
+          "configured": false,
+          "reads_enabled": false,
+          "requirement": "owner-enabled official X API bearer token with read entitlement; no paid access enabled"
+        }
+      },
+      "provider_status": {
+        "helius": {
+          "status": "not_configured"
+        },
+        "birdeye": {
+          "status": "not_configured"
+        },
+        "jupiter": {
+          "status": "ok",
+          "at": 1794815988.5724826
+        },
+        "rugcheck": {
+          "status": "ok",
+          "at": 1794815992.019146
+        },
+        "configured_rpc": {
+          "status": "ok",
+          "at": 1794815992.0442462
+        }
+      },
+      "trending_count": 30,
+      "tokens": [
+        {
+          "mint": "98sMhvDwXj1RQi5c5Mndm3vPe9cBqPrbLaufMXFNMh5g",
+          "name": "HYPE",
+          "symbol": "HYPE",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 43077691.76057508,
+            "fdv": 43077691.76057508,
+            "circSupply": 645819.529489741,
+            "totalSupply": 645819.529489741,
+            "organicScore": 91.31360320332497,
+            "holderCount": 86442,
+            "updatedAt": "2026-11-16T07:59:37.468009803Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "6oQ9wVex4mKZti2GsGCfD8FWTMMC9PLQkztRU5cd6MK8",
+          "market_cap": 48107049,
+          "liquidity": 468724.37,
+          "pool_age_seconds": 33327663.63243079,
+          "market_rejection": "v5_pool_age",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 55021,
+            "insiderNetworks": [
+              {
+                "id": "smooth-jade-narwhal",
+                "size": 4159,
+                "type": "transfer",
+                "tokenAmount": 4179793254455940,
+                "currentHolding": 521027486731,
+                "activeAccounts": 4159
+              },
+              {
+                "id": "grumpy-rust-mouse",
+                "size": 7211,
+                "type": "transfer",
+                "tokenAmount": 4152999827818279,
+                "currentHolding": 865034796775,
+                "activeAccounts": 7211
+              },
+              {
+                "id": "tiny-scarlet-moth",
+                "size": 4064,
+                "type": "transfer",
+                "tokenAmount": 3561349501859961,
+                "currentHolding": 482622796911,
+                "activeAccounts": 4064
+              },
+              {
+                "id": "useful-sunset-crocodile",
+                "size": 13283,
+                "type": "transfer",
+                "tokenAmount": 3167166528713872,
+                "currentHolding": 476911086992,
+                "activeAccounts": 13283
+              },
+              {
+                "id": "fancy-gold-elephant",
+                "size": 4636,
+                "type": "transfer",
+                "tokenAmount": 3096398320723971,
+                "currentHolding": 107865400605,
+                "activeAccounts": 4636
+              },
+              {
+                "id": "dazzling-cerise-leopard",
+                "size": 6209,
+                "type": "transfer",
+                "tokenAmount": 3061736935932886,
+                "currentHolding": 512516147592,
+                "activeAccounts": 6209
+              },
+              {
+                "id": "hidden-caramel-chicken",
+                "size": 2732,
+                "type": "transfer",
+                "tokenAmount": 2969772503031794,
+                "currentHolding": 1115684747678,
+                "activeAccounts": 2732
+              },
+              {
+                "id": "radiant-turquoise-deer",
+                "size": 3642,
+                "type": "transfer",
+                "tokenAmount": 2656822405356889,
+                "currentHolding": 729695799329,
+                "activeAccounts": 3642
+              },
+              {
+                "id": "bitter-lemon-giraffe",
+                "size": 5276,
+                "type": "transfer",
+                "tokenAmount": 2643117792041014,
+                "currentHolding": 119258759092,
+                "activeAccounts": 5276
+              },
+              {
+                "id": "jolly-emerald-beetle",
+                "size": 3809,
+                "type": "transfer",
+                "tokenAmount": 2417380580649710,
+                "currentHolding": 1168982477815,
+                "activeAccounts": 3809
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 71
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          },
+          "reason": "v5_pool_age",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "NVDAVuiB7hwd3m5Wa1JuHNovPaPG6BH1QNztbKFxNjv",
+          "name": "Nvidia - Backpack Securities",
+          "symbol": "NVDA",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 2657503.7310774648,
+            "fdv": 2657503.7310774648,
+            "circSupply": 16343.401465,
+            "totalSupply": 16343.401465,
+            "organicScore": 77.53681821106797,
+            "holderCount": 17287,
+            "updatedAt": "2026-11-16T07:59:38.22708467Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "5B2egsXDewp7f132hs8A98zanisKV62nsdbyhZb9vS8y",
+          "market_cap": 653039,
+          "liquidity": 486.01,
+          "pool_age_seconds": 4603891.632430792,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [
+            "priceChange.m5"
+          ],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 4,
+            "insiderNetworks": [
+              {
+                "id": "lively-flax-panther",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 780007420,
+                "currentHolding": 780007420,
+                "activeAccounts": 4
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 81
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 4911243.312722219,
+            "fdv": 4911243.312722219,
+            "circSupply": 20856.553618,
+            "totalSupply": 20856.553618,
+            "organicScore": 95.37971350872641,
+            "holderCount": 151566,
+            "updatedAt": "2026-11-16T07:59:39.020362079Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "6PTm7MkUmtsLU7w6dWrMHJAt8PnzoCgcZdKyTKEhUAPL",
+          "market_cap": 101,
+          "liquidity": 557340.14,
+          "pool_age_seconds": 5940522.632430792,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 11,
+            "insiderNetworks": [
+              {
+                "id": "vivid-blossom-tapir",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 48627063511,
+                "currentHolding": 7756668210,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 82
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "7SL2VnfYsChvog5oQY9Nmtqu1wceaMiQzWoqoLQpump",
+          "name": "Nigga Its Over",
+          "symbol": "NIO",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 1327275.1105102976,
+            "fdv": 1327275.1105102976,
+            "circSupply": 952797013.329937,
+            "totalSupply": 952797013.329937,
+            "organicScore": 74.54424766015553,
+            "holderCount": 8302,
+            "updatedAt": "2026-11-16T07:59:07.934868998Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "B4Wmjc6PvjCtU3qSVS3eTT9Mr4M5V5jBkRQctWANTc71",
+          "market_cap": 1319882,
+          "liquidity": 128792.64,
+          "pool_age_seconds": 2217682.632430792,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 109,
+            "insiderNetworks": [
+              {
+                "id": "lively-vanilla-mosquito",
+                "size": 59,
+                "type": "transfer",
+                "tokenAmount": 27747811440581,
+                "currentHolding": 27747811440581,
+                "activeAccounts": 59
+              },
+              {
+                "id": "dazzling-denim-hedgehog",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 10292323199780,
+                "currentHolding": 10292323199780,
+                "activeAccounts": 4
+              },
+              {
+                "id": "proud-white-cougar",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 6444443000000,
+                "currentHolding": 6444443000000,
+                "activeAccounts": 4
+              },
+              {
+                "id": "clean-pear-lizard",
+                "size": 37,
+                "type": "transfer",
+                "tokenAmount": 3971102001437,
+                "currentHolding": 3971102001437,
+                "activeAccounts": 37
+              },
+              {
+                "id": "young-topaz-penguin",
+                "size": 5,
+                "type": "transfer",
+                "tokenAmount": 997390153164,
+                "currentHolding": 997390153164,
+                "activeAccounts": 5
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "4Ye6Y6Vaic8cyPdfW2f9PcLhXkysBtSmV84G8X7spump",
+          "name": "greg",
+          "symbol": "greg",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 247123.02936028113,
+            "fdv": 247123.02936028113,
+            "circSupply": 944805919.134309,
+            "totalSupply": 944805919.134309,
+            "organicScore": 58.8460168282577,
+            "holderCount": 815,
+            "updatedAt": "2026-11-16T07:59:40.25780037Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "4s8CAbVgaDHoPkkbitjdQZ4TfqXKuczHWdfy8HLVUbdQ",
+          "market_cap": 260108,
+          "liquidity": 38251.79,
+          "pool_age_seconds": 451925.63243079185,
+          "market_rejection": "weak_activity",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "insider_or_bundle_network_detected",
+          "insider_coverage": {
+            "graphInsidersDetected": 14,
+            "insiderNetworks": [
+              {
+                "id": "hollow-carmine-coyote",
+                "size": 4,
+                "type": "transfer",
+                "tokenAmount": 101381296469947,
+                "currentHolding": 101381296469947,
+                "activeAccounts": 4
+              },
+              {
+                "id": "sharp-umber-chicken",
+                "size": 5,
+                "type": "transfer",
+                "tokenAmount": 995000000000,
+                "currentHolding": 995000000000,
+                "activeAccounts": 5
+              },
+              {
+                "id": "dirty-sepia-fly",
+                "size": 5,
+                "type": "transfer",
+                "tokenAmount": 799576110998,
+                "currentHolding": 599576110998,
+                "activeAccounts": 5
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 1
+          },
+          "mint_audit": {
+            "complete": true,
+            "reject": null,
+            "extensions": [
+              {
+                "id": 18,
+                "name": "MetadataPointer"
+              },
+              {
+                "id": 19,
+                "name": "TokenMetadata"
+              }
+            ],
+            "program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+          },
+          "reason": "weak_activity",
+          "tier": "REJECTED"
+        },
+        {
+          "mint": "A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+          "name": "Zcash",
+          "symbol": "ZEC",
+          "trending_provider": "Jupiter toptrending/5m",
+          "token_reference": {
+            "mcap": 97835994.52483565,
+            "fdv": 97835994.52483565,
+            "circSupply": 108947.47159881,
+            "totalSupply": 108947.47159881,
+            "organicScore": 96.59488381470969,
+            "holderCount": 146235,
+            "updatedAt": "2026-11-16T07:59:27.667004319Z"
+          },
+          "verified_alert": false,
+          "security_complete": false,
+          "pair": "2TAgfogn8JRwwTnsGKUa6WUT5Xdv1iMEzfEDMor68X9C",
+          "market_cap": 22211,
+          "liquidity": 3608754.3,
+          "pool_age_seconds": 33971573.63243079,
+          "market_rejection": "v5_market_cap_conflict",
+          "missing_fields": [],
+          "narrative_rejection": "narrative_unverified",
+          "narrative": null,
+          "provider_security_rejection": "report_authority_active_or_unknown",
+          "insider_coverage": {
+            "graphInsidersDetected": 29,
+            "insiderNetworks": [
+              {
+                "id": "dark-magenta-quail",
+                "size": 5,
+                "type": "transfer",
+                "tokenAmount": 256461636742,
+                "currentHolding": 167026346602,
+                "activeAccounts": 5
+              },
+              {
+                "id": "peaceful-jasmine-puffin",
+                "size": 13,
+                "type": "trade",
+                "tokenAmount": 24746472929,
+                "currentHolding": 1872987057,
+                "activeAccounts": 13
+              },
+              {
+                "id": "tall-taupe-cat",
+                "size": 11,
+                "type": "trade",
+                "tokenAmount": 23949849623,
+                "currentHolding": 7617767083,
+                "activeAccounts": 11
+              }
+            ],
+            "rugged": false,
+            "score_normalised": 71
+          },
+          "mint_audit": {
+            "complete": false,
+            "reject": "mint_authority_active",
+            "extensions": [],
+            "program": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          },
+          "reason": "v5_market_cap_conflict",
+          "tier": "REJECTED"
+        }
+      ],
+      "historical_filter_review": {
+        "at": 1794815992.0443106,
+        "groups": {
+          "v5_market_cap": {
+            "records": 77,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 9
+          },
+          "v5_pool_age": {
+            "records": 9,
+            "observed_24h": 0,
+            "security_complete_at_first_observation": 0,
+            "original_cap_age_archived": 0
+          }
+        },
+        "filter_change": false,
+        "conclusion": "Insufficient point-in-time safety/24h coverage to infer missed safe opportunities. Bounds unchanged; selection bias applies."
+      },
+      "thresholds_changed": false
+    }
+  ],
+  "ci_cloudflare_access": {
+    "secret_present": true,
+    "account_matches_existing": true,
+    "checks": {
+      "verify_user": {
+        "http": 200,
+        "success": true
+      },
+      "list_accounts": {
+        "http": 403,
+        "success": false
+      },
+      "scheduler_settings": {
+        "http": 401,
+        "success": false
+      },
+      "scheduler_cron": {
+        "http": 401,
+        "success": false
+      },
+      "kv_metadata": {
+        "http": 401,
+        "success": false
+      }
+    },
+    "writes_attempted": false
+  },
+  "cloudflare": {
+    "worker": "mail-solana-scheduler",
+    "cron": "*/5 * * * *",
+    "existing_version": "aff5f5f0-79e3-480f-86fb-06e66928dd0c",
+    "deployment": "0468af17-1ae3-4e7b-9453-e3baf4fa63c9",
+    "worker_redeployed": false,
+    "scanner_deployed_via_main": true
+  },
+  "telegram": {
+    "bot": "@SolHawkHunter917Bot",
+    "getMe_verified": true,
+    "destination_verified": true,
+    "enabled": true,
+    "controls_retained": true,
+    "health_interval_seconds": 21600,
+    "last_health_message_id": 408,
+    "new_health_notification": {
+      "status": "not_due"
+    },
+    "no_artificial_signal": true
+  },
+  "limitations": [
+    "Still degraded from Gecko provider backoff; no full recovery claim.",
+    "Helius-specific, Birdeye and X keys unavailable; only installed adapters, not claimed live access.",
+    "CI Cloudflare token rotation unresolved because account resources reject stored token, token administration is denied to the connection, and dashboard is signed out.",
+    "Live case studies are provider rankings/snapshots, not backtests or accusations of fraud.",
+    "Historical cap/age review lacks original safety and24h coverage, filters unchanged.",
+    "NARRATIVE WATCH internal-only means not Telegram; existing repository and its state are public."
+  ],
+  "paid_plan_purchased": false,
+  "auto_trading": false
+}

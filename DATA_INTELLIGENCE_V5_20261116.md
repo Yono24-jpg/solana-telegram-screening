@@ -42,3 +42,52 @@ https://www.helius.dev/docs
 https://solana.com/docs/rpc/http
 
 CI, live token cases and production evidence are appended after verification.
+
+## Additional diagnosis and safety checks
+
+Direct CI diagnosis43826836202: existing secret present; user-token verify200; account list403; scheduler settings/cron/KV metadata401 on the known existing account. The token is authenticated but cannot access the required account resources. This is not fixed by omitting account enumeration or suppressing a failure. A correctly scoped account/resource token must replace the CI secret through an authorized secret-management path.
+
+Independent fresh Jupiter circulating-cap evidence differing >20% from a positive pool-provider cap now marks valuationConflict; all hunter modes reject v5_market_cap_conflict. The convenient lower cap is not selected. It requires matching CA, recent timestamp, circulating supply consistency and pool-price agreement before declaring a cap conflict.
+
+Integration evidence before final merge: live audit saw356 pools,13 caps recovered; subsequent333 pools,14 recovered,5 valuation conflicts blocked. Internal source-backed watch106–108,0 verified alerts. Actual source failures and partial access remain visible. These are different live populations, not a controlled performance comparison.
+
+## Final verified production — 17:01 WIT
+
+[PR16](https://github.com/Yono24-jpg/solana-telegram-screening/pull/16) and [PR17](https://github.com/Yono24-jpg/solana-telegram-screening/pull/17) merged. Final scanner merge `bc584f04af7304aa86e426c1379f664c196a4670`.
+
+[Final integration43827705831](https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/43827705831):252 Python +30 Workers/runtime +28 legacy web = **310 passed,0 failed**. [Production43827883091](https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/43827883091) succeeds;252 Python regressions repeat; getMe confirms original bot, channel verified, STATE_PERSIST_OK. ON/OFF stays ON, health6h not_due; existing health message408 retained. No artificial Telegram alert.
+
+| Operational observation | Before43826700270 | Final43827883091 |
+|---|---:|---:|
+| Pools |334|288|
+| New Jupiter circulating caps |0|16|
+| Additional full hydration recoveries |0|2 (160→158 incomplete)|
+| Independently evidenced cap conflicts rejected |not implemented|4|
+| Explicit internal NARRATIVE WATCH |not implemented|172|
+| VERIFIED ALERT / Telegram candidates |0|0|
+| Overall health |degraded|degraded (Gecko provider_backoff)|
+
+Jupiter enrichment precedes legacy hydration, so16 recovered cap fields and2 additional complete snapshots are different metrics and must not be added as18 fully recovered pools. Populations/time differ, so this comparison does not prove improved opportunity capture or returns. Remaining missing fields overlap:priceChange.m5=121,liquidity69,marketCap47,price17,creation3. No zero fill.
+
+Final provider status confirms Jupiter/public RugCheck/configured Solana RPC success. Specific Helius and Birdeye keys absent; X key absent/disabled. All three stay explicitly inactive. Coverage partial. Final5m observations104/missed135;15m97/missed116;1h145/missed2;24h0. No reconstruction of old missed samples.
+
+Source-health follow-up deliberately includes hydration failures: first production43827273483 showed discovery operational even while hydration returned429; PR17 prevents this from being reported as fully healthy. Current pipeline operational plus health degraded is intentional evidence, not a cosmetic green status.
+
+### Actual trending-token examples
+
+All candidates below were rejected; exact mint/pair/timestamps and report fields are in `audit/data-intelligence-20261116.json`. Trending means Jupiter ranking, not verified organic spread. Low provider scores do not bypass network risks.
+
+| Token and audit round | Market/narrative finding | Independent security finding |
+|---|---|---|
+| Marvin The Martian (first/third audit) |weak_activity; narrative_unverified|RugCheck reported37 insiders/network members; insider_or_bundle_network_detected; metadata-only Token-2022 extension audit passed, not full security|
+| WIGGLES (first audit) |weak_activity; narrative_unverified|RugCheck reported55 insiders/network members; rejected despite low normalized score1|
+| TTWO (subsequent audit) |v5_market_cap_conflict|mint authority active; stock-like token is not presumed an official meme narrative|
+| NVDA (subsequent audit) |v5_market_cap_conflict|mint authority active|
+| NIO and greg (final audit) |weak_activity|insider_or_bundle_network_detected|
+| HYPE (final audit) |v5_pool_age|report_authority_active_or_unknown|
+
+These are screening decisions, not assertions a token is fraudulent. No token is declared fully safe or able to sell merely from a mint-extension pass. First production also exercised a live metadata-only Token-2022 mint that passed base checks but was rejected wash_sample_risky_or_incomplete before alerting.
+
+Historical cap/age review found no adequate original-safety/24h sample to validate alternative bounds. Filters unchanged; opportunity-cost profitability unvalidated. Original cap/age now archived prospectively. Research storage is bounded; internal-only refers to notification behavior, not private storage: this existing repository/state is public.
+
+Cloudflare connected API re-verifies unchanged5m cron and active Worker version; main Python code is deployed through Actions, so no replacement Worker/bot. Telemetry16:41/16:46/16:51WIT accepted dispatch204;16:56WIT correctly suppressed an already-active production scan. Full structured proof includes the final source status and CI scope diagnosis. The CI-token issue remains blocked: official read-only audit returned verify200, account-list403, targeted scheduler/KV401. Owner-authorized replacement must be scoped to the actual account and entered directly in GitHub Actions secrets; never in chat. No all-access-restored claim.
