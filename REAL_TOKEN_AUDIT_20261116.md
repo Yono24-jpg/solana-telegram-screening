@@ -216,3 +216,12 @@ Transaksi FiveM memperlihatkan penjualan sukses pada sampel, tetapi pola roundtr
 Validasi: 174 tes Python lulus; audit live tanpa akses Telegram berhasil. File aturan keamanan `security_v3.py`, `evidence.py`, `screening_rules.py` dan `bot.py` tidak diubah pada perbaikan ini. Cron Cloudflare tetap lima menit.
 
 [Bukti JSON ringkas](audit/real-token-20261116.json) memuat snapshot dan komponen independen. Artefak lengkap tersedia pada run GitHub Actions audit (retensi 14 hari).
+
+
+## Bukti deployment perbaikan
+
+- PR #11 sudah digabungkan ke `main`, commit deployment `dc7a10d931e5b436585c3e22c47ff9c7554ca1e9`.
+- [GitHub Actions produksi 43807503898](https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/43807503898) berhasil: 174 tes Python, kontrol Telegram, scan, penyimpanan state dan unggah laporan semuanya sukses.
+- Scan produksi sekitar 14.01 WIT memeriksa **361 pool**, mencatat **4 entri retrieval CA**, kedua halaman trending tersedia, dan **0 alert** dikirim.
+- Cron Cloudflare tetap `*/5 * * * *`. Tick terbaru mengenali run produksi yang sedang aktif dan mengembalikan `scanner_already_active`, sehingga tidak membuat scan ganda. Dua tick sebelumnya mencatat `dispatch_accepted` HTTP 204.
+- Pengujian ulang data tidak menghasilkan snapshot lengkap baru pada putaran tersebut (40 pool dicoba ulang, 0 pulih). Kolom yang provider tetap tidak menyediakan tidak dikarang atau diisi FDV; kandidat tetap ditolak.
