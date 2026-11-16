@@ -1,0 +1,145 @@
+{
+  "verified_at": "2026-11-16T06:01:25Z",
+  "repository": "Yono24-jpg/solana-telegram-screening",
+  "pull_request": 12,
+  "source_merge_commit": "ded128d310cbc65843ecef7762924a19b2da01a6",
+  "source_head_commit": "4951931b2eaea304fa1c3bb873bdac35a9576bf0",
+  "tests": {
+    "python": 202,
+    "scheduler": 28,
+    "existing_web_scanner": 28,
+    "failures": 0,
+    "read_only_run": 43813502068,
+    "scheduler_production_run": 43813587149
+  },
+  "read_only_live": {
+    "run_id": 43813502068,
+    "seen": 283,
+    "sent": 0,
+    "discovery": {
+      "batch_failures": 0,
+      "configured_ca_watchlist_count": 0,
+      "dex_pool_count": 151,
+      "dynamic_search_pools": 140,
+      "gecko_independent_pools": 38,
+      "gecko_native_pools": 81,
+      "new_pool_addresses": 81,
+      "sources": {
+        "dex_ads": "ok",
+        "dex_latest_boosts": "ok",
+        "dex_profiles": "ok",
+        "dex_takeovers": "ok",
+        "dex_top_boosts": "ok",
+        "gecko_1": "ok",
+        "gecko_2": "ok",
+        "gecko_3": "ok",
+        "gecko_trending_1": "ok",
+        "gecko_trending_2": "ok"
+      },
+      "token_addresses": 76
+    },
+    "sources": {
+      "BR:games": "ok",
+      "CN:global": "no_recent_articles",
+      "ID:open_world": "ok",
+      "JP:global": "ok",
+      "KR:global": "ok",
+      "US:community": "ok",
+      "US:open_world": "ok"
+    },
+    "social": {
+      "contracts": 0,
+      "pools": 0,
+      "sources": {
+        "Anthropic": "unavailable",
+        "Kecerdasan Buatan": "unavailable",
+        "Take-Two": "unavailable"
+      },
+      "status": "unavailable",
+      "trust": "unverified leads only"
+    },
+    "rejections": {
+      "already_extended_24h": 1,
+      "late_or_falling_price": 4,
+      "liquidity": 5,
+      "narrative_unverified": 1,
+      "v5_market_cap": 114,
+      "v5_market_missing": 52,
+      "v5_pool_age": 33,
+      "v5_viral_acceleration_unverified": 1,
+      "v5_volume_h1": 50,
+      "weak_activity": 22
+    }
+  },
+  "production": {
+    "run_id": 43813587121,
+    "version": "5.0",
+    "seen": 323,
+    "sent": 0,
+    "health": "degraded",
+    "health_notification": {
+      "message_id": 408,
+      "status": "sent"
+    },
+    "ai": {
+      "entities": [],
+      "model_used": "@cf/meta/llama-3.3-70b-instruct-sd",
+      "requested_model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      "status": "ok",
+      "via": "workers_ai_binding"
+    },
+    "rejections": {
+      "already_extended_24h": 1,
+      "late_or_falling_price": 4,
+      "liquidity": 6,
+      "v5_market_cap": 119,
+      "v5_market_missing": 84,
+      "v5_pool_age": 32,
+      "v5_volume_h1": 50,
+      "weak_activity": 27
+    },
+    "evaluations": {
+      "300": 0,
+      "900": 0,
+      "3600": 0,
+      "86400": 0
+    },
+    "durable_state": {
+      "enabled": true,
+      "version": "5.0",
+      "health": "degraded",
+      "memory": 30,
+      "health_delivery": [
+        {
+          "key": "health:83092",
+          "at": 1794808681.7347965,
+          "status": "sent",
+          "message_id": 408
+        }
+      ],
+      "run_id": "43813587121"
+    }
+  },
+  "cloudflare": {
+    "worker": "mail-solana-scheduler",
+    "deployment_id": "79aa45c1441c4051958d577634ac8b15",
+    "deployed_at": "2026-11-16T05:57:59.480067Z",
+    "cron": "*/5 * * * *",
+    "bindings_preserved": true,
+    "observed_tick": {
+      "at": "2026-11-16T06:01:00.770Z",
+      "slot": 5982696,
+      "outcome": "recent_scanner_run",
+      "run_id": 43813587121,
+      "version": "79aa45c1-441c-4051-958d-577634ac8b15"
+    }
+  },
+  "limitations": [
+    "Public Bluesky searches unavailable during live tests; no access bypass attempted.",
+    "China feed returned no recent articles; other five locales returned news.",
+    "No candidates reached final security in these live cycles; security adversarial paths covered by offline tests.",
+    "No historic pre-pump performance or completed 24-hour v5 outcomes claimed.",
+    "Image/video semantic recognition, complete influencer monitoring and organic promotion verification are not available.",
+    "No automatic trading; no guaranteed rug-pull safety."
+  ]
+}
