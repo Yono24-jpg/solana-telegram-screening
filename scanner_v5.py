@@ -193,6 +193,7 @@ def run(state,chat,api,dry_run=False):
     report['provider_status']=providers.status
     report['rpc_usage']=providers.usage()
     report['birdeye_usage']=providers.bird.report()
+    report['provider_limits']={k:v['status'] for k,v in providers.status.items() if v.get('status') in ('cycle_budget','local_cu_budget')}
     failures=data_intelligence.source_failures(report,feed)
     report['health']='degraded' if not pools or failures else 'ok'
     report['source_failures']=failures

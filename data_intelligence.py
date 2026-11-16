@@ -237,5 +237,8 @@ def source_failures(report,feed):
             failures['hydration:'+name]=status
     for name,row in report.get('provider_status',{}).items():
         status=row.get('status')
+        if name=='birdeye' and status in ('cycle_budget','local_cu_budget'):continue
         if status not in ('ok','not_configured','local_spacing'):failures['provider:'+name]=status
+    if report.get('market_hydration',{}).get('incomplete_after',0)>0:
+        failures['market_data']='incomplete_mandatory_pool_fields'
     return failures
