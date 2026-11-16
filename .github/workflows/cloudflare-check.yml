@@ -1,8 +1,5 @@
 name: Cloudflare Operational Check
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/cloudflare-check.yml']
   workflow_dispatch:
 permissions:
   contents: read
