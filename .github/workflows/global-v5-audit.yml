@@ -1,7 +1,7 @@
 name: Global v5 read-only integration
 on:
   push:
-    branches: ['upgrade/global-intelligence-v5-20261116', 'upgrade/v5-followup-20261116', 'upgrade/v5-repair-20261116', 'upgrade/v5-data-intelligence-20261116']
+    branches: ['upgrade/global-intelligence-v5-20261116', 'upgrade/v5-followup-20261116', 'upgrade/v5-repair-20261116', 'upgrade/v5-data-intelligence-20261116', 'upgrade/helius-quota-20261116']
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,6 +41,7 @@ jobs:
         run: |
           python3 v5_live_audit.py
           python3 data_intelligence_audit.py
+          python3 helius_audit.py
       - uses: actions/upload-artifact@v6
         if: always()
         with:
