@@ -116,7 +116,7 @@ def has_pool_swap(tx, pair):
     return False
 
 
-def transaction_sample(pool, buyers, api, now):
+def transaction_sample(pool, buyers, api, now, creator=None):
     mint = pool['baseToken']['address']; pair = pool['pairAddress']
     sample = buyers.get('transactions', [])
     if not isinstance(sample,list): raise EvidenceMissing('trade_sample_unavailable')
@@ -135,7 +135,7 @@ def transaction_sample(pool, buyers, api, now):
             tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
             return row, tx
         except Exception: return row, None
-    slots = defaultdict(set); cosigners = defaultdict(set); sellers = set();large=[]
+    slots = defaultdict(set); cosigners = defaultdict(set); sellers = set();buyers_seen=set();large=[]
     with ThreadPoolExecutor(max_workers=4) as executor:
         for row, tx in executor.map(read,picks):
             if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict): raise EvidenceMissing('trade_transaction_missing')
@@ -145,6 +145,8 @@ def transaction_sample(pool, buyers, api, now):
             keys = tx['transaction']['message']['accountKeys']
             if not isinstance(keys,list) or not all(isinstance(k,dict) for k in keys): raise EvidenceMissing('trade_keys_unavailable')
             addresses = [k.get('pubkey') for k in keys]; wallet = row['wallet']
+            if creator and wallet!=creator and any(k.get('pubkey')==creator and k.get('signer') is True for k in keys):
+                return {'reject':'creator_cosigned_sample_trade'}
             if pair not in addresses or not any(k.get('pubkey')==wallet and k.get('signer') is True for k in keys): raise EvidenceMissing('trade_pool_or_signer_mismatch')
             pre = owner_balances(meta.get('preTokenBalances'),wallet,mint); post = owner_balances(meta.get('postTokenBalances'),wallet,mint)
             if row['kind']=='sell':
@@ -157,6 +159,7 @@ def transaction_sample(pool, buyers, api, now):
                 sellers.add(wallet)
             else:
                 if post <= pre: raise EvidenceMissing('buy_credit_unverified')
+                buyers_seen.add(wallet)
                 slots[slot].add(wallet)
                 for k in keys:
                     if k.get('signer') is True and k.get('pubkey')!=wallet: cosigners[k['pubkey']].add(wallet)
@@ -165,6 +168,8 @@ def transaction_sample(pool, buyers, api, now):
                               'transaction_finalized':True,'usd_value_independently_verified':False})
     if max((len(v) for v in slots.values()),default=0)>=4 or max((len(v) for v in cosigners.values()),default=0)>=4:
         return {'reject':'bundled_slot_or_shared_signer_pattern'}
+    if len(sellers & buyers_seen)>=3:
+        return {'reject':'repeated_roundtrip_wallet_pattern','wallets':len(sellers & buyers_seen),'scope':'same sampled wallets buying and selling in finalized five-minute swaps; conservative rejection'}
     return {'reject':None,'finalized_sells':len(sellers),'finalized_buys':12,'sample_limit':15,'large_trades':large[:10],
             'caveat':'Sampel transaksi, bukan pemetaan semua insider; jual setiap wallet tidak dijamin.'}
 
@@ -242,7 +247,7 @@ def inspect(pool, sec, buyers, api, now, extension_proof=None):
                                     'lp_locked_pct':next(m['lp']['lpLockedPct'] for m in report['markets'] if m['pubkey']==pool['pairAddress'])}
         developer = developer_check(report,api,time.time()); out['checks']['developer'] = developer
         if developer.get('reject'): raise EvidenceMissing(developer['reject'])
-        trades = transaction_sample(pool,buyers,api,time.time()); out['checks']['transactions'] = trades
+        trades = transaction_sample(pool,buyers,api,time.time(),creator=report['creator']); out['checks']['transactions'] = trades
         if trades.get('reject'): raise EvidenceMissing(trades['reject'])
         funding=funding_check(report,buyers,api,time.time());out['checks']['funding']=funding
         if funding.get('reject'):raise EvidenceMissing(funding['reject'])

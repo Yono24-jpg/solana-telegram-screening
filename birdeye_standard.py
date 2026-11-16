@@ -108,8 +108,11 @@ class Standard:
             return 0
         pool['marketCap']=cap;pool['marketCapEvidence']=proof;self.stats['recovered_cap_fields']+=1;return 1
     def enrich(self,pools):
-        targets=[p for p in pools if amount(p.get('marketCap')) is None or amount(p.get('priceUsd')) is None]
-        targets.sort(key=lambda p:-(amount((p.get('liquidity') or {}).get('usd')) or 0))
+        from market_data import v3_missing_fields,get
+        targets=[p for p in pools if v3_missing_fields(p)==['marketCap'] and (amount(get(p,'liquidity.usd')) or 0)>=10000
+                 and (amount(get(p,'volume.h1')) or 0)>=5000 and amount(p.get('priceUsd')) is not None]
+        targets.sort(key=lambda p:(time.time()-(amount(p.get('pairCreatedAt')) or 0)/1000>3600,-(amount(get(p,'volume.h1')) or 0)))
+        self.stats['eligible_cap_targets']=len(targets)
         seen=set()
         for p in targets:
             mint=(p.get('baseToken') or {}).get('address')

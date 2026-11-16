@@ -99,7 +99,7 @@ class Narratives(unittest.TestCase):
     def test_outage_honest_no_invented_entities(self):
         with patch.object(evidence,'public_read',side_effect=TimeoutError()),patch.dict(os.environ,{'ACTIONS_ID_TOKEN_REQUEST_TOKEN':''}):
             f=intel.collect(bot,{},NOW)
-        self.assertFalse(f['llm_used']);self.assertEqual(f['trends'],[]);self.assertEqual(len(f['sources']),7)
+        self.assertFalse(f['llm_used']);self.assertEqual(f['trends'],[]);self.assertGreaterEqual(len(f['sources']),7);self.assertLessEqual(len(f['sources']),10)
 
 
 class Modes(unittest.TestCase):

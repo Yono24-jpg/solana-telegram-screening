@@ -167,7 +167,7 @@ class Client:
         if not address(mint):raise Unavailable('invalid_mint')
         key=os.environ.get('RUGCHECK_BEARER_TOKEN')
         return self.request('rugcheck',RUG+'/v1/tokens/'+mint+'/report'+('/summary' if summary else ''),headers={'Authorization':key if key.startswith('Bearer ') else 'Bearer '+key} if key else None)
-    def enrich(self,pools):
+    def enrich(self,pools,use_birdeye=True):
         pending=[p for p in pools if amount(p.get('marketCap')) is None and address((p.get('baseToken') or {}).get('address'))]
         rows=self.token_rows([(p.get('baseToken') or {})['address'] for p in pending])
         recovered=0
@@ -180,7 +180,7 @@ class Client:
             proof=cap_proof(row,mint,pool,time.time());cap=amount(pool.get('marketCap'))
             if proof and cap is not None and cap>0 and abs(cap-proof['usd'])/proof['usd']>.2:
                 pool['valuationConflict']=True;pool['valuationConflictEvidence']={'primary_cap':cap,'reference':proof};conflicts+=1
-        bird=self.bird.enrich(pools)
+        bird=self.bird.enrich(pools) if use_birdeye else self.bird.report()
         return {'requested_mints':len(set(p['baseToken']['address'] for p in pending[:30])),'cap_recovered':recovered,
                 'birdeye_reads':bird['requests'],'birdeye':bird,
                 'cap_conflicts':conflicts,
@@ -239,6 +239,6 @@ def source_failures(report,feed):
         status=row.get('status')
         if name=='birdeye' and status in ('cycle_budget','local_cu_budget'):continue
         if status not in ('ok','not_configured','local_spacing'):failures['provider:'+name]=status
-    if report.get('market_hydration',{}).get('incomplete_after',0)>0:
+    if report.get('final_incomplete_pools',report.get('market_hydration',{}).get('incomplete_after',0))>0:
         failures['market_data']='incomplete_mandatory_pool_fields'
     return failures

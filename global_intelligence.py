@@ -91,6 +91,8 @@ def trends(articles, ai, now, previous=None):
             'dynamic_category':'emergent:'+normalize(label),
             'score':min(100,35+10*min(len(hosts),3)+3*min(len(titles),5)+5*min(fresh,4)),
             'publisher_count':len(hosts),'article_count':len(titles),'virality_score':None,
+            'regions':sorted({a.get('region','unknown') for a in hits}),
+            'articles_observed_last_hour':sum(0<=now-a.get('observed_at',now)<=3600 for a in hits),
             'sources':sorted(hits,key=lambda a:-a['published_at'])[:4],
             'attention_basis':'distinct publisher domain families; corporate independence unverified; social virality unmeasured'})
     return sorted(found,key=lambda x:(-x['score'],-len(normalize(x['label']))))[:60]
@@ -98,13 +100,16 @@ def trends(articles, ai, now, previous=None):
 
 def collect(api, state, now):
     old=state.get('global_feed_v5',{})
-    if 0<=now-old.get('at',0)<600:
+    if old.get('retrieval_version')=='5.1' and 0<=now-old.get('at',0)<600:
         value=copy.deepcopy(old['value']); value['trends']=trends(value['articles'],value.get('ai',{}),now); return value
     offset=int(now//600)%len(QUERIES)
     jobs=[]
     # Always cover six locales; rotate broad categories and an unbounded-news query.
     for i,region in enumerate(REGIONS): jobs.append((region,*QUERIES[(offset+i)%len(QUERIES)]))
     jobs.append((REGIONS[0],'open_world','trending viral news'))
+    # Priority subjects do not wait for a complete fourteen-query rotation.
+    for category,query in [('games','game launch release trailer'),('ai','artificial intelligence new technology'),('screen','anime donghua movie premiere')]:
+        if not any(j[0]==REGIONS[0] and j[1]==category for j in jobs):jobs.append((REGIONS[0],category,query))
     def read(job):
         (gl,hl,lang),category,query=job
         native={'CN':'热搜 OR 游戏 OR 动漫 OR 人工智能','JP':'話題 OR ゲーム OR アニメ','KR':'화제 OR 게임 OR 인공지능','ID':'viral OR gim OR kecerdasan buatan','BR':'viral OR jogos OR inteligência artificial'}
@@ -142,7 +147,7 @@ def collect(api, state, now):
     value={'articles':articles,'sources':status,'ai':ai,'trends':trends(articles,ai,now),
            'engine':'multilingual_evidence_rules_v5', 'llm_used':ai.get('status')=='ok',
            'coverage':'sampled public news, 6 rotating locales; not complete social/global coverage'}
-    state['global_feed_v5']={'at':now,'value':value}
+    state['global_feed_v5']={'at':now,'value':value,'retrieval_version':'5.1'}
     return value
 
 

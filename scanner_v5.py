@@ -25,7 +25,7 @@ def render(pool,m,sec,social,buyers,creation,tier):
     n=pool['_narrative_v3']; safety=pool['_security_v3']; mint=pool['baseToken']['address']; pair=pool['pairAddress']
     sources='\n'.join('• <a href="'+esc(a['url'])+'">'+esc(a['publisher'])+'</a>: '+esc(a['title'][:100]) for a in n['sources'][:2])
     scores=' | '.join(k+': '+('belum terukur' if v is None else str(v)+'/100') for k,v in pool['_scores_v5'].items())
-    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.0</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
+    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.1</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
             f'Mode: {esc(", ".join(m["modes"]))}\nUmur pool {m["age_seconds"]/60:.1f} menit\n'
             f'MC ${m["cap"]:,.0f} | LP ${m["lp"]:,.0f}\nVolume 1h ${pool["volume"]["h1"]:,.0f}\n'
             f'BUY/SELL 5m {m["buys"]}/{m["sells"]} ({m["buys"]/max(m["sells"],1):.2f}×)\n'
@@ -46,11 +46,11 @@ def health(state,api,chat,report):
     if state['delivery'].get(key,{}).get('reservation')!=claim: return {'status':'already_reserved'}
     rejects=', '.join(k+': '+str(v) for k,v in sorted(report.get('rejected',{}).items(),key=lambda x:-x[1])[:6]) or 'tidak ada / scanner OFF'
     ai=report.get('narrative',{}).get('ai',{})
-    text=(f'🩺 MAIL Hunter v5.0 — laporan kesehatan 6 jam\n'
+    text=(f'🩺 MAIL Hunter v5.1 — laporan kesehatan 6 jam\n'
           f'Scanner: {"ON" if state.get("enabled") else "OFF"} | {report.get("health","unknown")}\n'
           f'Pool: {report.get("seen",0)} | Kandidat terkirim: {report.get("sent",0)}\n'
           f'Penolakan: {rejects}\nAI: {ai.get("status","unavailable")} | Model: {ai.get("model_used") or "tidak digunakan"}\n'
-          f'Data kosong setelah fallback: {report.get("market_hydration",{}).get("incomplete_after",0)} | Watch internal: {report.get("research_tiers",{}).get("NARRATIVE WATCH",0)}\n'
+          f'Data kosong setelah fallback: {report.get("final_incomplete_pools",report.get("market_hydration",{}).get("incomplete_after",0))} | Watch internal: {report.get("research_tiers",{}).get("NARRATIVE WATCH",0)}\n'
           f'Cakupan penyedia: {report.get("provider_coverage","belum diperiksa")}\n'
           f'Run: {os.environ.get("GITHUB_RUN_ID","local")}\n'
           'Cakupan: sampel berita global; akses sosial terbatas. Data keamanan penting yang kosong menyebabkan penolakan. ALERT ONLY.')
@@ -81,7 +81,8 @@ def observe(state,pools,now):
 
 def run(state,chat,api,dry_run=False):
     now=time.time(); migrate(state,now)
-    report={'version':'5.0','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
+    os.environ['X_READS_ENABLED']='0'  # Owner policy: paid X reads remain OFF.
+    report={'version':'5.1','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
             'security_checks':[],'trigger':os.environ.get('GITHUB_EVENT_NAME','local'),'run_id':os.environ.get('GITHUB_RUN_ID'),
             'capabilities':{'images':'not_available','influencer_pfp':'not_available_without_account_access',
                 'x_reads_enabled':os.environ.get('X_READS_ENABLED')=='1' and bool(os.environ.get('X_BEARER_TOKEN')),
@@ -101,16 +102,21 @@ def run(state,chat,api,dry_run=False):
         except Exception:report['helius_probe']={'valid_finalized_slot':False,'helius_used':False}
     # Due price windows run before news/social retrieval can consume the scan budget.
     gecko=market_data.GeckoClient(api,state)
+    discovery_started=time.monotonic()
+    pools,report['discovery']=legacy.discover(api,gecko)
+    report['discovery_timing']={'seconds_to_initial_pools':round(time.monotonic()-discovery_started,3),
+        'started_after_scan_seconds':round(time.time()-now-(time.monotonic()-discovery_started),3),
+        'under_1h_pools':sum(0<=time.time()-(market_data.amount(p.get('pairCreatedAt')) or 0)/1000<=3600 for p in pools),
+        'scope':'five-minute polling; source indexing latency remains unknown'}
     original_deadline=api.REQUEST_DEADLINE
     early_deadline=min(original_deadline or float('inf'),time.monotonic()+20)
     api.REQUEST_DEADLINE=early_deadline
-    try:report['evaluation_early']=hunter_memory.followup(state,[],api,None,early_deadline)
+    try:report['evaluation_early']=hunter_memory.followup(state,pools,api,None,early_deadline)
     finally:api.REQUEST_DEADLINE=original_deadline
     trending=providers.trending()
     report['jupiter_trending']={'tokens':len(trending),'scope':'provider ranking, not proof of social virality'}
     feed=intelligence.collect(api,state,now)
     report['narrative']={k:v for k,v in feed.items() if k!='articles'}
-    pools,report['discovery']=legacy.discover(api,gecko)
     if trending:
         try:
             wanted={r['id'] for r in trending};raw=api.request(api.DEX+'/tokens/v1/solana/'+','.join(sorted(wanted)))
@@ -119,9 +125,11 @@ def run(state,chat,api,dry_run=False):
     found=intelligence.search_pools(api,feed,time.time()); report['discovery']['dynamic_search_pools']=len(found)
     social_pools,report['social_discovery']=social_intelligence.discover_contracts(api,feed,time.time())
     pools=market_data.merge_pools(pools+found+social_pools)
-    report['provider_enrichment']=providers.enrich(pools)
+    report['provider_enrichment']=providers.enrich(pools,use_birdeye=False)
     pools,report['market_hydration']=market_data.hydrate_incomplete(pools,api,gecko,time.time())
     pools=market_data.refresh_watchlist(pools,state,api,gecko,time.time(),max_age=hunter_modes.MAX_AGE)
+    report['post_hydration_enrichment']=providers.enrich(pools)
+    report['final_incomplete_pools']=sum(bool(market_data.v3_missing_fields(p)) for p in pools)
     observe(state,pools,time.time())
     # Bounded evaluations, including rejected cases. No invented horizon prices.
     original_deadline=api.REQUEST_DEADLINE
@@ -227,5 +235,5 @@ def write_report(state,api,report):
     Path('reports/latest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-            f.write('\n### MAIL Hunter v5.0 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
+            f.write('\n### MAIL Hunter v5.1 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
     print('SCANNER_V5 '+json.dumps(report,ensure_ascii=False,sort_keys=True))
