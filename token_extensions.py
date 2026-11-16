@@ -15,6 +15,7 @@ NAMES = ['Uninitialized','TransferFeeConfig','TransferFeeAmount','MintCloseAutho
 def audit(account, mint):
     out = {'complete':False, 'reject':None, 'extensions':[], 'program':None}
     try:
+        if account.get('executable') is not False:raise ValueError('mint_executable_or_unverified')
         raw = vault_checks.raw_data(account); owner = account['owner']; out['program'] = owner
         if owner not in (CLASSIC,TOKEN2022): raise ValueError('token_program_unsupported')
         if len(raw)<82 or raw[45]!=1: raise ValueError('invalid_initialized_mint')

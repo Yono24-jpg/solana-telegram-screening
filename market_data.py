@@ -292,6 +292,11 @@ def verified_cap(raw,mint,pool,now):
 def cap_refresh(pool,api):
     """Final refresh must reverify an alternate valuation, never reuse stale cap."""
     if v3_missing_fields(pool)!=['marketCap']:return pool
+    from data_intelligence import client
+    providers=client(api)
+    if providers:
+        providers.enrich([pool])
+        if not v3_missing_fields(pool):return pool
     mint=get(pool,'baseToken.address');url='https://api.coingecko.com/api/v3/coins/solana/contract/'+mint
     try:
         raw=api.request(url);proof=verified_cap(raw,mint,pool,time.time())

@@ -5,6 +5,7 @@ MAX_AGE = 90*86400
 
 def assess(pool, history, now, narrative):
     try:
+        if pool.get('valuationConflict'):return {'reject':'v5_market_cap_conflict'}
         cap=pool['marketCap']; age=now-pool['pairCreatedAt']/1000
         h1=pool['volume']['h1']; tx=pool['txns']['m5']
         if not all(number(x) for x in (cap,age,h1,tx['buys'],tx['sells'])): return {'reject':'v5_market_missing'}

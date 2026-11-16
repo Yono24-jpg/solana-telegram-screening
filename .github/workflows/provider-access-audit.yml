@@ -1,0 +1,23 @@
+name: Official provider and CI access audit
+on:
+  push:
+    branches: ['upgrade/v5-data-intelligence-20261116']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Diagnose existing Cloudflare token without changing access
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python3 ci_access_audit.py
+      - uses: actions/upload-artifact@v6
+        with:
+          name: official-access-audit-${{ github.run_id }}
+          path: reports/ci-access-audit.json
+          retention-days: 14
