@@ -203,3 +203,14 @@ test('authorized test ignores caller body and uses same durable path as cron', a
   assert.ok(forwarded[0].scheduledTime > NOW - INTERVAL);
   assert.equal(forwarded[0].target, undefined);
 });
+
+test('completed queued run uses trigger time so runner delay does not drop next slot', async () => {
+  const f = fixture({ runs: [run('completed', 299_000, { run_started_at: new Date(NOW - 260_000).toISOString() })] });
+  assert.equal((await f.tick()).outcome, 'dispatch_accepted');
+  assert.equal(f.posts().length, 1);
+});
+test('active queued run remains blocked even if creation time exceeds interval', async () => {
+  const f = fixture({ runs: [run('in_progress', 600_000, { run_started_at: new Date(NOW - 10_000).toISOString() })] });
+  assert.equal((await f.tick()).outcome, 'scanner_already_active');
+  assert.equal(f.posts().length, 0);
+});

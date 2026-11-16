@@ -19,10 +19,12 @@ class ReadOnlyAPI:
 if __name__=='__main__':
     bot.REQUEST_DEADLINE=time.monotonic()+200
     api=ReadOnlyAPI();api.REQUEST_DEADLINE=bot.REQUEST_DEADLINE
-    state={'enabled':True}
+    state=json.loads(Path('state.json').read_text()) if Path('state.json').exists() else {}
+    state['enabled']=True
     report=scanner_v5.run(state,None,api,dry_run=True)
     assert report['sent']==0 and report['version']=='5.0'
     assert report['health_notification']['status']=='read_only'
     Path('reports/live-v5.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     print('LIVE_V5_AUDIT_OK '+json.dumps({'seen':report['seen'],'sent':report['sent'],'health':report['health'],
-                                       'trends':len(report['narrative']['trends']),'rejected':report['rejected']}))
+                                       'trends':len(report['narrative']['trends']),'rejected':report['rejected'],
+                                       'evaluations':report['evaluations'],'evaluation_fetch':report.get('evaluation_fetch')}))

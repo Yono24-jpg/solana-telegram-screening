@@ -97,12 +97,15 @@ def run(state,chat,api,dry_run=False):
     pools=market_data.refresh_watchlist(pools,state,api,gecko,time.time(),max_age=hunter_modes.MAX_AGE)
     observe(state,pools,time.time())
     # Bounded evaluations, including rejected cases. No invented horizon prices.
-    evaluation_deadline=min(api.REQUEST_DEADLINE or float('inf'),time.monotonic()+20)
-    hunter_memory.followup(state,pools,api,gecko,evaluation_deadline)
+    original_deadline=api.REQUEST_DEADLINE
+    evaluation_deadline=min(original_deadline or float('inf'),time.monotonic()+20)
+    api.REQUEST_DEADLINE=evaluation_deadline
+    try: report['evaluation_fetch']=hunter_memory.followup(state,pools,api,gecko,evaluation_deadline)
+    finally: api.REQUEST_DEADLINE=original_deadline
     # Continue existing signal evaluation after the version upgrade.
     old_deadline=api.REQUEST_DEADLINE
     api.REQUEST_DEADLINE=min(old_deadline or float('inf'),time.monotonic()+10)
-    try: legacy.followup(state,pools,api,time.time(),gecko)
+    try: legacy.followup(state,pools,api,time.time(),gecko,reserve_seconds=1)
     finally: api.REQUEST_DEADLINE=old_deadline
     ranked={}; archives=[]
     def reject(reason): report['rejected'][reason]=report['rejected'].get(reason,0)+1

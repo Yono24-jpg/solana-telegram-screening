@@ -100,11 +100,11 @@ def refresh(pair, mint, api, gecko=None):
     return market_data.refresh_pool(pair, mint, api, gecko or market_data.GeckoClient(api, {}))
 
 
-def followup(state, pools, api, now, gecko=None):
+def followup(state, pools, api, now, gecko=None, reserve_seconds=20):
     current = {(p.get('pairAddress'), (p.get('baseToken') or {}).get('address')):p for p in pools if isinstance(p, dict)}
     due = [r for r in state['performance'].values() if any(str(h) not in r.get('samples', {}) and now >= r['at']+h for h in HORIZONS)]
     for record in sorted(due, key=lambda r:r.get('last_observed_at', 0))[:30]:
-        if api.REQUEST_DEADLINE and time.monotonic() >= api.REQUEST_DEADLINE-20: break
+        if api.REQUEST_DEADLINE and time.monotonic() >= api.REQUEST_DEADLINE-reserve_seconds: break
         pool = current.get((record['pair'], record['mint']))
         if pool is None:
             try: pool = refresh(record['pair'], record['mint'], api, gecko)

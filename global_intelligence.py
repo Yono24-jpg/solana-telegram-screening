@@ -21,7 +21,7 @@ QUERIES = [
  ('exchange','crypto exchange listing announcement'),('community','meme coin community takeover'),
  ('global','热搜 病毒式 迷因 动漫 人工智能'),('global','話題 ミーム ゲーム アニメ'),
  ('global','화제 밈 게임 인공지능'),('open_world','trending viral')]
-STOP = narrative_v3.STOP | set('trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split())
+STOP = narrative_v3.STOP | set('gameplay demo legal friends out now delays brasil brazil china japan korea indonesia australia buatan lebih kecerdasan 人工智能 中国 日本 韩国 游戏 動画 ゲーム 話題 trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split())
 
 
 def normalize(value):
@@ -42,9 +42,8 @@ def entities(articles, ai=None):
         title=a['title'].rsplit(' - ',1)[0]
         phrases=re.findall(r'\b[A-Z][\w-]{2,}(?:\s+[A-Z][\w-]{2,}){0,2}\b',title)
         phrases+=re.findall(r'[「『“\"]([^」』”\"]{2,40})[」』”\"]',title)
-        # Multi-script repeated n-grams, not an ASCII transliteration that loses names.
-        for word in re.findall(r'[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]{2,20}',title):
-            phrases.extend(word[i:i+n] for n in (2,3,4,6) for i in range(max(0,len(word)-n+1)))
+        # Whole script runs/quoted names only. Arbitrary CJK substrings are not entities.
+        phrases+=re.findall(r'[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]{2,20}',title)
         for phrase in phrases:
             key=normalize(phrase)
             if key and not any(w in STOP for w in key.split()): labels.setdefault(key,phrase)
@@ -53,12 +52,37 @@ def entities(articles, ai=None):
     return list(labels.values())[:1500]
 
 
+PLATFORM_HOSTS={'x.com','twitter.com','youtube.com','youtu.be','tiktok.com','facebook.com','instagram.com','reddit.com','csdn.net'}
+MULTIPART_SUFFIXES={'com.cn','com.au','com.br','co.uk','co.jp','ne.jp','co.kr','co.id','ac.id','edu.cn','com.tw','com.hk'}
+
+
+def publisher_family(host):
+    """Conservative source grouping; does not assert ultimate corporate independence."""
+    host=str(host).lower().rstrip('.').removeprefix('www.')
+    parts=host.split('.')
+    count=3 if '.'.join(parts[-2:]) in MULTIPART_SUFFIXES else 2
+    return '.'.join(parts[-count:])
+
+
+def headline(article):
+    return article['title'].rsplit(' - ',1)[0]
+
+
+def credible_article(article):
+    family=publisher_family(article.get('publisher_host',''))
+    text=normalize(headline(article))
+    # A social/blog platform is not an independently verified newsroom.
+    if family in PLATFORM_HOSTS:return False
+    # Obvious repost/download spam cannot supply corroborating narrative evidence.
+    return not any(marker in text for marker in ('full video','フルビデオ','twitter 動画 保存','動画 保存 ランキング'))
+
+
 def trends(articles, ai, now, previous=None):
-    articles=[a for a in articles if 0<=now-a['published_at']<=172800 and a.get('observed_at',now)<=now]
+    articles=[a for a in articles if 0<=now-a['published_at']<=172800 and a.get('observed_at',now)<=now and credible_article(a)]
     found=[]
     for label in entities(articles,ai):
-        hits=list({a['url']:a for a in articles if contains(a['title'],label)}.values())
-        hosts={a['publisher_host'] for a in hits}; titles={normalize(a['title'].rsplit(' - ',1)[0]) for a in hits}
+        hits=list({a['url']:a for a in articles if contains(headline(a),label)}.values())
+        hosts={publisher_family(a['publisher_host']) for a in hits}; titles={normalize(a['title'].rsplit(' - ',1)[0]) for a in hits}
         if len(hosts)<2 or len(titles)<2: continue
         fresh=sum(now-a['published_at']<=21600 for a in hits)
         categories=sorted(set(a['category'] for a in hits))
@@ -68,7 +92,7 @@ def trends(articles, ai, now, previous=None):
             'score':min(100,35+10*min(len(hosts),3)+3*min(len(titles),5)+5*min(fresh,4)),
             'publisher_count':len(hosts),'article_count':len(titles),'virality_score':None,
             'sources':sorted(hits,key=lambda a:-a['published_at'])[:4],
-            'attention_basis':'independent news coverage; social virality unmeasured'})
+            'attention_basis':'distinct publisher domain families; corporate independence unverified; social virality unmeasured'})
     return sorted(found,key=lambda x:(-x['score'],-len(normalize(x['label']))))[:60]
 
 
@@ -111,7 +135,7 @@ def collect(api, state, now):
                 selected=[]
                 for region,_,_ in REGIONS: selected.extend([a for a in articles if a.get('region')==region][:5])
                 remote=narrative_v3.worker_ai([{'title':a['title'][:160]} for a in selected[:30]],20)
-                names=[x for x in remote.get('entities',[]) if isinstance(x,str) and len({a['publisher_host'] for a in articles if contains(a['title'],x)})>=2]
+                names=[x for x in remote.get('entities',[]) if isinstance(x,str) and len({publisher_family(a['publisher_host']) for a in articles if credible_article(a) and contains(headline(a),x)})>=2]
                 ai={**remote,'entities':names}
             except Exception: ai={'status':'provider_unavailable','entities':[],'model_used':None}
         state['global_ai_v5']={'at':now,'value':ai}

@@ -1,7 +1,7 @@
 name: Global v5 read-only integration
 on:
   push:
-    branches: ['upgrade/global-intelligence-v5-20261116']
+    branches: ['upgrade/global-intelligence-v5-20261116', 'upgrade/v5-followup-20261116']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,6 +25,10 @@ jobs:
           npm test
       - name: Existing web scanner regression
         run: node --test cloudflare/*.test.mjs
+      - name: Read current public memory without modifying production
+        run: |
+          git fetch origin main
+          git show origin/main:state.json > state.json
       - name: Live public sources without Telegram credentials
         env:
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
