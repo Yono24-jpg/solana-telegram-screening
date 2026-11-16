@@ -35,13 +35,24 @@ class GeckoClient:
             raise ValueError('unsupported_gecko_url')
         with self.lock:
             now = time.time()
+            if now<self.state.get('gecko_retry_after',0):
+                self.limited+=1
+                raise RuntimeError('gecko_provider_backoff')
             calls = [t for t in self.state.get('gecko_requests', []) if number(t) and 0 <= now-t < 60]
             self.state['gecko_requests'] = calls
             if len(calls) >= 9:
                 self.limited += 1
                 raise RuntimeError('gecko_free_budget')
             calls.append(now)
-        return self.api.request(url)
+        try:return self.api.request(url)
+        except Exception as error:
+            if getattr(error,'code',None)==429:
+                headers=getattr(error,'headers',{}) or {};raw=headers.get('Retry-After','120')
+                try:delay=float(raw)
+                except (TypeError,ValueError):delay=120
+                if not number(delay):delay=120
+                with self.lock:self.state['gecko_retry_after']=time.time()+max(60,min(900,delay))
+            raise
 
 
 def gecko_pools(payload):
@@ -208,7 +219,8 @@ def hydrate_incomplete(pools, api, gecko, now, limit=40):
     def status(source, **values): stats['sources'].setdefault(source,{}).update(values)
     def failure(source,error):
         code=getattr(error,'code',None)
-        status(source,status='http_'+str(code) if isinstance(code,int) else ('rate_budget' if str(error)=='gecko_free_budget' else type(error).__name__))
+        local={'gecko_free_budget':'rate_budget','gecko_provider_backoff':'provider_backoff'}
+        status(source,status='http_'+str(code) if isinstance(code,int) else local.get(str(error),type(error).__name__))
     def merge_rows(rows, expected):
         if not isinstance(rows,list):raise ValueError('response_shape')
         for row in rows:

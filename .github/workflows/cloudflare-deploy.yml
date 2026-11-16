@@ -2,7 +2,7 @@ name: Cloudflare Scanner Deployment
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/cloudflare-deploy.yml', 'cloudflare/**']
+    paths: ['cloudflare/**']
   workflow_dispatch:
 permissions:
   contents: read

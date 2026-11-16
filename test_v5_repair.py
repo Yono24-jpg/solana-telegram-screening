@@ -9,6 +9,7 @@ import market_data as market
 import hunter_memory
 import social_intelligence as social
 import security_v3 as security
+import state_store
 import evidence
 from test_upgrade import NOW,MINT,PAIR
 from test_global_v5 import market_pool
@@ -16,6 +17,17 @@ import test_narrative_v3 as fixtures
 
 
 class Hydration(unittest.TestCase):
+    def test_provider_429_stops_following_calls_and_persists_bounded_backoff(self):
+        api=SimpleNamespace(request=Mock(side_effect=urllib.error.HTTPError('https://hidden',429,'rate',{'Retry-After':'120'},None)))
+        state={};client=market.GeckoClient(api,state)
+        with patch.object(market.time,'time',return_value=NOW):
+            with self.assertRaises(urllib.error.HTTPError):client.request(market.GECKO+'/one')
+            with self.assertRaisesRegex(RuntimeError,'gecko_provider_backoff'):client.request(market.GECKO+'/two')
+        self.assertEqual(api.request.call_count,1);self.assertEqual(state['gecko_retry_after'],NOW+120)
+        merged=state_store.merge({},state,NOW);self.assertEqual(merged['gecko_retry_after'],NOW+120)
+    def test_invalid_or_excessive_backoff_cannot_pause_unbounded(self):
+        state={'gecko_retry_after':NOW+10000};state_store.migrate(state,NOW)
+        self.assertEqual(state['gecko_retry_after'],0)
     def setup_api(self,p):
         api=SimpleNamespace(DEX='https://dex.example',request=Mock(return_value={'pairs':[]}))
         gecko=SimpleNamespace(request=Mock(return_value={'data':[]}))
