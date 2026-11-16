@@ -22,7 +22,8 @@ class Client:
         self.api=api;self.state=state;self.lock=threading.Lock();self.counts={};self.status={}
         self.tokens_by_mint={}
         for name,key in [('helius','HELIUS_API_KEY'),('birdeye','BIRDEYE_API_KEY')]:
-            if not os.environ.get(key):self.status[name]={'status':'not_configured'}
+            configured=bool(os.environ.get(key)) or (name=='helius' and urlsplit(os.environ.get('SOLANA_RPC_URL','')).hostname=='mainnet.helius-rpc.com')
+            if not configured:self.status[name]={'status':'not_configured'}
     def credentials(self):
         rpc=os.environ.get('SOLANA_RPC_URL','')
         return {'helius':{'configured':bool(os.environ.get('HELIUS_API_KEY')) or urlsplit(rpc).hostname=='mainnet.helius-rpc.com'},
@@ -89,11 +90,22 @@ class Client:
             tried.add(url)
             try:
                 result=self.request(provider,url,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
+                error=result.get('error') if isinstance(result,dict) else None
+                if isinstance(error,dict) and error.get('code') in (-32005,-32603,429):
+                    # Some RPCs return operational failures with HTTP 200. Never
+                    # retain their free-text message/data, which may echo secrets.
+                    now=time.time()
+                    with self.lock:
+                        self.state['provider_state_v5'][provider]['retry_after']=now+60
+                    self.status[provider]={'status':'rpc_transient_error','at':now}
+                    continue
                 if not isinstance(result,dict) or 'error' in result or result.get('result') is None:
                     self.status[provider]={'status':'rpc_error_or_empty','at':time.time()};continue
                 payload=result['result']
-                if isinstance(payload,dict) and 'value' in payload and payload['value'] is None:
+                if payload=={} or payload==[] or (isinstance(payload,dict) and 'value' in payload and (payload['value'] is None or payload['value']==[])):
                     self.status[provider]={'status':'rpc_value_missing','at':time.time()};continue
+                if method=='getMultipleAccounts' and isinstance(payload,dict) and isinstance(payload.get('value'),list) and any(v is None for v in payload['value']):
+                    self.status[provider]={'status':'rpc_accounts_incomplete','at':time.time()};continue
                 return payload
             except Unavailable:continue
         raise Unavailable('all_rpc_sources_unavailable')

@@ -60,6 +60,36 @@ class Providers(unittest.TestCase):
     def test_unapproved_host_and_http_blocked(self):
         for url in ('https://example.org','http://api.jup.ag/tokens/v2/search'):
             with self.assertRaises(di.Unavailable):di.Client(self.api(),{}).request('jupiter',url)
+    def test_http_200_transient_rpc_error_backs_off_across_restart(self):
+        for code in (-32005,-32603,429):
+            api=self.api();state={}
+            api.request.side_effect=[{'error':{'code':code,'message':'test-secret','data':'test-secret'}},
+                                     {'result':{'value':{'owner':'verified'}}},
+                                     {'result':{'value':{'owner':'verified'}}}]
+            with patch.dict(os.environ,{'HELIUS_API_KEY':'test-secret','SOLANA_RPC_URL':''}),patch.object(di.time,'time',return_value=NOW):
+                client=di.Client(api,state)
+                self.assertEqual(client.rpc('getAccountInfo',[MINT]),{'value':{'owner':'verified'}})
+                self.assertEqual(client.status['helius']['status'],'rpc_transient_error')
+                self.assertEqual(state['provider_state_v5']['helius']['retry_after'],NOW+60)
+                restarted=di.Client(api,state);restarted.rpc('getAccountInfo',[MINT])
+            self.assertEqual(api.request.call_count,3)
+            self.assertNotIn('test-secret',str(state)+str(client.status))
+    def test_empty_and_partial_account_results_fall_back(self):
+        for value in ({},[],{'value':[]},{'value':[None]}):
+            api=self.api();api.request.side_effect=[{'result':value},{'result':{'value':[{'owner':'verified'}]}}]
+            with patch.dict(os.environ,{'HELIUS_API_KEY':'test','SOLANA_RPC_URL':''}):
+                result=di.Client(api,{}).rpc('getMultipleAccounts',[[MINT]])
+            self.assertEqual(result,{'value':[{'owner':'verified'}]});self.assertEqual(api.request.call_count,2)
+    def test_all_empty_rpc_sources_fail_closed_and_zero_slot_remains_valid(self):
+        api=self.api();api.request.return_value={'result':[]}
+        with patch.dict(os.environ,{'HELIUS_API_KEY':'test','SOLANA_RPC_URL':''}),self.assertRaises(di.Unavailable):
+            di.Client(api,{}).rpc('getSignaturesForAddress',[MINT])
+        api.request.return_value={'result':0}
+        with patch.dict(os.environ,{'HELIUS_API_KEY':'','SOLANA_RPC_URL':''}):self.assertEqual(di.Client(api,{}).rpc('getSlot',[]),0)
+    def test_helius_configured_rpc_is_not_reported_unconfigured(self):
+        with patch.dict(os.environ,{'HELIUS_API_KEY':'','SOLANA_RPC_URL':'https://mainnet.helius-rpc.com/?api-key=test'}):
+            client=di.Client(self.api(),{})
+            self.assertTrue(client.credentials()['helius']['configured']);self.assertNotIn('helius',client.status)
     def test_jupiter_spacing_and_backoff_prevent_retries(self):
         api=self.api();api.request.return_value=[];client=di.Client(api,{})
         with patch.object(di.time,'time',return_value=NOW):
