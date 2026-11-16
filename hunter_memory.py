@@ -29,7 +29,10 @@ def followup(state, pools, api, gecko, deadline):
     """Evaluate current quotes first; batch missing quotes without starving later records."""
     import market_data
     now=time.time()
-    current={(p.get('pairAddress'),(p.get('baseToken') or {}).get('address')):p for p in pools if isinstance(p,dict)}
+    current={(p.get('pairAddress'),(p.get('baseToken') or {}).get('address')):p for p in pools if isinstance(p,dict) and p.get('chainId')=='solana' and not p.get('identityConflict')}
+    def price_of(p):
+        value=amount(p.get('priceUsd')) if p else None
+        return value if value is not None and value>0 else None
     def is_due(r,when):
         return any(str(h) not in r.get('samples',{}) and when>=r['at']+h for h in HORIZONS)
     due=[r for r in state.get('memory_v5',{}).values() if is_due(r,now)]
@@ -37,7 +40,7 @@ def followup(state, pools, api, gecko, deadline):
     for r in due:
         # Missing/late horizons are recorded even if no provider can return a price.
         p=current.get((r['pair'],r['mint']))
-        price=amount(p.get('priceUsd')) if p else None
+        price=price_of(p)
         sample_performance(r,price,now)
         if price is None and is_due(r,now): pending.append(r)
     pending.sort(key=lambda r:(r.get('last_quote_attempt_at',0),r['at']))
@@ -53,7 +56,7 @@ def followup(state, pools, api, gecko, deadline):
                 pair=p.get('pairAddress');mint=(p.get('baseToken') or {}).get('address')
                 if p.get('chainId')=='solana' and pair in wanted and mint==wanted[pair]: quotes[(pair,mint)]=p
         except Exception: pass
-        missing=[pair for pair,mint in wanted.items() if amount(quotes.get((pair,mint),{}).get('priceUsd')) is None]
+        missing=[pair for pair,mint in wanted.items() if price_of(quotes.get((pair,mint))) is None]
         if missing and gecko is not None and (not deadline or time.monotonic()<deadline-1):
             try:
                 raw=gecko.request(market_data.GECKO+'/networks/solana/pools/multi/'+','.join(missing)+'?include=base_token,quote_token,dex')
@@ -64,7 +67,7 @@ def followup(state, pools, api, gecko, deadline):
         observed_at=time.time()
         for r in batch:
             r['last_quote_attempt_at']=observed_at;attempted+=1
-            price=amount(quotes.get((r['pair'],r['mint']),{}).get('priceUsd'))
+            price=price_of(quotes.get((r['pair'],r['mint'])))
             if price is not None and price>0:recovered+=1
             sample_performance(r,price,observed_at)
     return {'due_records':len(due),'quote_attempts':attempted,'quotes_recovered':recovered,

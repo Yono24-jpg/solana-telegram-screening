@@ -48,7 +48,7 @@ def entities(articles, ai=None):
             key=normalize(phrase)
             if key and not any(w in STOP for w in key.split()): labels.setdefault(key,phrase)
     for phrase in (ai or {}).get('entities',[]):
-        if isinstance(phrase,str) and 2<=len(phrase)<=60: labels.setdefault(normalize(phrase),phrase)
+        if isinstance(phrase,str) and 2<=len(phrase)<=60 and not any(w in STOP for w in normalize(phrase).split()): labels.setdefault(normalize(phrase),phrase)
     return list(labels.values())[:1500]
 
 

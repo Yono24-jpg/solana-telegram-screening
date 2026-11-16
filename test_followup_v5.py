@@ -22,6 +22,15 @@ class ForwardEvaluation(unittest.TestCase):
         self.assertEqual(state['memory_v5']['one']['samples']['300']['status'],'observed')
         self.assertEqual(state['memory_v5']['one']['samples']['300']['at'],NOW)
         self.assertEqual(result['quote_attempts'],0);api.request.assert_not_called()
+    def test_zero_or_cross_chain_current_quote_cannot_skip_recovery(self):
+        for change in ('zero','chain','conflict'):
+            state=memory();p=market_pool();api=Mock();api.DEX=bot.DEX;api.request.return_value={'pairs':[market_pool()]}
+            if change=='zero':p['priceUsd']='0'
+            elif change=='chain':p['chainId']='ethereum'
+            else:p['identityConflict']=True
+            with patch.object(hunter_memory.time,'time',return_value=NOW),patch.object(hunter_memory.time,'monotonic',return_value=100):
+                result=hunter_memory.followup(state,[p],api,None,120)
+            self.assertEqual(result['quote_attempts'],1);self.assertEqual(result['quotes_recovered'],1)
     def test_missing_quotes_batched_and_identity_bound(self):
         state=memory();api=Mock();api.DEX=bot.DEX;api.request.return_value={'pairs':[market_pool()]}
         with patch.object(hunter_memory.time,'time',return_value=NOW),patch.object(hunter_memory.time,'monotonic',return_value=100):
