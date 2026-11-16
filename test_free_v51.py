@@ -47,6 +47,13 @@ class Snapshots(unittest.TestCase):
 
 
 class FreePolicy(unittest.TestCase):
+    def test_gecko_pacing_spaces_from_last_response_and_survives_merge(self):
+        state={'gecko_last_completed':NOW-1};api=SimpleNamespace(request=Mock(return_value={'data':[]}),REQUEST_DEADLINE=None)
+        client=market.GeckoClient(api,state,paced=True)
+        with patch.object(market.time,'time',return_value=NOW),patch.object(market.time,'sleep') as sleep:
+            client.request(market.GECKO+'/networks/solana/new_pools')
+        self.assertAlmostEqual(sleep.call_args.args[0],5.2,places=5)
+        self.assertEqual(state_store.merge({},state,NOW)['gecko_last_completed'],NOW)
     def test_priority_news_covers_game_ai_anime_even_during_another_rotation(self):
         with patch.object(evidence,'public_read',side_effect=TimeoutError()),patch.dict(os.environ,{'ACTIONS_ID_TOKEN_REQUEST_TOKEN':''}):f=intel.collect(SimpleNamespace(),{},NOW)
         for name in ('US:games','US:ai','US:screen'):self.assertIn(name,f['sources'])

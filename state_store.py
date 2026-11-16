@@ -19,6 +19,8 @@ def migrate(state, now):
     state['gecko_requests'] = sorted(set(t for t in state.get('gecko_requests',[]) if number(t) and 0 <= now-t <= 120))[-100:]
     retry=state.get('gecko_retry_after',0)
     state['gecko_retry_after']=retry if number(retry) and now<retry<=now+900 else 0
+    completed=state.get('gecko_last_completed',0)
+    state['gecko_last_completed']=completed if number(completed) and 0<=now-completed<=120 else 0
     state['pool_watchlist'] = {k:v for k,v in state['pool_watchlist'].items() if address(k) and isinstance(v,dict)
                               and address(v.get('mint')) and number(v.get('created_at')) and 0 <= now-v['created_at'] <= 90*86400
                               and number(v.get('last_seen')) and number(v.get('last_checked'))}
@@ -63,6 +65,7 @@ def merge(remote, local, now):
     out['observations'] = merge_observations(remote.get('observations', {}), local.get('observations', {}), now=now)
     out['gecko_requests'] = remote.get('gecko_requests',[])+local.get('gecko_requests',[])
     out['gecko_retry_after']=max(remote.get('gecko_retry_after',0),local.get('gecko_retry_after',0))
+    out['gecko_last_completed']=max(remote.get('gecko_last_completed',0),local.get('gecko_last_completed',0))
     out['scan_history'] = list({(r['at'],r.get('run_id')):r for r in remote.get('scan_history',[])+local.get('scan_history',[])
                                if isinstance(r,dict) and number(r.get('at'))}.values())
     out['pool_watchlist'] = copy.deepcopy(remote.get('pool_watchlist',{}))
