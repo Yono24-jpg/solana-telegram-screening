@@ -220,3 +220,20 @@ def hydrate_incomplete(pools, api, gecko, now, limit=40):
     stats['incomplete_after']=sum(bool(v3_missing_fields(p)) for p in pools)
     stats['recovered']=stats['incomplete_before']-stats['incomplete_after']
     return pools,stats
+
+
+def configured_mints(path, now):
+    """An explicit, expiring CA watchlist is retrieval only, never a security allowlist."""
+    if not path:return []
+    try:
+        import json
+        from pathlib import Path
+        config=json.loads(Path(path).read_text())
+        result=[]
+        for row in config.get('tokens',[])[:20]:
+            if not isinstance(row,dict) or not address(row.get('mint')):continue
+            expires=row.get('expires_at');added=row.get('added_at')
+            if not number(expires) or not number(added) or not added<=now<expires or expires-added>86400:continue
+            if row['mint'] not in result:result.append(row['mint'])
+        return result
+    except Exception:return []

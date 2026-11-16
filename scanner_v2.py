@@ -33,7 +33,7 @@ def checkpoint(state, api, durable=False):
 def discover(api, gecko=None):
     gecko = gecko or market_data.GeckoClient(api, {})
     urls = [(api.DEX+p, label) for p, label in SOURCES]
-    urls += [(market_data.GECKO+'/networks/solana/trending_pools?include=base_token,quote_token,dex', 'gecko_trending')]
+    urls += [(market_data.GECKO+'/networks/solana/trending_pools?page='+str(p)+'&include=base_token,quote_token,dex','gecko_trending_'+str(p)) for p in (1,2)]
     urls += [(market_data.GECKO+'/networks/solana/new_pools?page='+str(p)+'&include=base_token,quote_token,dex', 'gecko_'+str(p)) for p in (1, 2, 3)]
     def read(item):
         url, label = item
@@ -41,7 +41,8 @@ def discover(api, gecko=None):
         except Exception: return label, None
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(read, urls))
-    tokens = []; pairs = []; metadata = {}; descriptions = {}; statuses = {}; native = {}
+    tokens = market_data.configured_mints(os.environ.get('SCANNER_WATCHLIST_FILE'),time.time()); pairs = []; metadata = {}; descriptions = {}; statuses = {}; native = {}
+    configured_count=len(tokens)
     for label, data in results:
         valid = isinstance(data, dict) and isinstance(data.get('data'), list) if label.startswith('gecko') else isinstance(data, list)
         statuses[label] = 'ok' if valid else 'unavailable'
@@ -77,7 +78,7 @@ def discover(api, gecko=None):
                 info['socials'] = (info.get('socials') if isinstance(info.get('socials'), list) else []) + [r for r in metadata.get(mint, []) if isinstance(r, dict)]
                 pools[pool['pairAddress']] = pool
     combined = {pair:market_data.select_pool(pools.get(pair), native.get(pair)) for pair in sorted(set(pools)|set(native))}
-    return list(combined.values()), {'sources': statuses, 'token_addresses': len(tokens), 'new_pool_addresses': len(pairs),
+    return list(combined.values()), {'sources': statuses, 'configured_ca_watchlist_count':configured_count, 'token_addresses': len(tokens), 'new_pool_addresses': len(pairs),
             'gecko_native_pools':len(native), 'gecko_independent_pools':sum(p.get('dataSource')=='geckoterminal' for p in combined.values()),
             'dex_pool_count':len(pools), 'batch_failures': failures}
 

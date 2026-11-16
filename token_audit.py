@@ -54,7 +54,7 @@ def all_market_checks(pool, now):
 
 def audit_one(name,mint,pool,state,feed,baseline,searches,gecko):
     now=time.time();bot.REQUEST_DEADLINE=time.monotonic()+130
-    result={'name':name,'mint':mint,'at':now,'in_original_discovery':mint in baseline,
+    result={'name':name,'mint':mint,'at':now,'in_original_discovery':mint in baseline,'configured_ca_lookup':mint in market_data.configured_mints(os.environ.get('SCANNER_WATCHLIST_FILE'),now),
             'name_search_candidates':[p for rows in searches.values() for p in rows if market_data.get(p,'baseToken.address')==mint]}
     if pool is None:
         result['status']='market_pool_unavailable';return result
@@ -139,7 +139,7 @@ def main():
         Path('reports').mkdir(exist_ok=True);Path('reports/real-token-audit.json').write_text(json.dumps(report,indent=2))
         components={'name':name,'trade_feed':row.get('trade_feed'),'holders':row.get('holders'),'developer':row.get('developer'),'sell_bundle_sample':row.get('sell_bundle_sample'),'buyers':{k:v for k,v in row.get('buyers',{}).items() if k!='transactions'},'risk_report':{k:v for k,v in row.get('risk_report',{}).items() if k!='markets'},'pool_lock':[m for m in row.get('risk_report',{}).get('markets',[]) or [] if m.get('pubkey')==row.get('pair')]}
         print('AUDIT_COMPONENTS '+json.dumps(components),flush=True)
-        print('REAL_TOKEN_AUDIT '+json.dumps({k:row.get(k) for k in ('name','mint','pair','in_original_discovery','market','market_gate','momentum','narrative','onchain_mint','full_report_gate','v3_security')}),flush=True)
+        print('REAL_TOKEN_AUDIT '+json.dumps({k:row.get(k) for k in ('name','mint','pair','at','in_original_discovery','configured_ca_lookup','market','market_gate','momentum','narrative','onchain_mint','full_report_gate','v3_security')}),flush=True)
     print('REAL_TOKEN_AUDIT_DONE count='+str(len(report['tokens'])),flush=True)
 
 if __name__=='__main__':main()

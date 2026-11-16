@@ -22,6 +22,7 @@ jobs:
       - name: Audit real tokens without Telegram credentials or signing keys
         env:
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          SCANNER_WATCHLIST_FILE: discovery_watchlist.json
           PYTHONUNBUFFERED: '1'
         run: python3 token_audit.py
       - uses: actions/upload-artifact@v4

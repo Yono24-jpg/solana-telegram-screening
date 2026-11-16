@@ -2,7 +2,7 @@ name: Solana Telegram Screening
 on:
   push:
     branches: [main]
-    paths: ['narrative_v3.py', 'security_v3.py', 'bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
+    paths: ['discovery_watchlist.json', 'narrative_v3.py', 'security_v3.py', 'bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
   schedule:
     # Explicit five-minute slots away from the beginning of each hour (UTC).
@@ -36,6 +36,7 @@ jobs:
           SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
           X_READS_ENABLED: ${{ vars.X_READS_ENABLED }}
+          SCANNER_WATCHLIST_FILE: discovery_watchlist.json
           PYTHONUNBUFFERED: '1'
         run: |
           python3 bot.py

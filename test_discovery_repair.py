@@ -62,6 +62,27 @@ class MarketRepair(unittest.TestCase):
         gecko=SimpleNamespace(request=Mock(return_value=body))
         result=m.refresh_pool(PAIR,MINT,api,gecko)
         gecko.request.assert_called_once();self.assertEqual(result['marketCap'],150000)
+    def test_configured_watchlist_expiry_and_limit_are_enforced(self):
+        import tempfile,json
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'watch.json'
+            path.write_text(json.dumps({'tokens':[{'mint':MINT,'added_at':NOW-1,'expires_at':NOW+10},{'mint':'C'*32,'added_at':NOW-1,'expires_at':NOW-1},{'mint':'D'*32,'added_at':NOW-1,'expires_at':NOW+86401}]}))
+            self.assertEqual(m.configured_mints(str(path),NOW),[MINT])
+            self.assertEqual(m.configured_mints(str(path),NOW+11),[])
+    def test_configured_mint_is_requested_without_profiles_or_name_matching(self):
+        import os
+        requests=[]
+        def request(url,*_):
+            requests.append(url)
+            if '/tokens/v1/solana/' in url:return [complete()]
+            return {'data':[]} if 'geckoterminal' in url else []
+        api=SimpleNamespace(DEX='https://dex.example',request=request)
+        with patch.object(m,'configured_mints',return_value=[MINT]):
+            rows,report=scanner_v2.discover(api)
+        self.assertEqual(report['configured_ca_watchlist_count'],1)
+        self.assertTrue(any(MINT in url for url in requests));self.assertEqual(rows[0]['baseToken']['address'],MINT)
+        self.assertIsNotNone(n.market_gate(dict(rows[0],marketCap=1),NOW))
     def test_new_trending_feed_finds_pool_outside_newest_pages(self):
         def request(url,*args):
             if 'trending_pools' in url:return payload()
@@ -69,7 +90,7 @@ class MarketRepair(unittest.TestCase):
             return {'data':[]} if 'new_pools' in url else []
         api=SimpleNamespace(DEX='https://dex.example',request=request)
         pools,report=scanner_v2.discover(api)
-        self.assertEqual(report['sources']['gecko_trending'],'ok');self.assertEqual(len(pools),1)
+        self.assertEqual(report['sources']['gecko_trending_1'],'ok');self.assertEqual(len(pools),1)
 
 
 class NarrativeRepair(unittest.TestCase):

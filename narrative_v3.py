@@ -176,9 +176,15 @@ def search_queries(feed, now, limit=12):
     def add(value):
         key=normalize(value)
         if key and key not in seen and len(queries)<limit:seen.add(key);queries.append(value)
-    # First cover canonical topics whose independent news evidence was verified.
+    # Reserve related retrieval aliases before headline labels consume the budget.
+    if 'GTA' in by_name:
+        add('GTA');add('Rockstar');add('FiveM')
+    if 'Anthropic' in by_name:
+        add('Anthropic');add('Claude')
     canonical=[name for name in ALIASES if name in by_name]
-    for name in canonical:add(name)
+    for name in canonical:
+        if len(queries)>=max(0,limit-2):break
+        add(name)
     # Known franchise aliases are retrieval terms only; they never bypass narrative/security gates.
     for name in canonical:
         if name=='GTA':
