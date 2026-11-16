@@ -99,6 +99,11 @@ def run(state,chat,api,dry_run=False):
     # Bounded evaluations, including rejected cases. No invented horizon prices.
     evaluation_deadline=min(api.REQUEST_DEADLINE or float('inf'),time.monotonic()+20)
     hunter_memory.followup(state,pools,api,gecko,evaluation_deadline)
+    # Continue existing signal evaluation after the version upgrade.
+    old_deadline=api.REQUEST_DEADLINE
+    api.REQUEST_DEADLINE=min(old_deadline or float('inf'),time.monotonic()+10)
+    try: legacy.followup(state,pools,api,time.time(),gecko)
+    finally: api.REQUEST_DEADLINE=old_deadline
     ranked={}; archives=[]
     def reject(reason): report['rejected'][reason]=report['rejected'].get(reason,0)+1
     for pool in pools:
@@ -128,7 +133,7 @@ def run(state,chat,api,dry_run=False):
         safety['observed_at']=time.time()
         summary['security']=safety
         summary['large_trade_sample']=[{k:r.get(k) for k in ('signature','wallet','kind','usd')} for r in buyers.get('transactions',[]) if (r.get('usd') or 0)>=10000][:10]
-        summary['unique_buyers']=buyers.get('unique_buyers')
+        summary['buyers']=social_intelligence.observe_buyers(state,mint,buyers,time.time())
         if safety.get('reject') or not safety.get('complete'):
             reason=safety.get('reject') or 'security_incomplete';reject(reason);hunter_memory.record(state,pool,n,reason,time.time(),safety);continue
         social=evidence.community(pool,api,time.time())
@@ -160,6 +165,7 @@ def run(state,chat,api,dry_run=False):
     report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/point-in-time-v5.json').write_text(json.dumps(archives,ensure_ascii=False,indent=2))
+    Path('reports/performance.json').write_text(json.dumps({'note':'Observed prices only, not executed profit; excludes fees/slippage.','signals':state['performance']},indent=2))
     Path('reports/memory-v5.json').write_text(json.dumps(state.get('memory_v5',{}),indent=2))
     Path('reports/backtest-v5.json').write_text(json.dumps(hunter_memory.replay(sorted(archives,key=lambda a:a['observed_at'])),indent=2))
     write_report(state,api,report)

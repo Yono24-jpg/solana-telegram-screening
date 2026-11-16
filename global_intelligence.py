@@ -21,7 +21,7 @@ QUERIES = [
  ('exchange','crypto exchange listing announcement'),('community','meme coin community takeover'),
  ('global','热搜 病毒式 迷因 动漫 人工智能'),('global','話題 ミーム ゲーム アニメ'),
  ('global','화제 밈 게임 인공지능'),('open_world','trending viral')]
-STOP = narrative_v3.STOP | set('launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split())
+STOP = narrative_v3.STOP | set('trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split())
 
 
 def normalize(value):
@@ -83,7 +83,9 @@ def collect(api, state, now):
     jobs.append((REGIONS[0],'open_world','trending viral news'))
     def read(job):
         (gl,hl,lang),category,query=job
-        url='https://news.google.com/rss/search?'+urlencode({'q':query+' when:2d','gl':gl,'hl':hl,'ceid':gl+':'+lang})
+        native={'CN':'热搜 OR 游戏 OR 动漫 OR 人工智能','JP':'話題 OR ゲーム OR アニメ','KR':'화제 OR 게임 OR 인공지능','ID':'viral OR gim OR kecerdasan buatan','BR':'viral OR jogos OR inteligência artificial'}
+        localized='('+query+') OR ('+native[gl]+')' if gl in native else query
+        url='https://news.google.com/rss/search?'+urlencode({'q':localized+' when:2d','gl':gl,'hl':hl,'ceid':gl+':'+lang})
         key=gl+':'+category
         try:
             rows=narrative_v3.parse_feed(evidence.public_read(url,api,as_text=True),category,now,normalizer=normalize)

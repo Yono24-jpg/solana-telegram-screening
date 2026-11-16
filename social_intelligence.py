@@ -77,3 +77,12 @@ def discover_contracts(api, feed, now):
         except Exception: pass
     return merge_pools(pools),{'status':'sampled' if any(v=='observed' for v in sources.values()) else 'unavailable',
                                'sources':sources,'contracts':len(selected),'pools':len(pools),'trust':'unverified leads only'}
+
+
+def observe_buyers(state,mint,buyers,now):
+    key='buyers:'+mint; previous=state.setdefault('social_v5',{}).get(key,{})
+    count=buyers.get('unique_buyers'); before=previous.get('unique_buyers'); growth=None
+    if number(count) and number(before) and before>0 and 300<=now-previous.get('at',0)<=900:
+        growth=count/before
+    state['social_v5'][key]={'at':now,'unique_buyers':count}
+    return {'unique_buyers':count,'unique_buyer_acceleration':growth,'basis':'sampled addresses, not unique humans'}

@@ -204,3 +204,16 @@ class PipelineV5(unittest.TestCase):
              patch.object(scanner_v5.intelligence,'collect') as collect,patch.object(scanner_v5.legacy,'checkpoint'),redirect_stdout(io.StringIO()):
             out=scanner_v5.run({'enabled':False},123,api,dry_run=True)
         self.assertEqual(out['health'],'paused');collect.assert_not_called();api.tg.assert_not_called()
+
+class SocialSequences(unittest.TestCase):
+    def test_unique_buyer_acceleration_requires_observed_separated_samples(self):
+        state={}
+        self.assertIsNone(social_intelligence.observe_buyers(state,MINT,{'unique_buyers':10},NOW)['unique_buyer_acceleration'])
+        self.assertEqual(social_intelligence.observe_buyers(state,MINT,{'unique_buyers':20},NOW+300)['unique_buyer_acceleration'],2)
+        self.assertIsNone(social_intelligence.observe_buyers(state,MINT,{'unique_buyers':None},NOW+600)['unique_buyer_acceleration'])
+    def test_avatar_change_is_url_only_organic_stays_unknown(self):
+        public={'status':'observed','posts':[{'at':NOW,'uri':'one','author':'did:plc:one','avatar_url':'https://cdn.example/one'}],'interactions':1,'contract_mentions':0}
+        state={};social_intelligence.observe(state,MINT,{},public,{},NOW)
+        public['posts'][0]['avatar_url']='https://cdn.example/two'
+        result=social_intelligence.observe(state,MINT,{},public,{},NOW+300)
+        self.assertEqual(result['avatar_url_changes'],['did:plc:one']);self.assertEqual(result['image_contents'],'not_analyzed');self.assertEqual(result['organic_status'],'unknown')
