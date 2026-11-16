@@ -135,6 +135,12 @@ class Client:
         for pool in pending:
             mint=pool['baseToken']['address'];row=rows.get(mint);proof=cap_proof(row,mint,pool,time.time())
             if proof:pool['marketCap']=proof['usd'];pool['marketCapEvidence']=proof;recovered+=1
+        conflicts=0
+        for pool in pools:
+            mint=(pool.get('baseToken') or {}).get('address');row=self.tokens_by_mint.get(mint)
+            proof=cap_proof(row,mint,pool,time.time());cap=amount(pool.get('marketCap'))
+            if proof and cap is not None and cap>0 and abs(cap-proof['usd'])/proof['usd']>.2:
+                pool['valuationConflict']=True;pool['valuationConflictEvidence']={'primary_cap':cap,'reference':proof};conflicts+=1
         # Birdeye is optional authenticated corroboration. It cannot replace pool metrics.
         birdeye_reads=0
         if os.environ.get('BIRDEYE_API_KEY'):
@@ -145,6 +151,7 @@ class Client:
                         'market_cap':data.get('mc'),'scope':'token overview; not a pool or safety clearance'}
         return {'requested_mints':len(set(p['baseToken']['address'] for p in pending[:30])),'cap_recovered':recovered,
                 'birdeye_reads':birdeye_reads,
+                'cap_conflicts':conflicts,
                 'scope':'token circulating cap only; no aggregate volumes/transactions substituted for pool metrics'}
 
 

@@ -8,6 +8,7 @@ from unittest.mock import Mock,patch
 import data_intelligence as di
 import evidence
 import hunter_memory
+import hunter_modes
 import social_intelligence
 import state_store
 import token_extensions
@@ -28,6 +29,11 @@ class Providers(unittest.TestCase):
         for field,value in [('circSupply',1),('usdPrice',100),('updatedAt','2000-01-01T00:00:00Z'),('updatedAt','2099-01-01T00:00:00Z')]:
             row=self.token();row[field]=value
             self.assertIsNone(di.cap_proof(row,MINT,fixtures.market_pool(),NOW))
+    def test_disagreement_between_actual_caps_blocks_instead_of_selecting_convenient_value(self):
+        client=di.Client(self.api(),{});client.tokens_by_mint[MINT]=self.token();p=fixtures.market_pool();p['marketCap']=25000
+        with patch.object(di.time,'time',return_value=NOW),patch.dict(os.environ,{'BIRDEYE_API_KEY':''}):client.enrich([p])
+        self.assertEqual(hunter_modes.assess(p,{},NOW,{'reject':None})['reject'],'v5_market_cap_conflict')
+        self.assertEqual(p['marketCap'],25000)
     def test_enrichment_does_not_substitute_aggregate_pool_metrics(self):
         api=self.api();client=di.Client(api,{});row=self.token();row['stats5m']={'numBuys':999999}
         client.tokens_by_mint[MINT]=row;p=fixtures.market_pool();p['marketCap']=None;before=copy.deepcopy(p)
