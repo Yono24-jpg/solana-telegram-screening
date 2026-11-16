@@ -54,3 +54,6 @@ class Standard(unittest.TestCase):
         client=self.client();client.transport=Mock()
         with patch.dict(os.environ,{'BIRDEYE_API_KEY':'test','BIRDEYE_NETWORK_ENABLED':'0'}):self.assertIsNone(client.read(MINT))
         client.transport.assert_not_called();self.assertEqual(client.stats['reserved_cu'],0)
+    def test_expected_budget_is_not_outage_but_missing_pool_data_remains_degraded(self):
+        report={'provider_status':{'birdeye':{'status':'cycle_budget'}},'market_hydration':{'incomplete_after':2}}
+        self.assertEqual(di.source_failures(report,{}),{'market_data':'incomplete_mandatory_pool_fields'})
