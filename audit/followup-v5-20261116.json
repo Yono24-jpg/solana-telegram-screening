@@ -1,0 +1,81 @@
+{
+  "verified_at": "2026-11-16T06:57:32Z",
+  "pull_request": 13,
+  "merge_commit": "73883a7dd7fa590c4457008cd7ccd2c3c65b6f3e",
+  "head_commit": "4721dcf702e360c58c6e4ace9fbf196d98e5b112",
+  "tests": {
+    "python": 213,
+    "scheduler_workers": 30,
+    "legacy_web": 28,
+    "total": 271,
+    "failed": 0,
+    "read_only_integration_run": 43820127412
+  },
+  "production": {
+    "run_id": 43820233414,
+    "conclusion": "success",
+    "at": 1794812190.8755643,
+    "seen": 201,
+    "sent": 0,
+    "health": "degraded",
+    "evaluation_fetch": {
+      "due_records": 138,
+      "note": "Actual observation times only; old missed windows are not reconstructed.",
+      "quote_attempts": 26,
+      "quotes_recovered": 25
+    },
+    "evaluation_status": {
+      "300": {
+        "missed": 131,
+        "observed": 7
+      },
+      "900": {
+        "missed": 112,
+        "observed": 18
+      },
+      "3600": {
+        "missed": 0,
+        "observed": 0
+      },
+      "86400": {
+        "missed": 0,
+        "observed": 0
+      }
+    },
+    "health_notification": {
+      "status": "not_due"
+    },
+    "memory_records": 147,
+    "rejections": {
+      "already_extended_24h": 1,
+      "late_or_falling_price": 1,
+      "liquidity": 4,
+      "v5_market_cap": 104,
+      "v5_market_missing": 14,
+      "v5_pool_age": 35,
+      "v5_volume_h1": 24,
+      "weak_activity": 18
+    }
+  },
+  "cloudflare": {
+    "worker": "mail-solana-scheduler",
+    "deployment_id": "aff5f5f079e3480f86fb06e66928dd0c",
+    "deployed_at": "2026-11-16T06:56:38.351743Z",
+    "trigger_time_first_verified": true,
+    "cron": "*/5 * * * *",
+    "bindings_preserved": true
+  },
+  "telegram": {
+    "username": "SolHawkHunter917Bot",
+    "health_message_id": 408,
+    "health_records": 1,
+    "duplicate_health_messages_observed": 0
+  },
+  "limitations": [
+    "5m/15m are horizon windows with actual observation timestamps and grace; not exact-time executions.",
+    "Missed historic windows were not backfilled with present prices.",
+    "One-hour and24-hour observations were still pending at verification.",
+    "Social public endpoint failures and incomplete market fields still cause degradation/rejection.",
+    "No automatic trading and no guaranteed safety or profit."
+  ]
+}
