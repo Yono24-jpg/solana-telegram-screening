@@ -57,3 +57,11 @@ class Standard(unittest.TestCase):
     def test_expected_budget_is_not_outage_but_missing_pool_data_remains_degraded(self):
         report={'provider_status':{'birdeye':{'status':'cycle_budget'}},'market_hydration':{'incomplete_after':2}}
         self.assertEqual(di.source_failures(report,{}),{'market_data':'incomplete_mandatory_pool_fields'})
+    def test_rate_spacing_uses_response_completion_timestamp(self):
+        client=self.client();clock=[NOW]
+        def transport(*args):
+            clock[0]+=.25
+            return {'success':True,'data':{'value':1,'updateUnixTime':NOW}}
+        client.transport=transport
+        with patch.dict(os.environ,{'BIRDEYE_API_KEY':'test'}),patch.object(bird.time,'time',side_effect=lambda:clock[0]):client.read(MINT,'price')
+        self.assertEqual(client.record['last_request_at'],NOW+.25)

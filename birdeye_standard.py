@@ -82,6 +82,10 @@ class Standard:
                     except Exception:delay=120
                 ep.update(status=status,at=time.time(),retry_after=time.time()+delay)
                 self.parent.status['birdeye']={'status':status,'at':time.time()};return None
+            finally:
+                # Space from response completion, not only request start: server
+                # arrival jitter must not compress the Standard one-second window.
+                r['last_request_at']=time.time()
     def apply(self,pool,data):
         mint=(pool.get('baseToken') or {}).get('address')
         if not data or data.get('address')!=mint:return 0
