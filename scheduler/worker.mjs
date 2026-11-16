@@ -140,7 +140,7 @@ export class SchedulerCoordinator {
         if (run.head_branch !== 'main' || run.path !== '.github/workflows/screen.yml') return finish('run_identity_mismatch');
         if (ACTIVE.has(run.status)) return finish('scanner_already_active', { run_id: run.id });
         if (run.status !== 'completed') return finish('unknown_run_status');
-        const created = Date.parse(run.run_started_at || run.created_at);
+        const created = Date.parse(run.created_at || run.run_started_at);
         if (!Number.isFinite(created) || created > now + 30_000) return finish('invalid_run_time');
         if (now - created < COOLDOWN) return finish('recent_scanner_run', { run_id: run.id });
       }

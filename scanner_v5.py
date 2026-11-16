@@ -97,12 +97,15 @@ def run(state,chat,api,dry_run=False):
     pools=market_data.refresh_watchlist(pools,state,api,gecko,time.time(),max_age=hunter_modes.MAX_AGE)
     observe(state,pools,time.time())
     # Bounded evaluations, including rejected cases. No invented horizon prices.
-    evaluation_deadline=min(api.REQUEST_DEADLINE or float('inf'),time.monotonic()+20)
-    hunter_memory.followup(state,pools,api,gecko,evaluation_deadline)
+    original_deadline=api.REQUEST_DEADLINE
+    evaluation_deadline=min(original_deadline or float('inf'),time.monotonic()+20)
+    api.REQUEST_DEADLINE=evaluation_deadline
+    try: report['evaluation_fetch']=hunter_memory.followup(state,pools,api,gecko,evaluation_deadline)
+    finally: api.REQUEST_DEADLINE=original_deadline
     # Continue existing signal evaluation after the version upgrade.
     old_deadline=api.REQUEST_DEADLINE
     api.REQUEST_DEADLINE=min(old_deadline or float('inf'),time.monotonic()+10)
-    try: legacy.followup(state,pools,api,time.time(),gecko)
+    try: legacy.followup(state,pools,api,time.time(),gecko,reserve_seconds=1)
     finally: api.REQUEST_DEADLINE=old_deadline
     ranked={}; archives=[]
     def reject(reason): report['rejected'][reason]=report['rejected'].get(reason,0)+1
@@ -162,6 +165,7 @@ def run(state,chat,api,dry_run=False):
     report['gecko_budget_limited']=gecko.limited
     report['memory_records']=len(state.get('memory_v5',{}))
     report['evaluations']={str(h):sum(str(h) in r.get('samples',{}) for r in state.get('memory_v5',{}).values()) for h in (300,900,3600,86400)}
+    report['evaluation_status']={str(h):{status:sum(r.get('samples',{}).get(str(h),{}).get('status')==status for r in state.get('memory_v5',{}).values()) for status in ('observed','missed')} for h in (300,900,3600,86400)}
     report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report)
     Path('reports').mkdir(exist_ok=True)
     Path('reports/point-in-time-v5.json').write_text(json.dumps(archives,ensure_ascii=False,indent=2))

@@ -188,7 +188,7 @@ class PipelineV5(unittest.TestCase):
              patch.object(scanner_v5.social_intelligence,'discover_contracts',return_value=([],{'status':'unavailable'})), \
              patch.object(scanner_v5.market_data,'hydrate_incomplete',side_effect=lambda pools,*a:(pools,{})), \
              patch.object(scanner_v5.market_data,'refresh_watchlist',side_effect=lambda pools,*a,**k:pools), \
-             patch.object(scanner_v5.hunter_memory,'followup'), \
+             patch.object(scanner_v5.hunter_memory,'followup',return_value={}), \
              patch.object(scanner_v5.evidence,'security',return_value={'complete':True,'score':100}), \
              patch.object(scanner_v5.evidence,'buyers',return_value={'strong':True}), \
              patch.object(scanner_v5.security_v3,'inspect',return_value={'complete':False,'reject':'insider_coverage_unavailable'}), \
