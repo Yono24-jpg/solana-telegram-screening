@@ -14,7 +14,7 @@ class EvidenceMissing(ValueError):
     """Only locally generated, non-sensitive rejection codes."""
 
 
-def report_gate(report, pool):
+def report_gate(report, pool, allowed_programs=None):
     """Pool-specific liquidity and explicit insider coverage, not token-wide LP labels."""
     if not isinstance(report,dict): return 'full_report_unavailable'
     mint = pool['baseToken']['address']
@@ -22,7 +22,7 @@ def report_gate(report, pool):
     if report.get('rugged') is not False: return 'rugged_or_unknown'
     token = report.get('token') or {}
     if token.get('mintAuthority','missing') is not None or token.get('freezeAuthority','missing') is not None: return 'report_authority_active_or_unknown'
-    if report.get('tokenProgram') != 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': return 'v3_token_program_unsupported'
+    if report.get('tokenProgram') not in (allowed_programs or ('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',)): return 'v3_token_program_unsupported'
     supply = token.get('supply')
     if not number(supply) or supply <= 0: return 'report_supply_unavailable'
     if not address(report.get('creator')): return 'developer_unknown'
@@ -166,7 +166,7 @@ def transaction_sample(pool, buyers, api, now):
             'caveat':'Sampel transaksi, bukan pemetaan semua insider; jual setiap wallet tidak dijamin.'}
 
 
-def inspect(pool, sec, buyers, api, now):
+def inspect(pool, sec, buyers, api, now, extension_proof=None):
     out = {'complete':False,'score':None,'reject':None,'checks':{},'risks':[
         'Risiko rug pull tetap ada; laporan pihak ketiga dan sampel wallet dapat melewatkan hubungan tersembunyi.',
         'LP lock berdasarkan laporan pool RugCheck; status dapat berubah.',
@@ -180,7 +180,12 @@ def inspect(pool, sec, buyers, api, now):
         report = api.request('https://api.rugcheck.xyz/v1/tokens/'+pool['baseToken']['address']+'/report')
         if sec.get('token_program') != report.get('tokenProgram') or sec.get('mint_supply') != (report.get('token') or {}).get('supply'):
             raise EvidenceMissing('provider_onchain_mint_mismatch')
-        reason = report_gate(report,pool)
+        allowed = None
+        if extension_proof is not None:
+            if not extension_proof.get('complete') or extension_proof.get('reject') or extension_proof.get('program')!=sec.get('token_program'):
+                raise EvidenceMissing('token_extension_evidence_incomplete')
+            allowed = (extension_proof['program'],)
+        reason = report_gate(report,pool,allowed)
         if reason: raise EvidenceMissing(reason)
         out['checks']['provider'] = {'fetched_at':now,'insider_networks':0,'pool':pool['pairAddress'],
                                     'lp_locked_pct':next(m['lp']['lpLockedPct'] for m in report['markets'] if m['pubkey']==pool['pairAddress'])}

@@ -93,11 +93,15 @@ def mint_creation(mint, api, now):
     return out
 
 
-def security(mint, api, now, pool=None):
+def security(mint, api, now, pool=None, mint_validator=None):
     out = {'score': 0, 'authority_verified': False, 'complete': False, 'reject': None, 'risks': [], 'top10_accounts_pct': None}
     try:
         account = rpc(api, 'getAccountInfo', [mint, {'encoding': 'base64', 'commitment': 'finalized'}])['value']
-        reason = api.security_reason(account)
+        if mint_validator:
+            out['extensions'] = mint_validator(account,mint)
+            reason = out['extensions'].get('reject')
+        else:
+            reason = api.security_reason(account)
         if reason:
             out['reject'] = reason; return out
         raw = vault_checks.raw_data(account)

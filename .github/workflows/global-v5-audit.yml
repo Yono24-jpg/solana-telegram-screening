@@ -1,0 +1,39 @@
+name: Global v5 read-only integration
+on:
+  push:
+    branches: ['upgrade/global-intelligence-v5-20261116']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline safety, state and replay regression
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ''
+        run: python3 -m unittest -vb
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Scheduler unit and Workers runtime tests
+        working-directory: scheduler
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
+      - name: Existing web scanner regression
+        run: node --test cloudflare/*.test.mjs
+      - name: Live public sources without Telegram credentials
+        env:
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+          SCANNER_WATCHLIST_FILE: /tmp/no-manual-token-seeds.json
+          PYTHONUNBUFFERED: '1'
+        run: python3 v5_live_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: global-v5-read-only-${{ github.run_id }}
+          path: reports/*.json
+          retention-days: 14

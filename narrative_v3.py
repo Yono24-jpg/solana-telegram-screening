@@ -58,7 +58,7 @@ def valid_url(value):
     except (ValueError, TypeError): return False
 
 
-def parse_feed(xml, category, now, fallback=None):
+def parse_feed(xml, category, now, fallback=None, normalizer=None):
     if not isinstance(xml, str) or '<!DOCTYPE' in xml.upper() or '<!ENTITY' in xml.upper(): return []
     root = ET.fromstring(xml); rows = []; seen = set()
     for item in root.findall('.//item')[:60]:
@@ -70,7 +70,7 @@ def parse_feed(xml, category, now, fallback=None):
             publisher = (source.text or '')[:100] if source is not None else fallback[1]
             when = parsedate_to_datetime(item.findtext('pubDate')).timestamp()
             if not (0 <= now-when <= 172800 and valid_url(link) and valid_url(publisher_url)): continue
-            key = normalize(title.rsplit(' - ', 1)[0])
+            key = (normalizer or normalize)(title.rsplit(' - ', 1)[0])
             if len(key) < 10 or key in seen: continue
             seen.add(key)
             rows.append(dict(title=title, url=link, publisher=publisher,

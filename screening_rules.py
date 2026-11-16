@@ -81,13 +81,13 @@ def social_links(pool):
     return {k: next(iter(v)) if len(v) == 1 else None for k, v in found.items()}, [k + '_metadata_conflict' for k, v in found.items() if len(v) > 1]
 
 
-def market(pool, history, now):
+def market(pool, history, now, max_age=MAX_AGE):
     try:
         if pool['chainId'] != 'solana' or not address(pool['pairAddress']) or not address(pool['baseToken']['address']) or pool.get('identityConflict'):
             return {'reject': 'invalid_identity'}
         age = now - pool['pairCreatedAt'] / 1000
         if not number(age): return {'reject': 'missing_market_data'}
-        if not MIN_AGE <= age <= MAX_AGE: return {'reject': 'pool_age'}
+        if not MIN_AGE <= age <= max_age: return {'reject': 'pool_age'}
         lp = pool['liquidity']['usd']; vol = pool['volume']['m5']
         buys = pool['txns']['m5']['buys']; sells = pool['txns']['m5']['sells']
         market_cap = pool.get('marketCap'); fdv = pool.get('fdv')
@@ -170,7 +170,7 @@ def trade_evidence(payload, mint, now):
             out['risks'].append('provider_anomalous_trade')
             continue
         seen.add(tx)
-        transactions.append({'signature':tx,'wallet':wallet,'kind':kind,'at':when})
+        transactions.append({'signature':tx,'wallet':wallet,'kind':kind,'at':when,'usd':usd})
         if kind == 'buy':
             count += 1
             wallets[wallet] = wallets.get(wallet, 0) + usd

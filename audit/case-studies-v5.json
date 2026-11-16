@@ -1,0 +1,16 @@
+{
+  "researched_at": "2026-11-16",
+  "purpose": "Research lessons and failure modes, not discovery whitelist or model training",
+  "point_in_time_backtest": "insufficient historical social/market/security snapshots; no profit or pre-pump detection claim",
+  "cases": [
+    {"name":"GTA", "source":"https://www.rockstargames.com/VI", "lesson":"Game launch/trailer is a real narrative trigger; token name does not establish Rockstar affiliation. Prior FiveM/Rockstar market/security audit is preserved in REAL_TOKEN_AUDIT_20261116.md."},
+    {"name":"MIHAO", "source":"https://mihao.fun/", "mint_self_published":"4CxjZyMNoF1p6eXHXHv1TWpS2X47CuUmLwtGe18spump", "lesson":"Cat memes and profile-picture ecosystem are observable project claims; visually similar clones and conflicting market data require exact mint binding. No inferred organic growth or historical return."},
+    {"name":"Anthropig", "source":"https://dexscreener.com/solana/gc1xcimdr7qbvahhn7kfh4e6rwhm4coamsrg4q8ckj4c", "lesson":"Multiple tokens use this name. Spelling parody of Anthropic remains a hypothesis; no verified official affiliation. Do not substitute Anthropic Inu. Primary project attribution and historical evidence incomplete.", "status":"identity_requires_pool_and_mint_verification"},
+    {"name":"PNUT", "source":"https://assets-cms.kraken.com/files/51n36hrp/facade/5c4a269da24c5c289802185d4c643c503a1645a0.pdf", "lesson":"Animal news and community takeover can combine. Kraken disclosure describes Peanut story and community management; CTO is not proof of liquidity or insider safety."},
+    {"name":"GOAT", "source":"https://assets-cms.kraken.com/files/51n36hrp/facade/b46f60106c522ada2ca3d60392ede68cd19652a5.pdf", "lesson":"Kraken risk disclosure says Truth Terminal promoted GOAT but did not create it. AI endorsement and token creation must not be conflated."},
+    {"name":"WIF", "source":"https://assets-cms.kraken.com/files/51n36hrp/facade/7b88022e2925b414f7e8fb0c98a01a63b08ec164.pdf", "lesson":"A dog image, esports community and profile picture can spread a meme. This scanner does not presently recognize image semantics or inspect historical profile changes."},
+    {"name":"CHILLGUY", "source":"https://www.binance.com/en/price/just-a-chill-guy", "lesson":"A public asset reference page is not proof of listing, original-art rights or organic spread. Historical causal and image evidence not reconstructed.", "status":"historical_origin_evidence_incomplete"},
+    {"name":"Prior real-token rejections", "source":"REAL_TOKEN_AUDIT_20261116.md", "lesson":"Market filters, missing insider coverage and unsafe/unsupported program evidence can reject a fashionable narrative. Rejection is not proof a token is a rug pull.", "type":"negative_screening_cases"},
+    {"name":"Undead Tombstone", "source":"https://www.justice.gov/usao-mdfl/pr/jury-finds-non-fungible-token-developer-guilty-defrauding-investors-and-laundering", "lesson":"DOJ reports a guilty verdict and abandoned NFT mint after promotional claims. Partnerships, promotion and past gains are not safety evidence. NFT case is a qualitative failure lesson, not a fungible-token backtest.", "type":"documented_solana_related_fraud_case"}
+  ]
+}
