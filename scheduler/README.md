@@ -27,7 +27,7 @@ Pada Worker, token GitHub disimpan sebagai secret **`GITHUB_TOKEN`**. Secret adm
 - Gangguan jaringan sesudah reservasi POST diberi `dispatch_unknown_no_retry`. Tidak ada pengulangan otomatis untuk slot yang sama. Ini dapat melewatkan satu putaran, tetapi menghindari pengiriman POST berulang saat hasilnya belum jelas.
 - HTTP publik hanya menyediakan `/health`. `/admin/tick` dan `/admin/status` membutuhkan secret admin; tidak ada `force`, target repositori bebas, atau tombol pemicu publik.
 
-Cron GitHub dan watchdog lama tetap ada. Reservasi ini mencegah duplikasi **antar-panggilan Worker**, bukan penguncian atomik terhadap pemicu GitHub yang independen. Ada kemungkinan race bila cron GitHub mulai sesudah pemeriksaan API. Concurrency dan ledger anti-alert-ganda yang sudah ada tetap berlaku; tidak ada klaim exactly-once untuk seluruh pemicu atau Telegram. Menghapus jadwal lama tidak dilakukan diam-diam.
+Workflow scanner `screen.yml` tidak lagi memiliki cron GitHub independen, sehingga Cloudflare Worker menjadi pemicu normal tunggal setiap lima menit. `schedule-watchdog.yml` tetap menjadi pemulihan: ia memeriksa setiap 30 menit dan hanya dispatch bila tidak ada scan aktif atau scan baru dalam 15 menit terakhir. Reservasi Durable Object mencegah duplikasi panggilan cron Worker; watchdog atau dispatch manual masih dapat berlomba di batas waktu, jadi tidak ada klaim exactly-once untuk semua pemicu atau pengiriman Telegram. Concurrency workflow dan ledger pengiriman alert tetap menjadi pengaman.
 
 ## Pemasangan dan bukti
 
