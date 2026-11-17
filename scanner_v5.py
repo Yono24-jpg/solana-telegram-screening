@@ -16,6 +16,7 @@ import security_v3
 import social_intelligence
 import token_extensions
 import data_intelligence
+import smart_discovery
 from signal_quality import snapshot,merge_observations
 from state_store import migrate,already_delivered
 
@@ -25,7 +26,7 @@ def render(pool,m,sec,social,buyers,creation,tier):
     n=pool['_narrative_v3']; safety=pool['_security_v3']; mint=pool['baseToken']['address']; pair=pool['pairAddress']
     sources='\n'.join('• <a href="'+esc(a['url'])+'">'+esc(a['publisher'])+'</a>: '+esc(a['title'][:100]) for a in n['sources'][:2])
     scores=' | '.join(k+': '+('belum terukur' if v is None else str(v)+'/100') for k,v in pool['_scores_v5'].items())
-    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.2</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
+    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.3</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
             f'Mode: {esc(", ".join(m["modes"]))}\nUmur pool {m["age_seconds"]/60:.1f} menit\n'
             f'MC ${m["cap"]:,.0f} | LP ${m["lp"]:,.0f}\nVolume 1h ${pool["volume"]["h1"]:,.0f}\n'
             f'BUY/SELL 5m {m["buys"]}/{m["sells"]} ({m["buys"]/max(m["sells"],1):.2f}×)\n'
@@ -46,7 +47,7 @@ def health(state,api,chat,report):
     if state['delivery'].get(key,{}).get('reservation')!=claim: return {'status':'already_reserved'}
     rejects=', '.join(k+': '+str(v) for k,v in sorted(report.get('rejected',{}).items(),key=lambda x:-x[1])[:6]) or 'tidak ada / scanner OFF'
     ai=report.get('narrative',{}).get('ai',{})
-    text=(f'🩺 MAIL Hunter v5.2 — laporan kesehatan 6 jam\n'
+    text=(f'🩺 MAIL Hunter v5.3 — laporan kesehatan 6 jam\n'
           f'Scanner: {"ON" if state.get("enabled") else "OFF"} | {report.get("health","unknown")}\n'
           f'Pool: {report.get("seen",0)} | Kandidat terkirim: {report.get("sent",0)}\n'
           f'Penolakan: {rejects}\nAI: {ai.get("status","unavailable")} | Model: {ai.get("model_used") or "tidak digunakan"}\n'
@@ -82,7 +83,7 @@ def observe(state,pools,now):
 def run(state,chat,api,dry_run=False):
     now=time.time(); migrate(state,now)
     os.environ['X_READS_ENABLED']='0'  # Owner policy: paid X reads remain OFF.
-    report={'version':'5.2','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
+    report={'version':'5.3','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
             'security_checks':[],'trigger':os.environ.get('GITHUB_EVENT_NAME','local'),'run_id':os.environ.get('GITHUB_RUN_ID'),
             'capabilities':{'images':'not_available','influencer_pfp':'not_available_without_account_access',
                 'x_reads_enabled':os.environ.get('X_READS_ENABLED')=='1' and bool(os.environ.get('X_BEARER_TOKEN')),
@@ -101,9 +102,14 @@ def run(state,chat,api,dry_run=False):
                 'helius_used':providers.rpc_metrics.get('helius',{}).get('getSlot',0)>0,'slot':slot if isinstance(slot,int) else None}
         except Exception:report['helius_probe']={'valid_finalized_slot':False,'helius_used':False}
     # Due price windows run before news/social retrieval can consume the scan budget.
-    gecko=market_data.GeckoClient(api,state,paced=True)
+    gecko=market_data.GeckoClient(api,state,paced=True,smart=True)
+    original_deadline=api.REQUEST_DEADLINE
+    api.REQUEST_DEADLINE=min(original_deadline or float('inf'),time.monotonic()+18)
+    try:rpc_pools,report['rpc_discovery']=smart_discovery.rpc_discover(providers,state,time.time())
+    finally:api.REQUEST_DEADLINE=original_deadline
     discovery_started=time.monotonic()
-    pools,report['discovery']=legacy.discover(api,gecko)
+    pools,report['discovery']=legacy.discover(api,gecko,smart=True)
+    pools=market_data.merge_pools(pools+rpc_pools)
     report['discovery_timing']={'seconds_to_initial_pools':round(time.monotonic()-discovery_started,3),
         'started_after_scan_seconds':round(time.time()-now-(time.monotonic()-discovery_started),3),
         'under_1h_pools':sum(0<=time.time()-(market_data.amount(p.get('pairCreatedAt')) or 0)/1000<=3600 for p in pools),
@@ -125,10 +131,24 @@ def run(state,chat,api,dry_run=False):
     found=intelligence.search_pools(api,feed,time.time()); report['discovery']['dynamic_search_pools']=len(found)
     social_pools,report['social_discovery']=social_intelligence.discover_contracts(api,feed,time.time())
     pools=market_data.merge_pools(pools+found+social_pools)
+    try:baseline=json.loads(Path('audit/cohort-v52-to-v53.json').read_text())
+    except (OSError,ValueError):baseline=None
+    report['comparison_baseline']='archived_v5.2' if baseline else 'current_entry_only'
+    smart_discovery.cohort_start(state,pools,time.time(),baseline=baseline)
+    cohort_pools,report['cohort_refresh']=smart_discovery.cohort_refresh(state,api,time.time())
+    pools=market_data.merge_pools(pools+cohort_pools)
+    pools=smart_discovery.prepare(pools,state,time.time())
+    comparison_before=copy.deepcopy(pools)
     report['provider_enrichment']=providers.enrich(pools,use_birdeye=False)
-    pools,report['market_hydration']=market_data.hydrate_incomplete(pools,api,gecko,time.time())
+    pools,report['market_hydration']=smart_discovery.recover(pools,state,api,gecko,time.time())
     pools=market_data.refresh_watchlist(pools,state,api,gecko,time.time(),max_age=hunter_modes.MAX_AGE)
     report['post_hydration_enrichment']=providers.enrich(pools)
+    comparison=smart_discovery.comparison(state,comparison_before,pools,time.time())
+    Path('reports').mkdir(exist_ok=True)
+    Path('reports/same-pool-v53.json').write_text(json.dumps(comparison,indent=2))
+    report['same_pool_comparison']={k:({a:b for a,b in v.items() if a!='rows'} if isinstance(v,dict) else v) for k,v in comparison.items()}
+    report['gecko_policy']={'network_calls':gecko.calls,'per_cycle_limit':3,'new_pool_pages':1,'trending_pages':0,
+                            'retry_after':state.get('gecko_retry_after',0),'consecutive_429':state.get('gecko_429_streak',0)}
     report['final_incomplete_pools']=sum(bool(market_data.v3_missing_fields(p)) for p in pools)
     from collections import Counter
     report['data_recovery']={'total':len(pools),'complete':len(pools)-report['final_incomplete_pools'],
@@ -150,7 +170,7 @@ def run(state,chat,api,dry_run=False):
     finally: api.REQUEST_DEADLINE=old_deadline
     ranked={}; archives=[]
     def reject(reason): report['rejected'][reason]=report['rejected'].get(reason,0)+1
-    for pool in pools:
+    for pool in sorted(pools,key=lambda p:not smart_discovery.young(p,time.time())):
         report['seen']+=1
         n=intelligence.match(pool,feed,time.time()); m=hunter_modes.assess(pool,state['observations'],time.time(),n)
         reason=m.get('reject')
@@ -241,5 +261,5 @@ def write_report(state,api,report):
     Path('reports/latest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-            f.write('\n### MAIL Hunter v5.2 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
+            f.write('\n### MAIL Hunter v5.3 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
     print('SCANNER_V5 '+json.dumps(report,ensure_ascii=False,sort_keys=True))
