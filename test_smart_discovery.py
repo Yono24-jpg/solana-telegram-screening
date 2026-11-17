@@ -164,12 +164,24 @@ class Queue(unittest.TestCase):
 
 
 class GeckoPolicy(unittest.TestCase):
-    def test_smart_cap_is_three_actual_calls(self):
+    def test_smart_cap_is_five_actual_calls_with_12_second_spacing(self):
         api = SimpleNamespace(request=Mock(return_value={'data': []}))
-        client = market.GeckoClient(api, {}, smart=True)
-        for _ in range(3): client.request(market.GECKO+'/test')
-        with self.assertRaisesRegex(RuntimeError, 'gecko_free_budget'): client.request(market.GECKO+'/test')
-        self.assertEqual(api.request.call_count, 3)
+        state = {}
+        clock = [NOW]
+        sleeps = []
+        def sleep(delay):
+            sleeps.append(delay)
+            clock[0] += delay
+        client = market.GeckoClient(api, state, paced=True, smart=True)
+        with patch.object(market.time, 'time', side_effect=lambda: clock[0]), \
+             patch.object(market.time, 'sleep', side_effect=sleep):
+            for _ in range(5): client.request(market.GECKO+'/test')
+            with self.assertRaisesRegex(RuntimeError, 'gecko_free_budget'):
+                client.request(market.GECKO+'/test')
+        self.assertEqual(api.request.call_count, 5)
+        self.assertEqual(sleeps, [12, 12, 12, 12])
+        self.assertEqual(len(state['gecko_requests']), 5)
+        self.assertTrue(all(b-a >= 12 for a,b in zip(state['gecko_requests'], state['gecko_requests'][1:])))
 
     def test_429_exponential_backoff_survives_merge(self):
         api = SimpleNamespace(request=Mock(side_effect=urllib.error.HTTPError('hidden',429,'rate',{},None)))
