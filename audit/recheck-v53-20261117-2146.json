@@ -1,0 +1,259 @@
+{
+  "kind": "Idempotent recheck of completed v5.3; no repeated upgrade or deployment",
+  "pr": 29,
+  "merged": true,
+  "merge_commit": "4910f964413a074c1f46503e082a3171deb9059a",
+  "original_verification": {
+    "runs": 12,
+    "span_minutes": 65.80798003673553,
+    "source": "audit/verification-v53-20261117.json"
+  },
+  "run_url": "https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/44086217079",
+  "workflow_conclusion": "success",
+  "tests": "2026-11-17T12:46:10.0806534Z Ran 299 tests in 0.355s",
+  "telegram": [
+    "2026-11-17T12:46:10.9685149Z TELEGRAM_API_OK method=getMe",
+    "2026-11-17T12:46:10.9685763Z TELEGRAM_BOT username=@SolHawkHunter917Bot",
+    "2026-11-17T12:46:11.6500605Z TELEGRAM_API_OK method=getChat",
+    "2026-11-17T12:46:11.6501106Z TELEGRAM_DESTINATION_OK type=channel",
+    "2026-11-17T12:46:12.0750478Z TELEGRAM_API_OK method=getUpdates"
+  ],
+  "durable_state": {
+    "version": "5.3",
+    "enabled": true,
+    "queue": 300,
+    "signature_cache": 11,
+    "cohort": 30,
+    "x_reads": false
+  },
+  "cron": "*/5 * * * *",
+  "at": 1794919572.1268291,
+  "run_id": "44086217079",
+  "version": "5.3",
+  "mode": "ALERT ONLY",
+  "capabilities": {
+    "historical_profit_backtest": "unvalidated",
+    "images": "not_available",
+    "influencer_pfp": "not_available_without_account_access",
+    "memory": "bounded 1500 decisions / 90 days, artifact retention 14 days",
+    "organic_vs_paid": "paid boosts observed; organic unproven",
+    "whales": "large provider-reported trades; not attributed identities or full wallet tracking",
+    "x_reads_enabled": false
+  },
+  "health": "degraded",
+  "pipeline_status": "operational",
+  "data_recovery": {
+    "complete": 91,
+    "coverage_pct": 24.27,
+    "missing_fields": {
+      "liquidity.usd": 178,
+      "marketCap": 53,
+      "pairCreatedAt": 1,
+      "priceChange.m5": 228,
+      "priceUsd": 32,
+      "txns.m5.buys": 15,
+      "txns.m5.sells": 15,
+      "volume.h1": 133,
+      "volume.m5": 230
+    },
+    "total": 375,
+    "young_complete": 19,
+    "young_total": 144
+  },
+  "same_pool_comparison": {
+    "fixed": {
+      "absent": 0,
+      "baseline_complete": 11,
+      "baseline_version": "5.2",
+      "current_complete": 11,
+      "source_run": 44070114701,
+      "started_at": 1794913307.5485876,
+      "total": 30
+    },
+    "paired": {
+      "after_complete": 88,
+      "before_complete": 82,
+      "recovered": 6,
+      "regressed": 0,
+      "total": 335
+    },
+    "scope": "same-identity pre/post recovery plus fixed cohort; temporal comparison, not causal A/B",
+    "source_mix": {
+      "dexscreener": 353,
+      "geckoterminal": 22
+    }
+  },
+  "market_hydration": {
+    "attempted_pools": 80,
+    "deadline_exhausted": false,
+    "deferred": 173,
+    "dex_batches": 4,
+    "due": 253,
+    "gecko_batches": 4,
+    "identity_rejections": 6,
+    "incomplete_after": 75,
+    "incomplete_before": 80,
+    "missing_after": {
+      "liquidity.usd": 47,
+      "marketCap": 23,
+      "priceChange.m5": 36,
+      "priceUsd": 1,
+      "txns.m5.buys": 1,
+      "txns.m5.sells": 1,
+      "volume.h1": 3,
+      "volume.m5": 39
+    },
+    "missing_before": {
+      "liquidity.usd": 78,
+      "marketCap": 68,
+      "priceChange.m5": 66,
+      "priceUsd": 66,
+      "txns.m5.buys": 66,
+      "txns.m5.sells": 66,
+      "volume.h1": 66,
+      "volume.m5": 66
+    },
+    "partial_improvements": 82,
+    "policy": "identity-only durable cache; bounded due queue; young first",
+    "preserved_cap_proofs": 0,
+    "queue_size": 300,
+    "recovered": 5,
+    "requested": 80,
+    "selected_young": 80,
+    "sources": {
+      "dex_pairs": {
+        "attempts": 4,
+        "rows": 19,
+        "status": "ok",
+        "status_counts": {
+          "ok": 4
+        },
+        "successes": 4,
+        "total_rows": 78
+      },
+      "dex_tokens": {
+        "attempts": 3,
+        "rows": 14,
+        "status": "ok",
+        "status_counts": {
+          "ok": 3
+        },
+        "successes": 3,
+        "total_rows": 71
+      },
+      "gecko_pools": {
+        "attempts": 4,
+        "rows": 19,
+        "status": "rate_budget",
+        "status_counts": {
+          "ok": 2,
+          "rate_budget": 2
+        },
+        "successes": 2,
+        "total_rows": 36
+      }
+    }
+  },
+  "rpc_discovery": {
+    "cache_hits": 1,
+    "leads": 0,
+    "scope": "Raydium CPMM fee-account initialization sample; not all Solana pools",
+    "signature_reads": 1,
+    "status": "ok",
+    "transaction_limit": 6,
+    "transaction_reads": 0
+  },
+  "rpc_usage": {
+    "basis": "1 credit per allowed standard RPC attempt; conservative estimate, not Helius account billing; excludes other apps and read-only audit jobs",
+    "helius_attempts_this_cycle": 2,
+    "helius_estimated_credits_31d": 366,
+    "helius_estimated_credits_today": 198,
+    "limits": {
+      "per_cycle": 80,
+      "per_day": 20000,
+      "requests_per_second": 2,
+      "rolling_31d": 600000
+    },
+    "successful_rpc_by_method": {
+      "helius": {
+        "getSignaturesForAddress": 1,
+        "getSlot": 1
+      }
+    }
+  },
+  "birdeye_usage": {
+    "basis": "conservative CU reservations for this scanner since activation; includes failed attempts; not account billing",
+    "cache_hits": 0,
+    "daily_limit": 720,
+    "eligible_cap_targets": 0,
+    "endpoint_costs": {
+      "overview": 18,
+      "price": 3
+    },
+    "endpoints": {
+      "overview": {
+        "at": 1794915140.9132743,
+        "status": "ok"
+      },
+      "price": {
+        "at": 1794904933.0682068,
+        "retry_after": 1794837213.6399662,
+        "status": "ok"
+      }
+    },
+    "estimated_cu_31d": 546,
+    "hourly_limit": 30,
+    "limit_31d": 24000,
+    "recovered_cap_fields": 0,
+    "reference_fields": 0,
+    "requests": 0,
+    "reserved_cu": 0,
+    "rps": 1,
+    "successes": {}
+  },
+  "gecko_policy": {
+    "consecutive_429": 0,
+    "network_calls": 3,
+    "new_pool_pages": 1,
+    "per_cycle_limit": 3,
+    "retry_after": 0,
+    "trending_pages": 0
+  },
+  "cohort_refresh": {
+    "identity_rejections": 0,
+    "observed": 30,
+    "requests": 2,
+    "status": "ok"
+  },
+  "source_failures": {
+    "BR:influencers": "unavailable",
+    "hydration:gecko_pools": "rate_budget",
+    "market_data": "incomplete_mandatory_pool_fields"
+  },
+  "provider_status": {
+    "helius": {
+      "at": 1794919572.7348576,
+      "status": "ok"
+    },
+    "jupiter": {
+      "at": 1794919633.9283202,
+      "status": "ok"
+    }
+  },
+  "security_checks": [],
+  "rejected": {
+    "late_or_falling_price": 4,
+    "liquidity": 6,
+    "missing_market_data": 5,
+    "v5_market_cap": 129,
+    "v5_market_cap_conflict": 4,
+    "v5_market_missing": 154,
+    "v5_pool_age": 26,
+    "v5_volume_h1": 24,
+    "weak_activity": 23
+  },
+  "sent": 0,
+  "health_notification": {
+    "status": "not_due"
+  }
+}
