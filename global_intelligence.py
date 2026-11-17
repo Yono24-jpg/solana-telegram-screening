@@ -21,7 +21,18 @@ QUERIES = [
  ('exchange','crypto exchange listing announcement'),('community','meme coin community takeover'),
  ('global','热搜 病毒式 迷因 动漫 人工智能'),('global','話題 ミーム ゲーム アニメ'),
  ('global','화제 밈 게임 인공지능'),('open_world','trending viral')]
-STOP = narrative_v3.STOP | set('gameplay demo legal friends out now delays brasil brazil china japan korea indonesia australia buatan lebih kecerdasan 人工智能 中国 日本 韩国 游戏 動画 ゲーム 話題 trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split())
+STOP = narrative_v3.STOP | set('gameplay demo legal friends out now delays brasil brazil china japan korea indonesia australia buatan lebih kecerdasan 人工智能 中国 日本 韩国 游戏 動画 ゲーム 話題 trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split()) | set('technology digital november december january february march april may june july august september october october november december monday tuesday wednesday thursday friday saturday sunday former ex pleads plead guilty arrested charged charges accused sentenced convicted'.split())
+ENTITY_PREFIXES = frozenset('former ex alleged purported'.split())
+ENTITY_SUFFIXES = frozenset('pleads plead guilty arrested charged charges accused sentenced convicted announced announces launches launched unveils revealed reveals says said reports reported'.split())
+ENTITY_NOISE = frozenset('january february march april may june july august september october november december monday tuesday wednesday thursday friday saturday sunday technology digital update updates report reports world global trending company companies market headline headlines'.split())
+
+def entity_candidate(value):
+    """Reject headline fragments and generic trend words before dynamic matching/search."""
+    words=normalize(value).split()
+    if not words or any(w in STOP for w in words): return False
+    if words[0] in ENTITY_PREFIXES or words[-1] in ENTITY_SUFFIXES: return False
+    return not any(w in ENTITY_NOISE for w in words)
+
 
 
 def normalize(value):
@@ -46,9 +57,9 @@ def entities(articles, ai=None):
         phrases+=re.findall(r'[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]{2,20}',title)
         for phrase in phrases:
             key=normalize(phrase)
-            if key and not any(w in STOP for w in key.split()): labels.setdefault(key,phrase)
+            if entity_candidate(phrase): labels.setdefault(key,phrase)
     for phrase in (ai or {}).get('entities',[]):
-        if isinstance(phrase,str) and 2<=len(phrase)<=60 and not any(w in STOP for w in normalize(phrase).split()): labels.setdefault(normalize(phrase),phrase)
+        if isinstance(phrase,str) and 2<=len(phrase)<=60 and entity_candidate(phrase): labels.setdefault(normalize(phrase),phrase)
     return list(labels.values())[:1500]
 
 
