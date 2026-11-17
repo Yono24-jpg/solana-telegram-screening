@@ -156,6 +156,14 @@ class GateAudit(unittest.TestCase):
         state={'memory_v5':{'one':{'best_observed_pct':3000000}}}
         r=audit.gainer_review(state,[],[],NOW)
         self.assertEqual(r['historical_extreme_unverified'],1);self.assertIsNone(r['proved_missed_safe_trades'])
+    def test_current_cycle_record_not_counted_as_previously_seen(self):
+        p=market_pool();p['priceChange']['h1']=60
+        pair=p['pairAddress'];mint=p['baseToken']['address']
+        state={'memory_v5':{'one':{'pair':pair,'mint':mint,'at':NOW-1}}}
+        r=audit.gainer_review(state,[p],[],NOW)
+        self.assertFalse(r['provider_reported_risers'][0]['seen_before'])
+        state['memory_v5']['one']['at']=NOW-301
+        self.assertTrue(audit.gainer_review(state,[p],[],NOW)['provider_reported_risers'][0]['seen_before'])
 
 
 if __name__=='__main__':unittest.main()

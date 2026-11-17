@@ -116,11 +116,12 @@ def gainer_review(state, pools, audits, now):
         lp=market.amount(market.get(p,'liquidity.usd')); h1=market.amount(market.get(p,'priceChange.h1'))
         if lp is None or lp<10000 or h1 is None or h1<50: continue
         mint=market.get(p,'baseToken.address');pair=p.get('pairAddress');a=by_pair.get(pair,{})
-        historical=[r for r in state.get('memory_v5',{}).values() if r.get('pair')==pair and r.get('mint')==mint and r.get('at',now+1)<now]
+        historical=[r for r in state.get('memory_v5',{}).values() if r.get('pair')==pair and r.get('mint')==mint and r.get('at',now+1)<now-120]
         first=min(historical,key=lambda r:r['at']) if historical else None
         candidates.append({'pair':pair,'mint':mint,'provider_h1_change_pct':h1,'liquidity_usd':lp,
             'current_primary_rejection':a.get('primary_rejection'),'current_failed':a.get('failed',[]),
             'seen_before':bool(first),'first_recorded_at':first.get('at') if first else None,
+            'initial_recorded_rejection':first.get('initial_decision') if first else None,
             'initial_safety_complete':first.get('initial_safety_complete',False) if first else False,
             'classification':'provider_reported_rise; safe missed opportunity unproven',
             'url':'https://dexscreener.com/solana/'+pair})
