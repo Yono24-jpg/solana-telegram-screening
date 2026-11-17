@@ -12,7 +12,10 @@ import evidence
 import narrative_v3
 import market_data
 
-REGIONS = [('US','en-US','en'),('CN','zh-CN','zh-Hans'),('JP','ja','ja'),('KR','ko','ko'),('ID','id','id'),('BR','pt-BR','pt-419')]
+REGIONS = [
+    ('US','en-US','en'),('CN','zh-CN','zh-Hans'),('JP','ja','ja'),('KR','ko','ko'),('ID','id','id'),('BR','pt-BR','pt-419'),
+    ('GB','en-GB','en'),('IN','en-IN','en'),('DE','de-DE','de'),('FR','fr-FR','fr'),('MX','es-419','es'),('AU','en-AU','en')]
+REGION_WINDOW = 6
 QUERIES = [
  ('games','game launch release trailer'),('ai','artificial intelligence new technology'),
  ('animals','viral animal meme'),('influencers','crypto influencer celebrity viral'),
@@ -21,6 +24,22 @@ QUERIES = [
  ('exchange','crypto exchange listing announcement'),('community','meme coin community takeover'),
  ('global','热搜 病毒式 迷因 动漫 人工智能'),('global','話題 ミーム ゲーム アニメ'),
  ('global','화제 밈 게임 인공지능'),('open_world','trending viral')]
+NATIVE_QUERIES = {'CN':'热搜 OR 游戏 OR 动漫 OR 人工智能','JP':'話題 OR ゲーム OR アニメ','KR':'화제 OR 게임 OR 인공지능','ID':'viral OR gim OR kecerdasan buatan','BR':'viral OR jogos OR inteligência artificial'}
+
+def region_window(now):
+    """Rotate six locales per scan; every ten minutes all twelve locales are sampled once."""
+    width=min(REGION_WINDOW,len(REGIONS))
+    start=(int(now//300)*width)%len(REGIONS)
+    return [REGIONS[(start+i)%len(REGIONS)] for i in range(width)]
+
+
+def news_query(region_code,category,query):
+    """Keep one broad, category-free world-news query beside the bounded topic searches."""
+    if category=='open_world': return 'when:2d'
+    native=NATIVE_QUERIES.get(region_code)
+    localized='('+query+') OR ('+native+')' if native else query
+    return localized+' when:2d'
+
 STOP = narrative_v3.STOP | set('gameplay demo legal friends out now delays brasil brazil china japan korea indonesia australia buatan lebih kecerdasan 人工智能 中国 日本 韩国 游戏 動画 ゲーム 話題 trending days videos photos pictures trendingnews launches headline headlines liveblog viralnews launch release trailer viral crypto coin token update report live watch announces announced launches price market stock shares best top reviews review unveils'.split()) | set('technology digital november december january february march april may june july august september october october november december monday tuesday wednesday thursday friday saturday sunday former ex pleads plead guilty arrested charged charges accused sentenced convicted'.split())
 ENTITY_PREFIXES = frozenset('former ex alleged purported'.split())
 ENTITY_SUFFIXES = frozenset('pleads plead guilty arrested charged charges accused sentenced convicted announced announces launches launched unveils revealed reveals says said reports reported'.split())
@@ -111,21 +130,19 @@ def trends(articles, ai, now, previous=None):
 
 def collect(api, state, now):
     old=state.get('global_feed_v5',{})
-    if old.get('retrieval_version')=='5.1' and 0<=now-old.get('at',0)<600:
+    if old.get('retrieval_version')=='5.2' and 0<=now-old.get('at',0)<600:
         value=copy.deepcopy(old['value']); value['trends']=trends(value['articles'],value.get('ai',{}),now); return value
     offset=int(now//600)%len(QUERIES)
     jobs=[]
-    # Always cover six locales; rotate broad categories and an unbounded-news query.
-    for i,region in enumerate(REGIONS): jobs.append((region,*QUERIES[(offset+i)%len(QUERIES)]))
-    jobs.append((REGIONS[0],'open_world','trending viral news'))
+    # Rotate six of twelve locales per scan; cover broad categories and an unbounded-news query.
+    for i,region in enumerate(region_window(now)): jobs.append((region,*QUERIES[(offset+i)%len(QUERIES)]))
+    jobs.append((REGIONS[0],'open_world',''))
     # Priority subjects do not wait for a complete fourteen-query rotation.
     for category,query in [('games','game launch release trailer'),('ai','artificial intelligence new technology'),('screen','anime donghua movie premiere')]:
         if not any(j[0]==REGIONS[0] and j[1]==category for j in jobs):jobs.append((REGIONS[0],category,query))
     def read(job):
         (gl,hl,lang),category,query=job
-        native={'CN':'热搜 OR 游戏 OR 动漫 OR 人工智能','JP':'話題 OR ゲーム OR アニメ','KR':'화제 OR 게임 OR 인공지능','ID':'viral OR gim OR kecerdasan buatan','BR':'viral OR jogos OR inteligência artificial'}
-        localized='('+query+') OR ('+native[gl]+')' if gl in native else query
-        url='https://news.google.com/rss/search?'+urlencode({'q':localized+' when:2d','gl':gl,'hl':hl,'ceid':gl+':'+lang})
+        url='https://news.google.com/rss/search?'+urlencode({'q':news_query(gl,category,query),'gl':gl,'hl':hl,'ceid':gl+':'+lang})
         key=gl+':'+category
         try:
             rows=narrative_v3.parse_feed(evidence.public_read(url,api,as_text=True),category,now,normalizer=normalize)
@@ -157,8 +174,8 @@ def collect(api, state, now):
         state['global_ai_v5']={'at':now,'value':ai}
     value={'articles':articles,'sources':status,'ai':ai,'trends':trends(articles,ai,now),
            'engine':'multilingual_evidence_rules_v5', 'llm_used':ai.get('status')=='ok',
-           'coverage':'sampled public news, 6 rotating locales; not complete social/global coverage'}
-    state['global_feed_v5']={'at':now,'value':value,'retrieval_version':'5.1'}
+           'coverage':'sampled public news, 12 rotating locales (6 per scan); not complete social/global coverage'}
+    state['global_feed_v5']={'at':now,'value':value,'retrieval_version':'5.2'}
     return value
 
 
