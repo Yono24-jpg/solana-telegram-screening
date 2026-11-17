@@ -4,9 +4,6 @@ on:
     branches: [main]
     paths: ['scanner_v5.py', 'chain_intelligence.py', 'filter_audit.py', 'protocol_layouts_v54.json', 'smart_discovery.py', 'data_intelligence.py', 'birdeye_standard.py', 'global_intelligence.py', 'social_intelligence.py', 'hunter_modes.py', 'hunter_memory.py', 'token_extensions.py', 'discovery_watchlist.json', 'narrative_v3.py', 'security_v3.py', 'bot.py', 'scanner_v2.py', 'market_data.py', 'vault_checks.py', 'screening_rules.py', 'evidence.py', 'state_store.py', 'persist_state.py', 'signal_quality.py', 'test*.py', '.github/workflows/screen.yml']
   workflow_dispatch:
-  schedule:
-    # Explicit five-minute slots away from the beginning of each hour (UTC).
-    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
 permissions:
   contents: write
   id-token: write
