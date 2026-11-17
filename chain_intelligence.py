@@ -132,7 +132,7 @@ def discover(providers, state, now):
         row.update(at=now, attempts=row.get('attempts', 0)+1, retry_at=now+295)
         stats['transaction_reads'] += 1
         try:
-            tx = providers.rpc('getTransaction', [sig, {'encoding': 'jsonParsed', 'commitment': 'finalized', 'maxSupportedTransactionVersion': 0}])
+            tx = providers.rpc('getTransaction', [sig, {'encoding': 'jsonParsed', 'commitment': 'finalized', 'maxSupportedTransactionVersion': 1}])
             if not isinstance(tx, dict) or not isinstance(tx.get('meta'), dict): raise ValueError('shape')
             new = parse_creation(tx, sig, now); old = prior.parse_initialize(tx, sig, now) if valid_tx(tx, sig, now) else []
             leads += new; baseline += old; row['done'] = True
@@ -226,7 +226,7 @@ def sample_market(providers, pools, now):
         for row in recent[:2]:
             if providers.api.REQUEST_DEADLINE and time.monotonic()+2 >= providers.api.REQUEST_DEADLINE: break
             sig = row['signature']; out['requests'] += 1
-            tx = providers.rpc('getTransaction', [sig, {'encoding': 'jsonParsed', 'commitment': 'finalized', 'maxSupportedTransactionVersion': 0}])
+            tx = providers.rpc('getTransaction', [sig, {'encoding': 'jsonParsed', 'commitment': 'finalized', 'maxSupportedTransactionVersion': 1}])
             trade = reserve_trade(tx, sig, p, now)
             if trade: out['trades'].append(trade); out[trade['kind']+'s'] += 1
         out['status'] = 'observed_sample' if out['trades'] else 'no_decodable_sample'

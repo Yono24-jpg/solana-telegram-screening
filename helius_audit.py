@@ -42,7 +42,7 @@ def run():
                     signatures=client.rpc('getSignaturesForAddress',[wallet,{'limit':3,'commitment':'finalized'}])
                     for s in signatures[:2]:
                         if s.get('err') is not None:continue
-                        tx=client.rpc('getTransaction',[s['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
+                        tx=client.rpc('getTransaction',[s['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':1}])
                         keys=tx['transaction']['message']['accountKeys']
                         signed=any(isinstance(k,dict) and k.get('pubkey')==wallet and k.get('signer') is True for k in keys)
                         delta=security.owner_balances(tx['meta'].get('postTokenBalances'),wallet,mint)-security.owner_balances(tx['meta'].get('preTokenBalances'),wallet,mint)
