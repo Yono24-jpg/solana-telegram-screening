@@ -1,0 +1,59 @@
+name: Production Verification Checkpoint
+on:
+  workflow_run:
+    workflows: ["Solana Telegram Screening"]
+    types: [completed]
+    branches: [main]
+permissions:
+  actions: read
+  contents: write
+concurrency:
+  group: solana-screening-production-checkpoint
+  cancel-in-progress: false
+jobs:
+  checkpoint:
+    if: >-
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      contains(fromJSON('["push","workflow_dispatch"]'), github.event.workflow_run.event)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Fetch the exact scanner source revision
+        env:
+          RUN_HEAD_SHA: \${{ github.event.workflow_run.head_sha }}
+        run: git fetch --no-tags --depth=1 origin "$RUN_HEAD_SHA"
+      - name: Download this run's scanner report
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: scanner-v5-report-\${{ github.event.workflow_run.id }}
+          path: /tmp/hunter-run-report
+          repository: \${{ github.repository }}
+          run-id: \${{ github.event.workflow_run.id }}
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+      - name: Record the production cycle
+        env:
+          GITHUB_REPOSITORY: \${{ github.repository }}
+        run: >-
+          python3 production_verification.py
+          --event "$GITHUB_EVENT_PATH"
+          --report /tmp/hunter-run-report/latest.json
+          --checkpoint production_checkpoint.json
+          --root .
+          --repository "$GITHUB_REPOSITORY"
+      - name: Commit checkpoint when it changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add production_checkpoint.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record production verification checkpoint"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
