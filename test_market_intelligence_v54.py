@@ -78,6 +78,18 @@ class Protocols(unittest.TestCase):
         _,stats,_,_=chain.discover(provider,state,NOW+1)
         self.assertEqual(stats['transaction_reads'],0);self.assertGreater(stats['cache_hits'],0)
         self.assertEqual(state['chain_intelligence_v54']['rotation'],2)
+    def test_unindexed_curve_rechecked_after_rpc_signature_is_cached(self):
+        spec=next(s for s in self.specs() if s['protocol']=='pump');tx=creation(spec)
+        api=SimpleNamespace(REQUEST_DEADLINE=None,DEX='https://dex.example',request=Mock(return_value=[]))
+        provider=SimpleNamespace(api=api,rpc=Mock(side_effect=lambda m,p:[{'signature':SIG,'blockTime':NOW-120,'err':None}] if m=='getSignaturesForAddress' else tx))
+        state={};chain.discover(provider,state,NOW)
+        state=state_store.merge({},state,NOW+300)
+        p=market_pool();p['baseToken']['address']=MINT;p['pairAddress']=b58encode(bytes([74])*32)
+        p['pairCreatedAt']=(NOW+240)*1000;api.request.return_value=[p]
+        rows,stats,_,_=chain.discover(provider,state,NOW+301)
+        self.assertEqual(stats['transaction_reads'],0);self.assertEqual(stats['resolved_curve_mints'],1)
+        self.assertEqual(rows[0]['pairCreatedAt'],p['pairCreatedAt']);self.assertNotEqual(rows[0]['pairAddress'],PAIR)
+        self.assertEqual(state['chain_intelligence_v54']['curves'],{})
     def test_expired_deadline_never_reads_network(self):
         provider=SimpleNamespace(api=SimpleNamespace(REQUEST_DEADLINE=1),rpc=Mock())
         with patch.object(chain.time,'monotonic',return_value=2):chain.discover(provider,{},NOW)

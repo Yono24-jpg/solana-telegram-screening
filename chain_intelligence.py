@@ -146,15 +146,24 @@ def discover(providers, state, now):
     # Bonding curves are not mislabeled as DEX AMM pools. Resolve the mint to an actual indexed pool.
     curves = [p for p in leads if p.get('discoveryEvidence', {}).get('kind') == 'bonding_curve']
     actual = [p for p in leads if p not in curves]
-    if curves and (not providers.api.REQUEST_DEADLINE or time.monotonic()+2 < providers.api.REQUEST_DEADLINE):
-        wanted = {p['baseToken']['address'] for p in curves}
+    curve_queue={m:v for m,v in r.get('curves',{}).items() if 0<=now-v.get('first_seen',0)<=3600}
+    for p in curves:
+        mint=p['baseToken']['address']
+        curve_queue.setdefault(mint,{'first_seen':now,'last_attempt':0,'curve':p['pairAddress']})
+    curve_queue=dict(sorted(curve_queue.items(),key=lambda x:-x[1]['first_seen'])[:100])
+    resolved=set()
+    if curve_queue and (not providers.api.REQUEST_DEADLINE or time.monotonic()+2 < providers.api.REQUEST_DEADLINE):
+        wanted = set(m for m,_ in sorted(curve_queue.items(),key=lambda x:(x[1]['last_attempt'],x[1]['first_seen']))[:30])
+        for m in wanted:curve_queue[m]['last_attempt']=now
         try:
             raw = providers.api.request(providers.api.DEX+'/tokens/v1/solana/'+','.join(sorted(wanted)))
             for p in raw if isinstance(raw, list) else []:
                 if isinstance(p, dict) and p.get('chainId') == 'solana' and market.get(p, 'baseToken.address') in wanted:
-                    actual.append(p)
+                    actual.append(p);resolved.add(market.get(p,'baseToken.address'))
         except Exception: pass
-    stats['unindexed_curve_leads'] = sum(not any(market.get(p, 'baseToken.address') == c['baseToken']['address'] for p in actual) for c in curves)
+    r['curves']={m:v for m,v in curve_queue.items() if m not in resolved}
+    stats['unindexed_curve_leads'] = len(r['curves'])
+    stats['resolved_curve_mints']=len(resolved)
     stats['market_rows'] = len(market.merge_pools(actual))
     stats['protocol_leads']=dict(Counter(p.get('discoveryEvidence',{}).get('protocol','raydium') for p in leads))
     return market.merge_pools(actual), stats, archived, leads
