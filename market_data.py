@@ -6,6 +6,7 @@ from collections import Counter
 from screening_rules import address, amount, number, timestamp
 
 GECKO = 'https://api.geckoterminal.com/api/v2'
+GECKO_SMART_CALLS_PER_CYCLE = 5
 QUOTE_ASSETS = {'So11111111111111111111111111111111111111112',
                 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
                 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'}
@@ -34,9 +35,15 @@ class GeckoClient:
         self.smart=smart;self.calls=0
     def request(self, url):
         if self.paced:
-            # Below even the conservative approximate ten/minute public limit.
+            # Smart discovery allows at most five calls per cycle. Twelve-second
+            # spacing keeps this scanner at or below five calls per minute.
             # Hold through response completion so concurrent source tasks cannot burst.
             with self.pace:
+                if self.smart:
+                    with self.lock:
+                        if self.calls>=GECKO_SMART_CALLS_PER_CYCLE:
+                            self.limited+=1
+                            raise RuntimeError('gecko_free_budget')
                 if time.time()<self.state.get('gecko_retry_after',0):return self._request(url)
                 delay=max(0,self.state.get('gecko_last_completed',0)+(12 if self.smart else 6.2)-time.time())
                 if delay:
@@ -54,7 +61,7 @@ class GeckoClient:
             if now<self.state.get('gecko_retry_after',0):
                 self.limited+=1
                 raise RuntimeError('gecko_provider_backoff')
-            if self.smart and self.calls>=3:
+            if self.smart and self.calls>=GECKO_SMART_CALLS_PER_CYCLE:
                 self.limited+=1
                 raise RuntimeError('gecko_free_budget')
             calls = [t for t in self.state.get('gecko_requests', []) if number(t) and 0 <= now-t < 60]
