@@ -253,12 +253,24 @@ def hydrate_incomplete(pools, api, gecko, now, limit=80):
         lp=amount(get(p,'liquidity.usd')) or 0
         return (not 60<=age<=3600,not 60<=age<=86400,lp<10000,attempts.get(p['pairAddress'],0),len(v3_missing_fields(p)),-lp)
     pending=sorted([p for p in pools if v3_missing_fields(p)],key=priority)[:limit]
-    for p in pending:attempts[p['pairAddress']]=now
-    record.update(at=now,attempts=dict(sorted(attempts.items(),key=lambda r:-r[1])[:300]))
+    attempted=set()
     fields=lambda:dict(Counter(k for p in pools for k in v3_missing_fields(p)))
     stats={'incomplete_before':sum(bool(v3_missing_fields(p)) for p in pools),'requested':len(pending),'dex_batches':0,'gecko_batches':0,'recovered':0,
            'missing_before':fields(),'sources':{},'identity_rejections':0,'partial_improvements':0}
-    def status(source, **values): stats['sources'].setdefault(source,{}).update(values)
+    def status(source, **values):
+        entry=stats['sources'].setdefault(source,{'attempts':0,'successes':0,'total_rows':0,'status_counts':{}})
+        entry['attempts']+=1
+        outcome=values['status'];entry['status_counts'][outcome]=entry['status_counts'].get(outcome,0)+1
+        entry['successes']+=int(outcome in ('ok','verified'))
+        entry['total_rows']+=values.get('rows',0)
+        # Keep the previous final-status/last-successful-batch fields for consumers.
+        entry.update(values)
+    def time_available():
+        deadline=getattr(api,'REQUEST_DEADLINE',None)
+        return not number(deadline) or time.monotonic()<deadline
+    def attempted_batch(expected):
+        attempted.update(expected)
+        for pair in expected:attempts[pair]=time.time()
     def failure(source,error):
         code=getattr(error,'code',None)
         local={'gecko_free_budget':'rate_budget','gecko_provider_backoff':'provider_backoff'}
@@ -273,16 +285,18 @@ def hydrate_incomplete(pools, api, gecko, now, limit=80):
             index=positions[pair];before=len(v3_missing_fields(pools[index]));pools[index]=select_pool(pools[index],row)
             stats['partial_improvements']+=int(len(v3_missing_fields(pools[index]))<before)
     for start in range(0,len(pending),20):
+        if not time_available():break
         batch=pending[start:start+20];expected={p['pairAddress']:get(p,'baseToken.address') for p in batch}
         try:
             stats['dex_batches']+=1
+            attempted_batch(expected)
             data=api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(expected))
             if not isinstance(data,dict):raise ValueError('response_shape')
             merge_rows(data.get('pairs') or [],expected)
             status('dex_pairs',status='ok',rows=len(data.get('pairs') or []))
         except Exception as error:failure('dex_pairs',error)
         expected={pair:mint for pair,mint in expected.items() if v3_missing_fields(pools[positions[pair]])}
-        if not expected:continue
+        if not expected or not time_available():continue
         try:
             stats['gecko_batches']+=1
             rows=gecko_pools(gecko.request(GECKO+'/networks/solana/pools/multi/'+','.join(expected)+'?include=base_token,quote_token,dex'))
@@ -292,8 +306,10 @@ def hydrate_incomplete(pools, api, gecko, now, limit=80):
     # A mint endpoint is distinct from the pair endpoint; never treat the CA as a pool.
     unresolved=[p for p in pending if v3_missing_fields(pools[positions[p['pairAddress']]])]
     for start in range(0,len(unresolved),30):
+        if not time_available():break
         batch=unresolved[start:start+30];expected={p['pairAddress']:get(p,'baseToken.address') for p in batch}
         try:
+            attempted_batch(expected)
             rows=api.request(api.DEX+'/tokens/v1/solana/'+','.join(dict.fromkeys(expected.values())))
             merge_rows(rows,expected);status('dex_tokens',status='ok',rows=len(rows))
         except Exception as error:failure('dex_tokens',error)
@@ -303,8 +319,10 @@ def hydrate_incomplete(pools, api, gecko, now, limit=80):
     eligible=[p for p in eligible if v3_missing_fields(p)==['marketCap'] and (amount(get(p,'liquidity.usd')) or 0)>=10000
               and (amount(get(p,'volume.h1')) or 0)>=5000]
     for p in eligible[:2]:
+        if not time_available():break
         mint=get(p,'baseToken.address')
         try:
+            attempted_batch({p['pairAddress']:mint})
             url='https://api.coingecko.com/api/v3/coins/solana/contract/'+mint
             raw=api.request(url); proof=verified_cap(raw,mint,p,now)
             if proof:
@@ -316,6 +334,9 @@ def hydrate_incomplete(pools, api, gecko, now, limit=80):
     stats['missing_after']=fields()
     stats['preserved_cap_proofs']=sum(bool(p.get('_cap_evidence_preserved')) for p in pools)
     stats['recovered']=stats['incomplete_before']-stats['incomplete_after']
+    stats['attempted_pools']=len(attempted)
+    stats['deadline_exhausted']=not time_available()
+    record.update(at=now,attempts=dict(sorted(attempts.items(),key=lambda r:-r[1])[:300]))
     return pools,stats
 
 
