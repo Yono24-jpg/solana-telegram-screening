@@ -70,7 +70,7 @@ def _cycle(run: dict[str, Any], report: dict[str, Any]) -> dict[str, Any]:
         "coverage_pct":_number(recovery.get("coverage_pct")),
         "young_complete":_number(recovery.get("young_complete")),"young_total":_number(recovery.get("young_total")),
         "gecko_attempts":_number(gecko.get("attempts")),"gecko_successes":_number(gecko.get("successes")),
-        "gecko_status_counts":{str(k):int(v) for k,v in statuses.items()
+        "gecko_status_counts":{str(k):int(v) for k,v in (statuses.items() if isinstance(statuses,dict) else [])
                                if isinstance(k,str) and isinstance(v,int) and not isinstance(v,bool) and v>=0},
         "incomplete_after":_number(hydration.get("incomplete_after")),
         "social_status":social.get("status"),
@@ -90,6 +90,7 @@ def update_checkpoint(checkpoint: dict[str,Any] | None, run: dict[str,Any], repo
     known={str(row.get("run_id")) for key in ("successful_runs","failed_runs")
            for row in checkpoint.get(key,[]) if isinstance(row,dict)}
     if run_id in known: return checkpoint,False,"duplicate_run"
+    if checkpoint.get("status")=="verified_12_consecutive_runs": return checkpoint,False,"already_complete"
     reason=None
     if run.get("conclusion")!="success": reason="workflow_not_success"
     elif not isinstance(report,dict): reason="report_missing"

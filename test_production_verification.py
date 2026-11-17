@@ -82,4 +82,12 @@ class CheckpointTests(unittest.TestCase):
             self.assertTrue(changed);self.assertEqual(reason,"recorded")
         self.assertEqual(cp["status"],"verified_12_consecutive_runs");self.assertEqual(cp["consecutive_successes"],12)
 
+    def test_completed_checkpoint_stops_commit_churn(self):
+        cp=None
+        for run_id in range(1,13):
+            cp,_,_=update_checkpoint(cp,make_run(run_id),make_report(run_id),REPO,FINGERPRINT)
+        same,changed,reason=update_checkpoint(cp,make_run(13),make_report(13),REPO,FINGERPRINT)
+        self.assertFalse(changed);self.assertEqual(reason,"already_complete")
+        self.assertEqual(same["consecutive_successes"],12);self.assertEqual(len(same["successful_runs"]),12)
+
 if __name__=="__main__": unittest.main()
