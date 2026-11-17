@@ -144,10 +144,13 @@ def security(mint, api, now, pool=None, mint_validator=None):
 
 
 def x_analysis(handle, mint, api, now):
-    result = {'status': 'api_not_configured', 'score': None, 'verified_link': False, 'complete': False, 'risks': []}
+    result = {'status': 'token_missing', 'score': None, 'verified_link': False, 'complete': False, 'risks': []}
     token = os.environ.get('X_BEARER_TOKEN')
-    # Reading X may incur charges; it is disabled unless explicitly configured by the owner.
-    if not token or os.environ.get('X_READS_ENABLED', '0') != '1': return result
+    if not token: return result
+    # X public reads are metered; keep the owner-approved paid-access policy OFF.
+    if os.environ.get('X_READS_ENABLED', '0') != '1':
+        result['status'] = 'reads_disabled_paid_policy'
+        return result
     try:
         query = urlencode({'user.fields': 'created_at,description,public_metrics,protected,username,profile_image_url'})
         user = public_read('https://api.x.com/2/users/by/username/' + handle + '?' + query, api, bearer=token)['data']

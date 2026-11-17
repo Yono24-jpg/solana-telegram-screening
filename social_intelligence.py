@@ -53,9 +53,13 @@ def sample(api, query, mint, now):
                          'interactions':sum(metrics) if all(number(x) and x>=0 for x in metrics) else None,
                          'avatar_url':author.get('avatar'), 'contract_mentioned':bool(re.search(r'(?<![1-9A-HJ-NP-Za-km-z])'+re.escape(mint)+r'(?![1-9A-HJ-NP-Za-km-z])',record['text']))})
         rows=list({r['uri']:r for r in rows}.values())
-        out.update(status='observed',posts=rows,unique_authors=len({r['author'] for r in rows}),
-                   contract_mentions=sum(r['contract_mentioned'] for r in rows),
-                   interactions=sum(r['interactions'] for r in rows) if rows and all(r['interactions'] is not None for r in rows) else None)
+        if rows:
+            out.update(status='observed',posts=rows,unique_authors=len({r['author'] for r in rows}),
+                       contract_mentions=sum(r['contract_mentioned'] for r in rows),
+                       interactions=sum(r['interactions'] for r in rows) if all(r['interactions'] is not None for r in rows) else None)
+        else:
+            out.update(status='no_matching_posts',posts=[],unique_authors=0,
+                       contract_mentions=0,interactions=None)
     except Exception: pass
     return out
 
@@ -113,7 +117,10 @@ def discover_contracts(api, feed, now):
             raw=api.request(api.DEX+'/tokens/v1/solana/'+','.join(selected))
             pools=[p for p in raw if isinstance(p,dict) and p.get('chainId')=='solana' and (p.get('baseToken') or {}).get('address') in selected] if isinstance(raw,list) else []
         except Exception: pass
-    return merge_pools(pools),{'status':'sampled' if any(v=='observed' for v in sources.values()) else 'unavailable',
+    has_posts=any(v=='observed' for v in sources.values())
+    has_samples=any(v in ('observed','no_matching_posts') for v in sources.values())
+    status='sampled' if has_posts else ('sampled_no_matching_posts' if has_samples else 'unavailable')
+    return merge_pools(pools),{'status':status,
                                'sources':sources,'details':details,'contracts':len(selected),'pools':len(pools),'trust':'unverified leads only'}
 
 
