@@ -184,7 +184,9 @@ def retain_watchlist(state, pools, now, max_age=86400):
         created = amount(p.get('pairCreatedAt')); pair = p.get('pairAddress'); mint = get(p, 'baseToken.address')
         lp = amount(get(p, 'liquidity.usd')); volume = amount(get(p, 'volume.m5'))
         if not address(pair) or not address(mint) or created is None or not 0 <= now-created/1000 <= max_age: continue
-        if lp is None or lp < 5000 or volume is None or volume < 500: continue
+        if lp is not None and lp < 5000: continue
+        if volume is not None and volume < 500: continue
+        if (lp is None or volume is None) and not 60 <= now-created/1000 <= 3600: continue
         old = watched.get(pair, {})
         watched[pair] = {'mint':mint, 'created_at':created/1000, 'last_seen':now,
                          'last_checked':now, 'first_seen':old.get('first_seen',now)}
@@ -202,8 +204,9 @@ def refresh_watchlist(pools, state, api, gecko, now, max_age=86400):
         try:
             response = api.request(api.DEX+'/latest/dex/pairs/solana/'+','.join(batch))
             for p in response.get('pairs') or []:
-                if isinstance(p,dict) and p.get('chainId') == 'solana' and p.get('pairAddress') in batch and get(p,'baseToken.address') == batch[p['pairAddress']]['mint'] and not v3_missing_fields(p):
-                    refreshed.append(select_pool(p,None)); matched.add(p['pairAddress'])
+                if isinstance(p,dict) and p.get('chainId') == 'solana' and p.get('pairAddress') in batch and get(p,'baseToken.address') == batch[p['pairAddress']]['mint']  :
+                    refreshed.append(select_pool(p,None))
+                    if not v3_missing_fields(p): matched.add(p['pairAddress'])
         except Exception: pass
     # One bounded Gecko batch covers pools not yet indexed by DexScreener.
     fallback = dict((pair,r) for pair,r in pending if pair not in matched)
@@ -217,7 +220,7 @@ def refresh_watchlist(pools, state, api, gecko, now, max_age=86400):
         except Exception: pass
     for pair,_ in pending: state['pool_watchlist'][pair]['last_checked'] = now
     retain_watchlist(state, refreshed, now, max_age)
-    return pools+refreshed
+    return merge_pools(pools+refreshed)
 
 
 def v3_missing_fields(pool):
@@ -236,7 +239,7 @@ def merge_pools(pools):
     return list(result.values())
 
 
-def hydrate_incomplete(pools, api, gecko, now, limit=40):
+def hydrate_incomplete(pools, api, gecko, now, limit=80):
     """Retry incomplete *present* pools as well as the existing absent-pool watchlist.
 
     Bounded pair batches, matched mint+pool identities, one coherent winning snapshot.
