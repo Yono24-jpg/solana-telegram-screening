@@ -30,13 +30,15 @@ def checkpoint(state, api, durable=False):
         state.clear(); state.update(merged)
 
 
-def discover(api, gecko=None):
+def discover(api, gecko=None, smart=False):
     gecko = gecko or market_data.GeckoClient(api, {})
     started=time.monotonic();completed={}
     urls = [(market_data.GECKO+'/networks/solana/new_pools?page=1&include=base_token,quote_token,dex','gecko_1')]
     urls += [(api.DEX+p, label) for p, label in SOURCES]
-    urls += [(market_data.GECKO+'/networks/solana/new_pools?page='+str(p)+'&include=base_token,quote_token,dex', 'gecko_'+str(p)) for p in (2,3)]
-    urls += [(market_data.GECKO+'/networks/solana/trending_pools?page='+str(p)+'&include=base_token,quote_token,dex','gecko_trending_'+str(p)) for p in (1,2)]
+    if not smart:
+        urls += [(market_data.GECKO+'/networks/solana/new_pools?page='+str(p)+'&include=base_token,quote_token,dex', 'gecko_'+str(p)) for p in (2,3)]
+    if not smart:
+        urls += [(market_data.GECKO+'/networks/solana/trending_pools?page='+str(p)+'&include=base_token,quote_token,dex','gecko_trending_'+str(p)) for p in (1,2)]
     def read(item):
         url, label = item
         try:

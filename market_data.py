@@ -28,16 +28,17 @@ def missing_fields(pool):
 
 class GeckoClient:
     """Nine requests per rolling minute, including failed requests and previous runs."""
-    def __init__(self, api, state, paced=False):
+    def __init__(self, api, state, paced=False, smart=False):
         self.api = api; self.state = state; self.lock = threading.Lock(); self.limited = 0
         self.paced=paced;self.pace=threading.Lock()
+        self.smart=smart;self.calls=0
     def request(self, url):
         if self.paced:
             # Below even the conservative approximate ten/minute public limit.
             # Hold through response completion so concurrent source tasks cannot burst.
             with self.pace:
                 if time.time()<self.state.get('gecko_retry_after',0):return self._request(url)
-                delay=max(0,self.state.get('gecko_last_completed',0)+6.2-time.time())
+                delay=max(0,self.state.get('gecko_last_completed',0)+(12 if self.smart else 6.2)-time.time())
                 if delay:
                     deadline=getattr(self.api,'REQUEST_DEADLINE',None)
                     if isinstance(deadline,(int,float)) and time.monotonic()+delay+8>=deadline:raise RuntimeError('gecko_free_budget')
@@ -53,20 +54,32 @@ class GeckoClient:
             if now<self.state.get('gecko_retry_after',0):
                 self.limited+=1
                 raise RuntimeError('gecko_provider_backoff')
+            if self.smart and self.calls>=3:
+                self.limited+=1
+                raise RuntimeError('gecko_free_budget')
             calls = [t for t in self.state.get('gecko_requests', []) if number(t) and 0 <= now-t < 60]
             self.state['gecko_requests'] = calls
             if len(calls) >= 9:
                 self.limited += 1
                 raise RuntimeError('gecko_free_budget')
             calls.append(now)
-        try:return self.api.request(url)
+            self.calls+=1
+        try:
+            result=self.api.request(url)
+            if self.smart:self.state['gecko_429_streak']=0
+            return result
         except Exception as error:
             if getattr(error,'code',None)==429:
                 headers=getattr(error,'headers',{}) or {};raw=headers.get('Retry-After','120')
                 try:delay=float(raw)
                 except (TypeError,ValueError):delay=120
                 if not number(delay):delay=120
-                with self.lock:self.state['gecko_retry_after']=time.time()+max(60,min(900,delay))
+                with self.lock:
+                    if self.smart:
+                        streak=min(4,self.state.get('gecko_429_streak',0)+1)
+                        self.state['gecko_429_streak']=streak
+                        delay=max(delay,min(1800,300*2**(streak-1)))
+                    self.state['gecko_retry_after']=time.time()+max(60,min(1800 if self.smart else 900,delay))
             raise
 
 

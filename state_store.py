@@ -18,7 +18,9 @@ def migrate(state, now):
                                    and number(r.get('at')) and 0<=now-r['at']<=7*86400],key=lambda r:r['at'])[-100:]
     state['gecko_requests'] = sorted(set(t for t in state.get('gecko_requests',[]) if number(t) and 0 <= now-t <= 120))[-100:]
     retry=state.get('gecko_retry_after',0)
-    state['gecko_retry_after']=retry if number(retry) and now<retry<=now+900 else 0
+    state['gecko_retry_after']=retry if number(retry) and now<retry<=now+3600 else 0
+    streak=state.get('gecko_429_streak',0)
+    state['gecko_429_streak']=streak if isinstance(streak,int) and 0<=streak<=4 else 0
     completed=state.get('gecko_last_completed',0)
     state['gecko_last_completed']=completed if number(completed) and 0<=now-completed<=120 else 0
     state['pool_watchlist'] = {k:v for k,v in state['pool_watchlist'].items() if address(k) and isinstance(v,dict)
@@ -66,6 +68,7 @@ def merge(remote, local, now):
     out['gecko_requests'] = remote.get('gecko_requests',[])+local.get('gecko_requests',[])
     out['gecko_retry_after']=max(remote.get('gecko_retry_after',0),local.get('gecko_retry_after',0))
     out['gecko_last_completed']=max(remote.get('gecko_last_completed',0),local.get('gecko_last_completed',0))
+    out['gecko_429_streak']=(local if local.get('gecko_last_completed',0)>=remote.get('gecko_last_completed',0) else remote).get('gecko_429_streak',0)
     out['scan_history'] = list({(r['at'],r.get('run_id')):r for r in remote.get('scan_history',[])+local.get('scan_history',[])
                                if isinstance(r,dict) and number(r.get('at'))}.values())
     out['pool_watchlist'] = copy.deepcopy(remote.get('pool_watchlist',{}))
@@ -78,7 +81,7 @@ def merge(remote, local, now):
     out['offset'] = max(ro, lo)
     out['enabled'] = local.get('enabled', False) if lo > ro else remote.get('enabled', local.get('enabled', False))
     out['initialized'] = bool(local.get('initialized') or remote.get('initialized'))
-    for key in ('narrative_feed_v3', 'narrative_ai_v3', 'global_feed_v5', 'global_ai_v5'):
+    for key in ('narrative_feed_v3', 'narrative_ai_v3', 'global_feed_v5', 'global_ai_v5', 'smart_discovery_v53'):
         a=remote.get(key,{}); b=local.get(key,{})
         out[key]=copy.deepcopy(b if b.get('at',0)>=a.get('at',0) else a)
     out['last_scan'] = local.get('last_scan', remote.get('last_scan'))
