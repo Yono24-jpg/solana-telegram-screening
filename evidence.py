@@ -75,7 +75,7 @@ def mint_creation(mint, api, now):
             if len(rows) < 1000:
                 if not oldest or oldest.get('err') is not None: return out
                 tx = rpc(api, 'getTransaction', [oldest['signature'], {'encoding': 'jsonParsed',
-                          'commitment': 'finalized', 'maxSupportedTransactionVersion': 0}])
+                          'commitment': 'finalized', 'maxSupportedTransactionVersion': 1}])
                 if not isinstance(tx, dict) or not isinstance(tx.get('meta'), dict) or tx['meta'].get('err') is not None:
                     return out
                 when = tx.get('blockTime')

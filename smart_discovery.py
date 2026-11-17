@@ -119,7 +119,7 @@ def rpc_discover(providers, state, now, max_transactions=6):
         row.update(at=now, attempts=row.get('attempts', 0)+1, retry_at=now+300)
         try:
             tx = providers.rpc('getTransaction', [sig, {'encoding': 'jsonParsed', 'commitment': 'finalized',
-                                                      'maxSupportedTransactionVersion': 0}])
+                                                      'maxSupportedTransactionVersion': 1}])
             if not isinstance(tx, dict) or not isinstance(tx.get('meta'), dict):
                 raise ValueError('transaction_shape')
             leads += parse_initialize(tx, sig, now)

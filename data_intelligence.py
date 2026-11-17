@@ -22,7 +22,7 @@ class Client:
     def __init__(self,api,state):
         self.api=api;self.state=state;self.lock=threading.Lock();self.counts={};self.status={}
         self.tokens_by_mint={}
-        self.rpc_cache={};self.rpc_metrics={};self.helius_pace=threading.Lock()
+        self.rpc_cache={};self.rpc_metrics={};self.rpc_errors={};self.helius_pace=threading.Lock()
         import birdeye_standard
         self.bird=birdeye_standard.Standard(self)
         for name,key in [('helius','HELIUS_API_KEY'),('birdeye','BIRDEYE_API_KEY')]:
@@ -113,6 +113,13 @@ class Client:
             try:
                 result=self.request(provider,url,{'jsonrpc':'2.0','id':1,'method':method,'params':params})
                 error=result.get('error') if isinstance(result,dict) else None
+                if isinstance(error,dict) and isinstance(error.get('code'),int) and not isinstance(error['code'],bool):
+                    code=error['code']
+                    errors=self.rpc_errors.setdefault(provider,{})
+                    errors[str(code)]=errors.get(str(code),0)+1
+                    if code==-32015:
+                        self.status[provider]={'status':'rpc_transaction_version_unsupported','code':code,'at':time.time()}
+                        continue
                 if isinstance(error,dict) and error.get('code') in (-32005,-32603,429):
                     # Some RPCs return operational failures with HTTP 200. Never
                     # retain their free-text message/data, which may echo secrets.
@@ -137,6 +144,7 @@ class Client:
     def usage(self):
         record=self.state.get('provider_state_v5',{}).get('helius',{})
         return {'successful_rpc_by_method':copy.deepcopy(self.rpc_metrics),'helius_attempts_this_cycle':self.counts.get('helius',0),
+                'rpc_errors_by_code':copy.deepcopy(self.rpc_errors),'max_supported_transaction_version':1,
                 'helius_estimated_credits_today':record.get('requests',0),'helius_estimated_credits_31d':sum(record.get('credit_days',{}).values()),
                 'limits':{'per_cycle':80,'per_day':20000,'rolling_31d':600000,'requests_per_second':2},
                 'basis':'1 credit per allowed standard RPC attempt; conservative estimate, not Helius account billing; excludes other apps and read-only audit jobs'}

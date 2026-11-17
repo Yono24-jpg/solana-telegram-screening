@@ -71,7 +71,7 @@ def developer_check(report, api, now):
         if not isinstance(row,dict) or not number(row.get('blockTime')): raise EvidenceMissing('developer_history_incomplete')
         if row['blockTime'] > now: raise EvidenceMissing('developer_history_future')
         if now-row['blockTime'] > 3600 or row.get('err') is not None: continue
-        tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
+        tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':1}])
         if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict) or tx['meta'].get('err') is not None: raise EvidenceMissing('developer_transaction_unavailable')
         pre = owner_balances(tx['meta'].get('preTokenBalances'), creator, mint)
         post = owner_balances(tx['meta'].get('postTokenBalances'), creator, mint)
@@ -132,7 +132,7 @@ def transaction_sample(pool, buyers, api, now, creator=None):
         if selected < limit: raise EvidenceMissing('insufficient_sell_or_buyer_sample')
     def read(row):
         try:
-            tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
+            tx = evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':1}])
             return row, tx
         except Exception: return row, None
     slots = defaultdict(set); cosigners = defaultdict(set); sellers = set();buyers_seen=set();large=[]
@@ -188,7 +188,7 @@ def funding_check(report,buyers,api,now):
             if not number(when) or when>now:raise EvidenceMissing('funding_history_incomplete')
             if row.get('err') is not None or now-when>86400:continue
             if observed>=2:break
-            tx=evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':0}])
+            tx=evidence.rpc(api,'getTransaction',[row['signature'],{'encoding':'jsonParsed','commitment':'finalized','maxSupportedTransactionVersion':1}])
             if not isinstance(tx,dict) or not isinstance(tx.get('meta'),dict) or tx['meta'].get('err') is not None:
                 raise EvidenceMissing('funding_transaction_unavailable')
             if not number(tx.get('blockTime')) or tx['blockTime']!=when:raise EvidenceMissing('funding_transaction_time_mismatch')
