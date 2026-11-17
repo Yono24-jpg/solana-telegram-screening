@@ -19,7 +19,7 @@ def record(state, pool, narrative, decision, now, safety=None):
     old=records.get(key)
     if not old or decision=='accepted':
         records[key]={'at':now,'updated':now,'mint':mint,'pair':pair,'price':price,'samples':{},
-                      'decision':decision,'narrative':narrative.get('label'), 'safety_complete':bool((safety or {}).get('complete')),
+                      'decision':decision,'initial_decision':decision,'initial_liquidity_usd':amount((pool.get('liquidity') or {}).get('usd')),'narrative':narrative.get('label'), 'safety_complete':bool((safety or {}).get('complete')),
                       'initial_safety_complete':bool((safety or {}).get('complete')),
                       'market_cap_at_observation':amount(pool.get('marketCap')),
                       'pool_age_at_observation':now-pool['pairCreatedAt']/1000 if amount(pool.get('pairCreatedAt')) is not None else None}
