@@ -24,7 +24,7 @@ def main():
         print('TELEGRAM_DESTINATION username=@'+public_handle)
     # A public handle is printed; secret Chat ID and token are never printed or saved.
     msg = bot.tg('sendMessage', chat_id=chat['id'],
-                text='✅ TES KONEKSI SCANNER SOLANA\nBot: @'+username+'\nRepositori: Yono24-jpg/solana-telegram-screening\nUpgrade EARLY WATCH + STRONG SIGNAL. Ini pesan tes, bukan sinyal token.\nALERT ONLY • Tanpa trading otomatis.',
+                text='✅ TES KONEKSI SCANNER SOLANA\nBot: @'+username+'\nRepositori: Yono24-jpg/solana-telegram-screening\nVerifikasi produksi MAIL Hunter v5.2. Ini pesan tes koneksi, bukan sinyal token.\nALERT ONLY • Tanpa trading otomatis.',
                 reply_markup=bot.KEYBOARD, disable_web_page_preview=True)
     if not isinstance(msg.get('message_id'), int) or msg['message_id'] <= 0 or msg.get('chat', {}).get('id') != chat['id']:
         raise RuntimeError('send_not_verified')
