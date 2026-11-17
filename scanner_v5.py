@@ -25,7 +25,7 @@ def render(pool,m,sec,social,buyers,creation,tier):
     n=pool['_narrative_v3']; safety=pool['_security_v3']; mint=pool['baseToken']['address']; pair=pool['pairAddress']
     sources='\n'.join('• <a href="'+esc(a['url'])+'">'+esc(a['publisher'])+'</a>: '+esc(a['title'][:100]) for a in n['sources'][:2])
     scores=' | '.join(k+': '+('belum terukur' if v is None else str(v)+'/100') for k,v in pool['_scores_v5'].items())
-    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.1</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
+    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.2</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
             f'Mode: {esc(", ".join(m["modes"]))}\nUmur pool {m["age_seconds"]/60:.1f} menit\n'
             f'MC ${m["cap"]:,.0f} | LP ${m["lp"]:,.0f}\nVolume 1h ${pool["volume"]["h1"]:,.0f}\n'
             f'BUY/SELL 5m {m["buys"]}/{m["sells"]} ({m["buys"]/max(m["sells"],1):.2f}×)\n'
@@ -46,7 +46,7 @@ def health(state,api,chat,report):
     if state['delivery'].get(key,{}).get('reservation')!=claim: return {'status':'already_reserved'}
     rejects=', '.join(k+': '+str(v) for k,v in sorted(report.get('rejected',{}).items(),key=lambda x:-x[1])[:6]) or 'tidak ada / scanner OFF'
     ai=report.get('narrative',{}).get('ai',{})
-    text=(f'🩺 MAIL Hunter v5.1 — laporan kesehatan 6 jam\n'
+    text=(f'🩺 MAIL Hunter v5.2 — laporan kesehatan 6 jam\n'
           f'Scanner: {"ON" if state.get("enabled") else "OFF"} | {report.get("health","unknown")}\n'
           f'Pool: {report.get("seen",0)} | Kandidat terkirim: {report.get("sent",0)}\n'
           f'Penolakan: {rejects}\nAI: {ai.get("status","unavailable")} | Model: {ai.get("model_used") or "tidak digunakan"}\n'
@@ -82,7 +82,7 @@ def observe(state,pools,now):
 def run(state,chat,api,dry_run=False):
     now=time.time(); migrate(state,now)
     os.environ['X_READS_ENABLED']='0'  # Owner policy: paid X reads remain OFF.
-    report={'version':'5.1','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
+    report={'version':'5.2','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
             'security_checks':[],'trigger':os.environ.get('GITHUB_EVENT_NAME','local'),'run_id':os.environ.get('GITHUB_RUN_ID'),
             'capabilities':{'images':'not_available','influencer_pfp':'not_available_without_account_access',
                 'x_reads_enabled':os.environ.get('X_READS_ENABLED')=='1' and bool(os.environ.get('X_BEARER_TOKEN')),
@@ -130,6 +130,12 @@ def run(state,chat,api,dry_run=False):
     pools=market_data.refresh_watchlist(pools,state,api,gecko,time.time(),max_age=hunter_modes.MAX_AGE)
     report['post_hydration_enrichment']=providers.enrich(pools)
     report['final_incomplete_pools']=sum(bool(market_data.v3_missing_fields(p)) for p in pools)
+    from collections import Counter
+    report['data_recovery']={'total':len(pools),'complete':len(pools)-report['final_incomplete_pools'],
+        'coverage_pct':round(100*(len(pools)-report['final_incomplete_pools'])/len(pools),2) if pools else None,
+        'missing_fields':dict(Counter(k for p in pools for k in market_data.v3_missing_fields(p))),
+        'young_total':sum(60<=time.time()-(market_data.amount(p.get('pairCreatedAt')) or 0)/1000<=3600 for p in pools),
+        'young_complete':sum(60<=time.time()-(market_data.amount(p.get('pairCreatedAt')) or 0)/1000<=3600 and not market_data.v3_missing_fields(p) for p in pools)}
     observe(state,pools,time.time())
     # Bounded evaluations, including rejected cases. No invented horizon prices.
     original_deadline=api.REQUEST_DEADLINE
@@ -235,5 +241,5 @@ def write_report(state,api,report):
     Path('reports/latest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-            f.write('\n### MAIL Hunter v5.1 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
+            f.write('\n### MAIL Hunter v5.2 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
     print('SCANNER_V5 '+json.dumps(report,ensure_ascii=False,sort_keys=True))
