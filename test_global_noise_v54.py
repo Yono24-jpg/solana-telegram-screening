@@ -12,7 +12,7 @@ class GenericHeadlineNoiseTests(unittest.TestCase):
         for noise in ('former robinhood','robinhood engineer pleads','pleads guilty','november','technology','digital'):
             with self.subTest(noise=noise): self.assertNotIn(noise,normalized)
         self.assertIn('jensen huang',normalized)
-        self.assertIn('nebulafx',normalized)
+        self.assertIn('nebulafox',normalized)
 
     def test_named_entity_is_not_removed_by_headline_verb_filter(self):
         for phrase in ('NVIDIA','Jensen Huang','NebulaFox','Grand Theft Auto'):
