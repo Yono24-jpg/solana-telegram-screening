@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "target_successful_runs": 12,
+  "scanner_fingerprint": null,
+  "scanner_source_sha": null,
+  "tracking_started_at": null,
+  "status": "awaiting_first_production_run",
+  "consecutive_successes": 0,
+  "successful_runs": [],
+  "failed_runs": [],
+  "updated_at": null
+}
