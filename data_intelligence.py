@@ -151,7 +151,10 @@ class Client:
     def jupiter(self,path):
         key=os.environ.get('JUPITER_API_KEY');return self.request('jupiter',JUP+path,headers={'x-api-key':key} if key else None)
     def token_rows(self,mints):
-        selected=list(dict.fromkeys(m for m in mints if address(m)))[:30]
+        # Jupiter Tokens V2 accepts up to 100 comma-separated mint addresses.
+        # Keep this to one bounded request so cap recovery scales without
+        # increasing the per-cycle provider quota.
+        selected=list(dict.fromkeys(m for m in mints if address(m)))[:100]
         missing=[m for m in selected if m not in self.tokens_by_mint]
         if missing:
             try:
@@ -177,7 +180,9 @@ class Client:
         return self.request('rugcheck',RUG+'/v1/tokens/'+mint+'/report'+('/summary' if summary else ''),headers={'Authorization':key if key.startswith('Bearer ') else 'Bearer '+key} if key else None)
     def enrich(self,pools,use_birdeye=True):
         pending=[p for p in pools if amount(p.get('marketCap')) is None and address((p.get('baseToken') or {}).get('address'))]
-        rows=self.token_rows([(p.get('baseToken') or {})['address'] for p in pending])
+        requested_mints=list(dict.fromkeys((p.get('baseToken') or {}).get('address') for p in pending
+                                           if address((p.get('baseToken') or {}).get('address'))))[:100]
+        rows=self.token_rows(requested_mints)
         recovered=0
         for pool in pending:
             mint=pool['baseToken']['address'];row=rows.get(mint);proof=cap_proof(row,mint,pool,time.time())
@@ -189,7 +194,7 @@ class Client:
             if proof and cap is not None and cap>0 and abs(cap-proof['usd'])/proof['usd']>.2:
                 pool['valuationConflict']=True;pool['valuationConflictEvidence']={'primary_cap':cap,'reference':proof};conflicts+=1
         bird=self.bird.enrich(pools) if use_birdeye else self.bird.report()
-        return {'requested_mints':len(set(p['baseToken']['address'] for p in pending[:30])),'cap_recovered':recovered,
+        return {'requested_mints':len(requested_mints),'cap_recovered':recovered,
                 'birdeye_reads':bird['requests'],'birdeye':bird,
                 'cap_conflicts':conflicts,
                 'scope':'token circulating cap only; no aggregate volumes/transactions substituted for pool metrics'}
