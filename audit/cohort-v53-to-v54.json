@@ -1,0 +1,665 @@
+{
+  "version": "5.3",
+  "source_run": 44086217079,
+  "at": 1794919645.798766,
+  "rows": {
+    "2EUbRVKbjcTHnRfUV3UQk1YCGihcnn4SmxmjbNmFXuyY": {
+      "mint": "HisBG42hhVvyxjfYVSnDWZ5xCMwaYqQ6h56skpyipump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "2EUbRVKbjcTHnRfUV3UQk1YCGihcnn4SmxmjbNmFXuyY",
+        "baseToken": {
+          "address": "HisBG42hhVvyxjfYVSnDWZ5xCMwaYqQ6h56skpyipump",
+          "name": "MONEYY",
+          "symbol": "MONY"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919432000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "3nnU8aP3So3gEPTRTHUzAqsdXKt4XSnb7sUrM8Hek5Ve": {
+      "mint": "CcZjUFM6aqGv9LxmxkGHfhUafpLdJMNH9YJVaWnCpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "3nnU8aP3So3gEPTRTHUzAqsdXKt4XSnb7sUrM8Hek5Ve",
+        "baseToken": {
+          "address": "CcZjUFM6aqGv9LxmxkGHfhUafpLdJMNH9YJVaWnCpump",
+          "name": "satoshi",
+          "symbol": "S"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919425000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "4nAH6AKW8nnczwfqjbkZBodNZasTBTyEETu2wyk9F9kZ": {
+      "mint": "DnGZ2SqmEtuNcVPo3QMpu4y8CLRKEM5foaxPaywDpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "4nAH6AKW8nnczwfqjbkZBodNZasTBTyEETu2wyk9F9kZ",
+        "baseToken": {
+          "address": "DnGZ2SqmEtuNcVPo3QMpu4y8CLRKEM5foaxPaywDpump",
+          "name": "Ada",
+          "symbol": "ADA"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794916958000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "4pwTRPzvwmwBxY2pwddwqwifJ7ABEfpEfn5sAYjwdN6J": {
+      "mint": "FCfonw8edY1P2QT4x4B7CdjfCby8NpX3xHj3rvD3pump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "4pwTRPzvwmwBxY2pwddwqwifJ7ABEfpEfn5sAYjwdN6J",
+        "baseToken": {
+          "address": "FCfonw8edY1P2QT4x4B7CdjfCby8NpX3xHj3rvD3pump",
+          "name": "no riski no pegassi",
+          "symbol": "pegassi"
+        },
+        "quoteToken": {
+          "address": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO"
+        },
+        "pairCreatedAt": 1794919408000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "4utvFo374QqVn7h78yRnqxCRmwg1RzTnuEzeAkwYm87Y": {
+      "mint": "2SsQGs1feFWmhKPkL5NDHSBG7Wj62khGcAgPm22WyvmX",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "4utvFo374QqVn7h78yRnqxCRmwg1RzTnuEzeAkwYm87Y",
+        "baseToken": {
+          "address": "2SsQGs1feFWmhKPkL5NDHSBG7Wj62khGcAgPm22WyvmX",
+          "name": "Grokia",
+          "symbol": "Grokia"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919420000,
+        "dexId": "meteora"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "8Bx9vAB95uiwSLZin3UfkwD6wk5YDzb88KdNLSQ7E9Ab": {
+      "mint": "Cxh8QthfBt7kYwJHRSQFx1eEVzNGk1HbxTdDBnp2pump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "8Bx9vAB95uiwSLZin3UfkwD6wk5YDzb88KdNLSQ7E9Ab",
+        "baseToken": {
+          "address": "Cxh8QthfBt7kYwJHRSQFx1eEVzNGk1HbxTdDBnp2pump",
+          "name": "FROINK",
+          "symbol": "$FROINK"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919411000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "8GBLnaavNHsXvpkTYtUuAHbtVSDCZ6uisNs6Znf72EDR": {
+      "mint": "7iCXULkzqXhZBBMfvBYQYgFaYKYQixbcGWt1KrdjdXJA",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "8GBLnaavNHsXvpkTYtUuAHbtVSDCZ6uisNs6Znf72EDR",
+        "baseToken": {
+          "address": "7iCXULkzqXhZBBMfvBYQYgFaYKYQixbcGWt1KrdjdXJA",
+          "name": "Grokia",
+          "symbol": "Grokia"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919424000,
+        "dexId": "meteora"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "9vMicXumG38ESw7fa1xPUyT5RwWjzhK7chzVac42rEop": {
+      "mint": "6oZfdafnWstMUH9Dm1cLLC738UpocDcHvjxqrBP72kCy",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "9vMicXumG38ESw7fa1xPUyT5RwWjzhK7chzVac42rEop",
+        "baseToken": {
+          "address": "6oZfdafnWstMUH9Dm1cLLC738UpocDcHvjxqrBP72kCy",
+          "name": "\u6500\u8c79\u8c79",
+          "symbol": "\u6500\u8c79\u8c79"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919410000,
+        "dexId": "meteora"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "AV1sXHpz2kvHSSFyMGkEurVedxk8vpFVnUub9mdaAQ5z": {
+      "mint": "4Md63DoosZbPhZqEKvoTnNpbSWZ91iKzZ316ovKFMh7h",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "AV1sXHpz2kvHSSFyMGkEurVedxk8vpFVnUub9mdaAQ5z",
+        "baseToken": {
+          "address": "4Md63DoosZbPhZqEKvoTnNpbSWZ91iKzZ316ovKFMh7h",
+          "name": "RHIABLO",
+          "symbol": "RHIABLO"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        "pairCreatedAt": 1794919399000.0,
+        "dexId": "pump-fun"
+      },
+      "initial_missing": [
+        "marketCap"
+      ],
+      "initial_young": true
+    },
+    "AaKUn5KzBvMQy5PsdqUn3BQZ76usTsMbsxLKYqEFZoDd": {
+      "mint": "AieXzGbkSUqWEvr6S6A95kRV8R4iCWS3TX8fRUJKpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "AaKUn5KzBvMQy5PsdqUn3BQZ76usTsMbsxLKYqEFZoDd",
+        "baseToken": {
+          "address": "AieXzGbkSUqWEvr6S6A95kRV8R4iCWS3TX8fRUJKpump",
+          "name": "Gate",
+          "symbol": "GATE"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919429000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "Aju2ZP6u333K4Zjs77QmS4AHqYSL8s7BpQN1zTgwEw6g": {
+      "mint": "7v1RbP6Hys1emjPXXzzkQecQD12SvyCyJYtBsrWYn7k7",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "Aju2ZP6u333K4Zjs77QmS4AHqYSL8s7BpQN1zTgwEw6g",
+        "baseToken": {
+          "address": "7v1RbP6Hys1emjPXXzzkQecQD12SvyCyJYtBsrWYn7k7",
+          "name": "PAL",
+          "symbol": "PAL"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919414000,
+        "dexId": "meteora"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "CMqFFG19dUqScwHD9oE2uXT2H7DJvnQtrBWpU9aJH1Wy": {
+      "mint": "AEJuDHjXuq3qS2Bj26aqn5tCviUGY3Q8FyXnzL2ypump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "CMqFFG19dUqScwHD9oE2uXT2H7DJvnQtrBWpU9aJH1Wy",
+        "baseToken": {
+          "address": "AEJuDHjXuq3qS2Bj26aqn5tCviUGY3Q8FyXnzL2ypump",
+          "name": "CHASIN BENJIEZ",
+          "symbol": "BENJIEZ"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919427000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "CP4b1E6RFq9pJdAA12ke6km7XVqCrj1q6kthHwN11oY1": {
+      "mint": "CDMbeCvHyAiypmiqHN6a1N59MeXizQooKfEJMPZzpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "CP4b1E6RFq9pJdAA12ke6km7XVqCrj1q6kthHwN11oY1",
+        "baseToken": {
+          "address": "CDMbeCvHyAiypmiqHN6a1N59MeXizQooKfEJMPZzpump",
+          "name": "Mission Failed",
+          "symbol": "FAILED"
+        },
+        "quoteToken": {
+          "address": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO"
+        },
+        "pairCreatedAt": 1794917677000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "CQzqMn6rKHyyMrZNg5rAFaa6k3NXm48iKvmvmmhqSbiD": {
+      "mint": "227unKFJA5cDyPdM9PFgeUmYg39ftiRLLgWy3NHFpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "CQzqMn6rKHyyMrZNg5rAFaa6k3NXm48iKvmvmmhqSbiD",
+        "baseToken": {
+          "address": "227unKFJA5cDyPdM9PFgeUmYg39ftiRLLgWy3NHFpump",
+          "name": "Luccia\u2019s \ud83c\udf51",
+          "symbol": "\ud83c\udf51"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919429000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "CTMLjm3S6KAxgRcoXVSMo7ewAqjdKcTYcrZkcnyY3Zrj": {
+      "mint": "mZAZo2GJfk1uhbhsSxMCredtgYnTgvBKQktnfY7pump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "CTMLjm3S6KAxgRcoXVSMo7ewAqjdKcTYcrZkcnyY3Zrj",
+        "baseToken": {
+          "address": "mZAZo2GJfk1uhbhsSxMCredtgYnTgvBKQktnfY7pump",
+          "name": "i am coming ",
+          "symbol": "cum"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919416000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "CmovxYtNvue43wkExhXhEQWrxNSWHwbnqX5gtvKCuGbd": {
+      "mint": "9Qi95CmFQjypVvmddHWc4X9FECk8fdS79e9ShBVypump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "CmovxYtNvue43wkExhXhEQWrxNSWHwbnqX5gtvKCuGbd",
+        "baseToken": {
+          "address": "9Qi95CmFQjypVvmddHWc4X9FECk8fdS79e9ShBVypump",
+          "name": "KUNG PAO",
+          "symbol": "PAO"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919412000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "EGpNjrL9RgTK8RW5syAnWgSfV7k6qE4rhEQ9Q45nM6Hj": {
+      "mint": "Ci4TAtZE2qEoiWPhUFKhN3rSmCSMKdRf7ek7fuLS1A3y",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "EGpNjrL9RgTK8RW5syAnWgSfV7k6qE4rhEQ9Q45nM6Hj",
+        "baseToken": {
+          "address": "Ci4TAtZE2qEoiWPhUFKhN3rSmCSMKdRf7ek7fuLS1A3y",
+          "name": "GTA VI",
+          "symbol": "GTA6"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919395000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "EQzjLLsH48KQojKy5cUoMQZusGk4ZBPVP8o7DYCasgTe": {
+      "mint": "GbGzZQugMJtZnhcnNyHUamXg2xGZw4C4RWy1uSvVpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "EQzjLLsH48KQojKy5cUoMQZusGk4ZBPVP8o7DYCasgTe",
+        "baseToken": {
+          "address": "GbGzZQugMJtZnhcnNyHUamXg2xGZw4C4RWy1uSvVpump",
+          "name": "Justice For So You Are",
+          "symbol": "SOYOUARE"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794916396000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "FQ7hGGdBZABd1QpMxLjnTZin78vmUN9Y7kksLCHKpXD9": {
+      "mint": "74k6dp4RZwkpCaoT7LByPUjMTysG2PtPLobA6eDUpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "FQ7hGGdBZABd1QpMxLjnTZin78vmUN9Y7kksLCHKpXD9",
+        "baseToken": {
+          "address": "74k6dp4RZwkpCaoT7LByPUjMTysG2PtPLobA6eDUpump",
+          "name": "New job",
+          "symbol": "New job"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919430000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "Fjb7TTagtK5FR4ewoNPLyaModSdqZwvSpDQqz82KeZaj": {
+      "mint": "8YbobEkphtLmhpnsZhbxrMckfecHnVXbdScWLTeDpump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "Fjb7TTagtK5FR4ewoNPLyaModSdqZwvSpDQqz82KeZaj",
+        "baseToken": {
+          "address": "8YbobEkphtLmhpnsZhbxrMckfecHnVXbdScWLTeDpump",
+          "name": "GTA San Andreas",
+          "symbol": "$GTASA"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794918137000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "GVPXfxGssx326pipGso8intZJ5CB4sevbLtBmJ1EgkSK": {
+      "mint": "MadLXWNW9bcxwh4Zc9AwXu4d5Z7Pr4mM1KK7YY1pump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "GVPXfxGssx326pipGso8intZJ5CB4sevbLtBmJ1EgkSK",
+        "baseToken": {
+          "address": "MadLXWNW9bcxwh4Zc9AwXu4d5Z7Pr4mM1KK7YY1pump",
+          "name": "Justice For So You Are",
+          "symbol": "SOYOUARE"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794916351000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "GiRWCicdphrgByBY4SGLHBbkL7Uad3CBzFv88C15V2Jg": {
+      "mint": "EZwEgPeh1Y14ua3GUzNRbaRD1KtRpkJvqusT9B8PpTRd",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "GiRWCicdphrgByBY4SGLHBbkL7Uad3CBzFv88C15V2Jg",
+        "baseToken": {
+          "address": "EZwEgPeh1Y14ua3GUzNRbaRD1KtRpkJvqusT9B8PpTRd",
+          "name": "SANTAHOOD",
+          "symbol": "SANTAHOOD"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919400000,
+        "dexId": "meteoradbc"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "H82oSPpG4p1yYM9ry43YKDL9pnPpqkmgTXvTM4cYVbBR": {
+      "mint": "7td2Y3fdfYG9YBBweXzCPLhZxPcuwa1LrpMdjFvB9QHj",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "H82oSPpG4p1yYM9ry43YKDL9pnPpqkmgTXvTM4cYVbBR",
+        "baseToken": {
+          "address": "7td2Y3fdfYG9YBBweXzCPLhZxPcuwa1LrpMdjFvB9QHj",
+          "name": "Grokia",
+          "symbol": "Grokia"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919411000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "HBXyrNZH5Cnj5dPdbiQ4U4nj8b7Acsrz3ydAQQq45dTv": {
+      "mint": "GEnpQSJ2natpVtwycwoYkQHWn7TxXG3WzdSLYSvipump",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "HBXyrNZH5Cnj5dPdbiQ4U4nj8b7Acsrz3ydAQQq45dTv",
+        "baseToken": {
+          "address": "GEnpQSJ2natpVtwycwoYkQHWn7TxXG3WzdSLYSvipump",
+          "name": "Ezra Agent",
+          "symbol": "EZRA"
+        },
+        "quoteToken": {
+          "address": "TTWofwAge91oFhZs7kpQdyrVRkmevgM88xijGvQFbKo",
+          "name": "Take-Two Interactive Software - Backpack Securities",
+          "symbol": "TTWO"
+        },
+        "pairCreatedAt": 1794919420000,
+        "dexId": "pumpfun"
+      },
+      "initial_missing": [
+        "liquidity.usd"
+      ],
+      "initial_young": true
+    },
+    "w41i5Aw1eGk9mfhNqJpRnE2zwSqvigDggfekus9NzkS": {
+      "mint": "9H6iCk4nVH8bJCYssDeja3g7afyDBToDSpRVZXwyTLTu",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "w41i5Aw1eGk9mfhNqJpRnE2zwSqvigDggfekus9NzkS",
+        "baseToken": {
+          "address": "9H6iCk4nVH8bJCYssDeja3g7afyDBToDSpRVZXwyTLTu",
+          "name": "Bravo Six",
+          "symbol": "BRAVO"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        "pairCreatedAt": 1794919502000.0,
+        "dexId": "meteora-dbc"
+      },
+      "initial_missing": [
+        "marketCap"
+      ],
+      "initial_young": true
+    },
+    "35PMsxJ2y1k5RQyouiB5sNWPQNJe3KbufL4iw6PptgKp": {
+      "mint": "EkMx13wLBE22aB9y7DYrZkM8gNmnhhqmv7XtXLq7buFf",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "35PMsxJ2y1k5RQyouiB5sNWPQNJe3KbufL4iw6PptgKp",
+        "baseToken": {
+          "address": "EkMx13wLBE22aB9y7DYrZkM8gNmnhhqmv7XtXLq7buFf",
+          "name": "China's stock marke",
+          "symbol": "\u5927A"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919193000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [
+        "volume.m5"
+      ],
+      "initial_young": true
+    },
+    "3BKCpQVFXLUv9mCc8pkWkstFWdcRGuhr3aLAqXRgSeSw": {
+      "mint": "E8Q5pvgQCLQhAjFKqNVDN1ycVgANEXw2T5MHNQ9fLoat",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "3BKCpQVFXLUv9mCc8pkWkstFWdcRGuhr3aLAqXRgSeSw",
+        "baseToken": {
+          "address": "E8Q5pvgQCLQhAjFKqNVDN1ycVgANEXw2T5MHNQ9fLoat",
+          "name": "hac",
+          "symbol": "hac"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        "pairCreatedAt": 1794919210000.0,
+        "dexId": "raydium-launchlab"
+      },
+      "initial_missing": [
+        "marketCap"
+      ],
+      "initial_young": true
+    },
+    "3N4NpLfotuqhtwrBTpqvSJDs5CLEpnreQLm4UAahXgpY": {
+      "mint": "Ckt1mjRW8T3n6gRm61bQAS1M3dLB5wagggzUiM7SE8WM",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "3N4NpLfotuqhtwrBTpqvSJDs5CLEpnreQLm4UAahXgpY",
+        "baseToken": {
+          "address": "Ckt1mjRW8T3n6gRm61bQAS1M3dLB5wagggzUiM7SE8WM",
+          "name": "Samite",
+          "symbol": "SAMITE"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919187000,
+        "dexId": "pumpswap"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    },
+    "3bmhewz4vvzqnYoodssVMrw5UPHQKJxF7K5dNo4PZmY5": {
+      "mint": "7WHM9PsNSTAreGEaZDsArEfATGrd7wQnHTuW5WGpPRdF",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "3bmhewz4vvzqnYoodssVMrw5UPHQKJxF7K5dNo4PZmY5",
+        "baseToken": {
+          "address": "7WHM9PsNSTAreGEaZDsArEfATGrd7wQnHTuW5WGpPRdF",
+          "name": "Vice City Index",
+          "symbol": "BAWSAQ"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112"
+        },
+        "pairCreatedAt": 1794919220000.0,
+        "dexId": "meteora-damm-v2"
+      },
+      "initial_missing": [
+        "marketCap"
+      ],
+      "initial_young": true
+    },
+    "41QdfKQiGrU8PvjHkF8E8ukFU7Su7YgBYbgzjD1WmJLf": {
+      "mint": "W4qjcA8nqcqvGRiZvDv4BzjPSeV5WN6J5oARkXp2j4D",
+      "seed": {
+        "chainId": "solana",
+        "pairAddress": "41QdfKQiGrU8PvjHkF8E8ukFU7Su7YgBYbgzjD1WmJLf",
+        "baseToken": {
+          "address": "W4qjcA8nqcqvGRiZvDv4BzjPSeV5WN6J5oARkXp2j4D",
+          "name": "\u6500\u8c79\u8c79",
+          "symbol": "\u6500\u8c79\u8c79"
+        },
+        "quoteToken": {
+          "address": "So11111111111111111111111111111111111111112",
+          "name": "Wrapped SOL",
+          "symbol": "SOL"
+        },
+        "pairCreatedAt": 1794919204000,
+        "dexId": "meteora"
+      },
+      "initial_missing": [],
+      "initial_young": true
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "pools": 30,
+  "gate_statuses": {
+    "identity": {
+      "pass": 30
+    },
+    "identityConflict": {
+      "pass": 30
+    },
+    "valuationConflict": {
+      "pass": 30
+    },
+    "ageConflict": {
+      "pass": 30
+    },
+    "age_seconds": {
+      "pass": 30
+    },
+    "circulating_cap": {
+      "fail": 20,
+      "pass": 6,
+      "unknown": 4
+    },
+    "volume_h1": {
+      "fail": 17,
+      "pass": 13
+    },
+    "liquidity_usd": {
+      "unknown": 13,
+      "pass": 8,
+      "fail": 9
+    },
+    "liquidity_cap_ratio": {
+      "unknown": 17,
+      "pass": 9,
+      "fail": 4
+    },
+    "volume_m5": {
+      "fail": 18,
+      "pass": 11,
+      "unknown": 1
+    },
+    "buys_m5": {
+      "pass": 19,
+      "fail": 11
+    },
+    "sells_m5": {
+      "pass": 30
+    },
+    "buy_sell_ratio": {
+      "fail": 20,
+      "pass": 10
+    },
+    "price_usd": {
+      "pass": 30
+    },
+    "price_change_m5": {
+      "fail": 24,
+      "pass": 6
+    },
+    "price_change_h1": {
+      "fail": 15,
+      "pass": 15
+    },
+    "price_change_h24": {
+      "pass": 28,
+      "fail": 2
+    },
+    "historical_lp_retained": {
+      "not_applicable": 30
+    },
+    "historical_price_change": {
+      "not_applicable": 30
+    },
+    "market_score": {
+      "unknown": 18,
+      "pass": 7,
+      "fail": 5
+    },
+    "hunter_mode": {
+      "pass": 26,
+      "unknown": 4
+    },
+    "narrative": {
+      "unknown": 30
+    }
+  },
+  "primary_rejections": {
+    "v5_market_cap": 20,
+    "liquidity": 1,
+    "v5_market_missing": 4,
+    "weak_activity": 2,
+    "late_or_falling_price": 1,
+    "v5_volume_h1": 2
+  },
+  "market_pass": 0,
+  "reaches_security": 0,
+  "independent_failed_checks": 145,
+  "unknown_checks": 87,
+  "scope": "same frozen observations; diagnostic gain only, no invented historical safety or profit",
+  "decision_parity": true,
+  "old_primary_reason_count": 30,
+  "new_check_count": 660,
+  "security_relaxed": false
+}

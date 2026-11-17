@@ -17,6 +17,8 @@ import social_intelligence
 import token_extensions
 import data_intelligence
 import smart_discovery
+import chain_intelligence
+import filter_audit
 from signal_quality import snapshot,merge_observations
 from state_store import migrate,already_delivered
 
@@ -26,7 +28,7 @@ def render(pool,m,sec,social,buyers,creation,tier):
     n=pool['_narrative_v3']; safety=pool['_security_v3']; mint=pool['baseToken']['address']; pair=pool['pairAddress']
     sources='\n'.join('• <a href="'+esc(a['url'])+'">'+esc(a['publisher'])+'</a>: '+esc(a['title'][:100]) for a in n['sources'][:2])
     scores=' | '.join(k+': '+('belum terukur' if v is None else str(v)+'/100') for k,v in pool['_scores_v5'].items())
-    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.3</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
+    return (f'🔎 <b>VERIFIED ALERT — MAIL Hunter v5.4</b>\n{esc(pool["baseToken"].get("name","?"))}\n'
             f'Mode: {esc(", ".join(m["modes"]))}\nUmur pool {m["age_seconds"]/60:.1f} menit\n'
             f'MC ${m["cap"]:,.0f} | LP ${m["lp"]:,.0f}\nVolume 1h ${pool["volume"]["h1"]:,.0f}\n'
             f'BUY/SELL 5m {m["buys"]}/{m["sells"]} ({m["buys"]/max(m["sells"],1):.2f}×)\n'
@@ -47,7 +49,7 @@ def health(state,api,chat,report):
     if state['delivery'].get(key,{}).get('reservation')!=claim: return {'status':'already_reserved'}
     rejects=', '.join(k+': '+str(v) for k,v in sorted(report.get('rejected',{}).items(),key=lambda x:-x[1])[:6]) or 'tidak ada / scanner OFF'
     ai=report.get('narrative',{}).get('ai',{})
-    text=(f'🩺 MAIL Hunter v5.3 — laporan kesehatan 6 jam\n'
+    text=(f'🩺 MAIL Hunter v5.4 — laporan kesehatan 6 jam\n'
           f'Scanner: {"ON" if state.get("enabled") else "OFF"} | {report.get("health","unknown")}\n'
           f'Pool: {report.get("seen",0)} | Kandidat terkirim: {report.get("sent",0)}\n'
           f'Penolakan: {rejects}\nAI: {ai.get("status","unavailable")} | Model: {ai.get("model_used") or "tidak digunakan"}\n'
@@ -83,7 +85,7 @@ def observe(state,pools,now):
 def run(state,chat,api,dry_run=False):
     now=time.time(); migrate(state,now)
     os.environ['X_READS_ENABLED']='0'  # Owner policy: paid X reads remain OFF.
-    report={'version':'5.3','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
+    report={'version':'5.4','at':now,'mode':'ALERT ONLY','seen':0,'sent':0,'rejected':{},'candidates':[],
             'security_checks':[],'trigger':os.environ.get('GITHUB_EVENT_NAME','local'),'run_id':os.environ.get('GITHUB_RUN_ID'),
             'capabilities':{'images':'not_available','influencer_pfp':'not_available_without_account_access',
                 'x_reads_enabled':os.environ.get('X_READS_ENABLED')=='1' and bool(os.environ.get('X_BEARER_TOKEN')),
@@ -104,8 +106,8 @@ def run(state,chat,api,dry_run=False):
     # Due price windows run before news/social retrieval can consume the scan budget.
     gecko=market_data.GeckoClient(api,state,paced=True,smart=True)
     original_deadline=api.REQUEST_DEADLINE
-    api.REQUEST_DEADLINE=min(original_deadline or float('inf'),time.monotonic()+18)
-    try:rpc_pools,report['rpc_discovery']=smart_discovery.rpc_discover(providers,state,time.time())
+    api.REQUEST_DEADLINE=min(original_deadline or float('inf'),time.monotonic()+24)
+    try:rpc_pools,report['rpc_discovery'],chain_archive,chain_leads=chain_intelligence.discover(providers,state,time.time())
     finally:api.REQUEST_DEADLINE=original_deadline
     discovery_started=time.monotonic()
     pools,report['discovery']=legacy.discover(api,gecko,smart=True)
@@ -131,9 +133,11 @@ def run(state,chat,api,dry_run=False):
     found=intelligence.search_pools(api,feed,time.time()); report['discovery']['dynamic_search_pools']=len(found)
     social_pools,report['social_discovery']=social_intelligence.discover_contracts(api,feed,time.time())
     pools=market_data.merge_pools(pools+found+social_pools)
-    try:baseline=json.loads(Path('audit/cohort-v52-to-v53.json').read_text())
+    try:baseline=json.loads(Path('audit/cohort-v53-to-v54.json').read_text())
     except (OSError,ValueError):baseline=None
-    report['comparison_baseline']='archived_v5.2' if baseline else 'current_entry_only'
+    report['comparison_baseline']='archived_v5.3' if baseline else 'current_entry_only'
+    if baseline and state.get(smart_discovery.STATE_KEY,{}).get('cohort',{}).get('source_run')!=baseline.get('source_run'):
+        smart_discovery.state_for(state,time.time())['cohort']=copy.deepcopy(baseline)
     smart_discovery.cohort_start(state,pools,time.time(),baseline=baseline)
     cohort_pools,report['cohort_refresh']=smart_discovery.cohort_refresh(state,api,time.time())
     pools=market_data.merge_pools(pools+cohort_pools)
@@ -168,17 +172,24 @@ def run(state,chat,api,dry_run=False):
     api.REQUEST_DEADLINE=min(old_deadline or float('inf'),time.monotonic()+10)
     try: legacy.followup(state,pools,api,time.time(),gecko,reserve_seconds=1)
     finally: api.REQUEST_DEADLINE=old_deadline
-    ranked={}; archives=[]
+    original_deadline=api.REQUEST_DEADLINE
+    api.REQUEST_DEADLINE=min(original_deadline or float('inf'),time.monotonic()+12)
+    try:report['chain_market_sample']=chain_intelligence.sample_market(providers,pools,time.time())
+    finally:api.REQUEST_DEADLINE=original_deadline
+    ranked={}; archives=[]; audits=[]
     def reject(reason): report['rejected'][reason]=report['rejected'].get(reason,0)+1
     for pool in sorted(pools,key=lambda p:not smart_discovery.young(p,time.time())):
         report['seen']+=1
         n=intelligence.match(pool,feed,time.time()); m=hunter_modes.assess(pool,state['observations'],time.time(),n)
         reason=m.get('reject')
+        audit=filter_audit.evaluate(pool,state['observations'],time.time(),n);audits.append(audit)
+        filter_audit.observe_research(state,pool,audit,n,time.time())
         data_intelligence.watch(state,pool,n,reason,time.time())
         # Archive a representative, bounded sample of rejects and all market/narrative candidates.
         if len(archives)<30 or not reason:
             archives.append({'observed_at':time.time(),'pool':copy.deepcopy(pool),'articles':n.get('sources',[]),
-                             'decision':reason or 'awaiting_security'})
+                             'decision':reason or 'awaiting_security','narrative':copy.deepcopy(n),
+                             'history':{pool['pairAddress']:copy.deepcopy(state['observations'].get(pool['pairAddress'],[]))}})
             hunter_memory.record(state,pool,n,reason or 'awaiting_security',time.time())
         if reason: reject(reason); continue
         mint=pool['baseToken']['address']
@@ -224,6 +235,11 @@ def run(state,chat,api,dry_run=False):
                          'security_observed_at':safety['observed_at'],'security':safety,'decision':'gates_passed'})
         if not dry_run and legacy.deliver(state,api,chat,fresh,m,sec,social,buyers,{},'GLOBAL SIGNAL',renderer=render):
             report['sent']+=1; hunter_memory.record(state,fresh,n2,'accepted',time.time(),safety)
+    report['filter_audit']=filter_audit.summary(audits)
+    report['gainer_review']=filter_audit.gainer_review(state,pools,audits,time.time())
+    report['internal_market_watch']=len(state.get('market_research_v54',{}).get('rows',{}))
+    fixed_pairs=set(state.get(smart_discovery.STATE_KEY,{}).get('cohort',{}).get('rows',{}))
+    report['fixed_filter_audit']=filter_audit.summary([r for r in audits if r['pair'] in fixed_pairs])
     report['provider_status']=providers.status
     report['rpc_usage']=providers.usage()
     report['birdeye_usage']=providers.bird.report()
@@ -243,6 +259,10 @@ def run(state,chat,api,dry_run=False):
     report['recent_evaluation_status']={str(h):{status:sum(r.get('samples',{}).get(str(h),{}).get('status')==status for r in recent) for status in ('observed','missed')} for h in (300,900)}
     report['health_notification']={'status':'read_only'} if dry_run else health(state,api,chat,report)
     Path('reports').mkdir(exist_ok=True)
+    Path('reports/filter-audit-v54.json').write_text(json.dumps({'at':now,'rows':audits,'summary':report['filter_audit']},indent=2))
+    Path('reports/chain-discovery-v54.json').write_text(json.dumps({'at':now,'stats':report['rpc_discovery'],'transactions':chain_archive,'leads':chain_leads},indent=2))
+    Path('reports/internal-market-v54.json').write_text(json.dumps(state.get('market_research_v54',{}),indent=2))
+    Path('reports/gainer-review-v54.json').write_text(json.dumps(report['gainer_review'],indent=2))
     Path('reports/point-in-time-v5.json').write_text(json.dumps(archives,ensure_ascii=False,indent=2))
     Path('reports/performance.json').write_text(json.dumps({'note':'Observed prices only, not executed profit; excludes fees/slippage.','signals':state['performance']},indent=2))
     Path('reports/memory-v5.json').write_text(json.dumps(state.get('memory_v5',{}),indent=2))
@@ -261,5 +281,5 @@ def write_report(state,api,report):
     Path('reports/latest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
-            f.write('\n### MAIL Hunter v5.3 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
+            f.write('\n### MAIL Hunter v5.4 — ALERT ONLY\n\n'+f'Pool: {report["seen"]}; alerts: {report["sent"]}; health: {report["health"]}.\n\nPenolakan: '+json.dumps(report['rejected'])+'\n')
     print('SCANNER_V5 '+json.dumps(report,ensure_ascii=False,sort_keys=True))
