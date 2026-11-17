@@ -77,3 +77,14 @@ Waktu WIT, 17 November 2026. Semua run success, 299 tes lulus, 0 alert token.
 | [44083079863](https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/44083079863) | 21:26:13 | 85/404 (21.04%) | 18/146 | 12/30 | 0 | 76.5 |
 
 [Bukti terstruktur lengkap](audit/verification-v53-20261117.json). Status akhir: implementasi/deployment/verifikasi operasional selesai; kelengkapan pasar masih degraded, tanpa klaim 90% atau jaminan token aman.
+
+
+## Pemeriksaan ulang — 21:46 WIT
+
+Permintaan SMART DISCOVERY dicocokkan kembali dengan produksi: PR #29 tetap merged dan versi 5.3 aktif. Upgrade/deployment tidak diulang; bukti 12 run selama 65,81 menit di atas diperiksa ulang dan valid.
+
+[Run 44086217079](https://github.com/Yono24-jpg/solana-telegram-screening/actions/runs/44086217079), scan 17 November 2026 pukul 21:46:12 WIT, selesai success dan lulus 299 tes. Kelengkapan inventaris 91/375 = **24,27%**, pool muda lengkap 19/144 = **13,19%**. Sampel tetap seluruh 30 identitas teramati; **11/30 lengkap**, sama dengan 11/30 pada baseline v5.2. Hasil lanjutan tetap tidak membuktikan peningkatan kelengkapan yang konsisten.
+
+Gecko tiga request, tanpa HTTP 429 pada run tersebut; 80 slot pemeriksaan ulang diprioritaskan untuk pool muda. State produksi memuat antrean 300, cache 11 signature, cohort 30, scanner ON dan X false. Helius ledger 366/600.000 estimasi kredit 31 hari; Birdeye 546/24.000 estimasi CU. Cron lima menit dan deployment scheduler tetap. Telegram getMe/getChat/getUpdates sukses; alert token 0, audit keamanan akhir token belum terpicu. Tidak ada perubahan kode runtime atau pengiriman tes duplikat dalam pemeriksaan ulang ini.
+
+[Bukti pemeriksaan ulang](audit/recheck-v53-20261117-2146.json).
