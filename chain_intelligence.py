@@ -98,11 +98,17 @@ def discover(providers, state, now):
     r['at'] = now
     cache = {s: v for s, v in r.get('signatures', {}).items() if 0 <= now-v.get('at', 0) <= 7200}
     # Mint-authority indexes creations rather than the very large swap stream.
-    alternate = 'pumpswap' if r.get('rotation', 0) % 2 == 0 else 'meteora'
-    sources = [('pump', PUMP_MINT_AUTHORITY), ('raydium', prior.FEE), (alternate, PROGRAMS[alternate])]
+    # Poll every supported creation index on each five-minute run. The previous
+    # alternating PumpSwap/Meteora policy created a deterministic blind spot:
+    # one protocol was absent from every other scan. Reading all four indexes
+    # stays within the existing bounded RPC budget and never fabricates market data.
+    sources = [('pump', PUMP_MINT_AUTHORITY), ('pumpswap', PROGRAMS['pumpswap']),
+               ('raydium', prior.FEE), ('meteora', PROGRAMS['meteora'])]
     r['rotation'] = r.get('rotation', 0)+1
     stats = {'sources': {}, 'signature_reads': 0, 'transaction_reads': 0, 'cache_hits': 0,
-             'baseline_cpmm_leads': 0, 'v54_leads': 0, 'scope': 'bounded HTTP polling sample; not complete or sub-minute coverage'}
+             'baseline_cpmm_leads': 0, 'v54_leads': 0,
+             'source_order': [name for name, _ in sources],
+             'scope': 'bounded HTTP polling sample; not complete or sub-minute coverage'}
     for protocol, account in sources:
         if providers.api.REQUEST_DEADLINE and time.monotonic()+2 >= providers.api.REQUEST_DEADLINE: break
         stats['signature_reads'] += 1
@@ -124,7 +130,7 @@ def discover(providers, state, now):
             groups.setdefault(v['protocol'], []).append((sig, v))
     pending = []
     while any(groups.values()) and len(pending) < 6:
-        for key in ('pump', 'raydium', alternate, 'pumpswap', 'meteora'):
+        for key in ('pump', 'pumpswap', 'raydium', 'meteora'):
             if groups.get(key) and len(pending) < 6: pending.append(groups[key].pop(0))
     leads = []; baseline = []; archived = []
     for sig, row in pending:
@@ -170,54 +176,96 @@ def discover(providers, state, now):
 
 
 def reserve_trade(tx, signature, pool, now):
-    """One recognized swap per transaction; vault changes in token units, not USD."""
-    if not valid_tx(tx, signature, now, 300): return None
-    matched = []
+    """Decode one unambiguous swap from exact vault deltas, never USD or full-window volume."""
+    if not valid_tx(tx, signature, now, 300):
+        return None
+    pair = pool.get('pairAddress')
+    base_mint = market.get(pool, 'baseToken.address')
+    quote_mint = market.get(pool, 'quoteToken.address')
+    candidates = []
     for ix in instructions(tx):
         found = layout_for(ix)
-        if found:
-            spec, a = found
-            if spec['protocol'] == 'pumpswap' and spec['name'] in ('buy', 'buy_exact_quote_in', 'sell'):
-                if a['pool'] == pool['pairAddress'] and a['base_mint'] == market.get(pool, 'baseToken.address') and a['quote_mint'] == market.get(pool, 'quoteToken.address'):
-                    matched.append((a['pool_base_token_account'], a['pool_quote_token_account'], spec['name']))
-    touches=[ix for ix in instructions(tx) if ix.get('programId')==PROGRAMS['pumpswap']
-             and pool['pairAddress'] in (ix.get('accounts') or [])]
-    if len(matched) != 1 or len(touches) != 1: return None
-    keys = [k.get('pubkey') if isinstance(k, dict) else k for k in tx['transaction']['message'].get('accountKeys', [])]
-    base_vault, quote_vault, name = matched[0]
-    def balance(rows, vault, mint):
-        candidates = [r for r in rows if isinstance(r, dict) and isinstance(r.get('accountIndex'), int)
-                      and 0 <= r['accountIndex'] < len(keys) and keys[r['accountIndex']] == vault and r.get('mint') == mint]
-        if len(candidates) != 1: raise ValueError('balance_identity')
-        v = candidates[0]['uiTokenAmount']; decimals = v['decimals']
-        if not isinstance(decimals, int) or not 0 <= decimals <= 18: raise ValueError('decimals')
-        return int(v['amount'])/10**decimals, decimals
-    try:
-        pre, post = tx['meta']['preTokenBalances'], tx['meta']['postTokenBalances']
-        b0, bd = balance(pre, base_vault, market.get(pool, 'baseToken.address'))
-        b1, bd1 = balance(post, base_vault, market.get(pool, 'baseToken.address'))
-        q0, qd = balance(pre, quote_vault, market.get(pool, 'quoteToken.address'))
-        q1, qd1 = balance(post, quote_vault, market.get(pool, 'quoteToken.address'))
-        if bd != bd1 or qd != qd1 or min(b0, b1, q0, q1) <= 0: return None
-        db, dq = b1-b0, q1-q0
-        kind = 'buy' if db < 0 and dq > 0 else 'sell' if db > 0 and dq < 0 else None
-        if kind is None or (name == 'sell') != (kind == 'sell'): return None
-        return {'signature': signature, 'at': tx['blockTime'], 'kind': kind,
-                'base_reserve_change': db, 'quote_reserve_change': dq,
-                'base_reserve': b1, 'quote_reserve': q1, 'quote_mint': market.get(pool, 'quoteToken.address'),
-                'quote_per_base_reserve_ratio': q1/b1, 'scope': 'sampled net vault changes; fees included; no USD/LP safety assertion'}
-    except (KeyError, TypeError, ValueError, ZeroDivisionError, OverflowError): return None
+        if not found:
+            continue
+        spec, a = found
+        if a.get('pool') != pair:
+            continue
+        if spec['protocol'] == 'pumpswap' and spec['name'] in ('buy', 'buy_exact_quote_in', 'sell'):
+            if a.get('base_mint') != base_mint or a.get('quote_mint') != quote_mint:
+                continue
+            candidates.append((spec, a, a.get('pool_base_token_account'),
+                               a.get('pool_quote_token_account')))
+        elif spec['protocol'] == 'meteora' and spec['name'] in ('swap', 'swap2'):
+            token_a = a.get('token_a_mint')
+            token_b = a.get('token_b_mint')
+            if {token_a, token_b} != {base_mint, quote_mint}:
+                continue
+            vaults = {token_a: a.get('token_a_vault'), token_b: a.get('token_b_vault')}
+            if not all(isinstance(vaults.get(mint), str) for mint in (base_mint, quote_mint)):
+                continue
+            candidates.append((spec, a, vaults[base_mint], vaults[quote_mint]))
+    if len(candidates) != 1:
+        return None
+    spec, account_map, base_vault, quote_vault = candidates[0]
+    touches = [ix for ix in instructions(tx)
+               if ix.get('programId') == spec['program'] and pair in (ix.get('accounts') or [])]
+    if len(touches) != 1:
+        return None
 
+    keys = [k.get('pubkey') if isinstance(k, dict) else k
+            for k in (tx.get('transaction') or {}).get('message', {}).get('accountKeys', [])]
+
+    def balance(rows, vault, mint):
+        candidates = [row for row in rows if isinstance(row, dict)
+                      and isinstance(row.get('accountIndex'), int)
+                      and 0 <= row['accountIndex'] < len(keys)
+                      and keys[row['accountIndex']] == vault
+                      and row.get('mint') == mint]
+        if len(candidates) != 1:
+            raise ValueError('balance_identity')
+        value = candidates[0]['uiTokenAmount']
+        decimals = value['decimals']
+        if not isinstance(decimals, int) or not 0 <= decimals <= 18:
+            raise ValueError('decimals')
+        return int(value['amount']) / 10**decimals, decimals
+
+    try:
+        pre = tx['meta']['preTokenBalances']
+        post = tx['meta']['postTokenBalances']
+        b0, base_decimals = balance(pre, base_vault, base_mint)
+        b1, base_decimals_after = balance(post, base_vault, base_mint)
+        q0, quote_decimals = balance(pre, quote_vault, quote_mint)
+        q1, quote_decimals_after = balance(post, quote_vault, quote_mint)
+        if (base_decimals != base_decimals_after or quote_decimals != quote_decimals_after
+                or min(b0, b1, q0, q1) <= 0):
+            return None
+        db, dq = b1 - b0, q1 - q0
+        kind = 'buy' if db < 0 and dq > 0 else 'sell' if db > 0 and dq < 0 else None
+        if kind is None:
+            return None
+        if spec['protocol'] == 'pumpswap':
+            if (spec['name'] == 'sell') != (kind == 'sell'):
+                return None
+        return {'signature': signature, 'at': tx['blockTime'], 'kind': kind,
+                'protocol': spec['protocol'], 'instruction': spec['name'],
+                'base_reserve_change': db, 'quote_reserve_change': dq,
+                'base_reserve': b1, 'quote_reserve': q1, 'quote_mint': quote_mint,
+                'quote_per_base_reserve_ratio': q1 / b1,
+                'scope': 'sampled net vault changes; fees included; no USD/LP safety assertion'}
+    except (KeyError, TypeError, ValueError, ZeroDivisionError, OverflowError):
+        return None
 
 def sample_market(providers, pools, now):
-    eligible = [p for p in pools if prior.young(p, now) and 'pump' in str(p.get('dexId', '')).lower()
+    eligible = [p for p in pools if prior.young(p, now)
+                and any(tag in str(p.get('dexId', '')).lower() for tag in ('pump', 'raydium', 'meteora'))
                 and market.amount(market.get(p, 'liquidity.usd')) is not None]
     eligible.sort(key=lambda p: -(market.amount(market.get(p, 'volume.m5')) or 0))
     out = {'scope': 'at most one pool / two transactions; sampled lower bounds, never full five-minute volume',
            'status': 'no_supported_pool', 'requests': 0, 'buys': 0, 'sells': 0, 'trades': [],
            'complete_window': False, 'usd_volume': None, 'usd_liquidity': None}
     if not eligible: return out
-    p = eligible[0]; out.update(pair=p['pairAddress'], mint=market.get(p, 'baseToken.address'))
+    p = eligible[0]; out.update(pair=p['pairAddress'], mint=market.get(p, 'baseToken.address'),
+                                     protocol=p.get('dexId'))
     try:
         out['requests'] += 1
         rows = providers.rpc('getSignaturesForAddress', [p['pairAddress'], {'limit': 6, 'commitment': 'finalized'}])
