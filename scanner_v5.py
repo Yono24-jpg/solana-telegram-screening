@@ -151,7 +151,7 @@ def run(state,chat,api,dry_run=False):
     Path('reports').mkdir(exist_ok=True)
     Path('reports/same-pool-v53.json').write_text(json.dumps(comparison,indent=2))
     report['same_pool_comparison']={k:({a:b for a,b in v.items() if a!='rows'} if isinstance(v,dict) else v) for k,v in comparison.items()}
-    report['gecko_policy']={'network_calls':gecko.calls,'per_cycle_limit':3,'new_pool_pages':1,'trending_pages':0,
+    report['gecko_policy']={'network_calls':gecko.calls,'per_cycle_limit':market_data.GECKO_SMART_CALLS_PER_CYCLE,'new_pool_pages':1,'trending_pages':0,
                             'retry_after':state.get('gecko_retry_after',0),'consecutive_429':state.get('gecko_429_streak',0)}
     report['final_incomplete_pools']=sum(bool(market_data.v3_missing_fields(p)) for p in pools)
     from collections import Counter
